@@ -5,7 +5,7 @@
  * Copyright (c) 2006 Jointly owned by Srikumar K. S. and muvee Technologies Pte. Ltd. 
  *
  * All rights reserved. See LICENSE.txt distributed with this source code
- * or http://muvee-scheme.googlecode.com/svn/trunk/LICENSE.txt
+ * or http://muvee-symbolic-expressions.googlecode.com/svn/trunk/LICENSE.txt
  * for terms and conditions under which this software is provided to you.
  *
  * A collection of OS-specific functions exposed in the language.

@@ -12,7 +12,7 @@ Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. 
 
    This license file is available from 
 
-       http://muvee-scheme.googlecode.com/svn/trunk/LICENSE.txt
+       http://muvee-symbolic-expressions.googlecode.com/svn/trunk/LICENSE.txt
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@ Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. 
       include the terms in this section - i.e. if You submit modifications,
       bug fixes, enhancements, additional features, port to other platforms
       back to the public either by contributing your work back to original
-      project site (such as http://muvee-scheme.googlecode.com) or by 
+      project site (such as http://muvee-symbolic-expressions.googlecode.com) or by 
       publishing it through alternate media (such as other internet
       site, CDROM, memory card, USB memory stick), You are required to
       publish your work under the same terms and conditions as offered to
