@@ -1354,10 +1354,19 @@ static void muse_print_lambda( muse_port_t f, muse_cell l, muse_boolean quote )
 
 static void muse_print_nativefn( muse_port_t f, muse_cell l )
 {
-	char buffer[64];
-	int count = sprintf( buffer, "<prim:%x>", l );
-	port_write( buffer, count, f );
-	pretty_printer_move(count);
+	muse_functional_object_t *obj = _fnobjdata(l);
+	
+	if ( obj && obj->type_info->write )
+	{
+		obj->type_info->write( obj, f );
+	}
+	else
+	{
+		char buffer[64];
+		int count = sprintf( buffer, "<prim:%x>", l );
+		port_write( buffer, count, f );
+		pretty_printer_move(count);
+	}
 }
 
 /**

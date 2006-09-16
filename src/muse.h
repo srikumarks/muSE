@@ -484,6 +484,16 @@ typedef struct
 	 * function of the object will be called and it will be
 	 * removed from the environment.
 	 */
+	
+	void (*write)( void *obj, void *port );
+	/**<
+	 * The object should be written out in a textual format such that
+	 * read (with macros and braces enabled) will be able to automatically
+	 * create the object when it encounters the expression.
+	 *
+	 * If this function is NULL, the standard "<prim:blah>" kind of 
+	 * unreadable stuff will be written out.
+	 */
 } muse_functional_object_type_t;
 
 /**

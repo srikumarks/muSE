@@ -102,6 +102,46 @@ static void hashtable_destroy( void *p )
 	}
 }
 
+/**
+ * Writes the hashtable out to the given port in the form
+ * @code
+ *    {hashtable '((key1 . value1) (key2 . value2) ... (keyN . valueN))}
+ * @endcode
+ * Since it uses braces, a trusted read operation will 
+ * automatically give the hashtable object in the position that
+ * this expression is inserted.
+ */
+static void hashtable_write( void *ptr, void *port )
+{
+	hashtable_t *h = (hashtable_t*)ptr;
+	muse_port_t p = (muse_port_t)port;
+	
+	port_putc( '{' , p );
+	port_write( "hashtable '(", 12, p );
+	
+	{
+		int b, i;
+		
+		/* Step through the buckets. */
+		for ( b = 0, i = 0; b < h->bucket_count && i < h->count; ++b )
+		{
+			muse_cell alist = h->buckets[b];
+			
+			/* Step through the pairs in each bucket. */
+			while ( alist )
+			{
+				if ( i > 0 ) port_putc( ' ', p );
+				muse_pwrite( p, _head(alist) );
+				alist = _tail(alist);
+				++i;
+			}
+		}
+	}
+	
+	port_putc( ')', p );
+	port_putc( '}', p );
+}
+
 static int bucket_for_hash( muse_int hash, int modulus )
 {
 	return (int)(((hash % modulus) + modulus) % modulus);
@@ -248,7 +288,8 @@ static muse_functional_object_type_t g_hashtable_type =
 	(muse_nativefn_t)fn_hashtable,
 	hashtable_init,
 	hashtable_mark,
-	hashtable_destroy
+	hashtable_destroy,
+	hashtable_write
 };
 
 /**
@@ -292,7 +333,7 @@ muse_cell fn_hashtable_size( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (alist->hashtable alist).
+ * (hashtable alist).
  * Returns a hash table with the same contents as the given alist.
  */
 muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
@@ -366,12 +407,12 @@ static const struct _defs
 } k_hashtable_funs[] =
 {
 	{	L"mk-hashtable",		fn_mk_hashtable			},
-	{	L"hashtable?",			fn_hashtable_p			},
-	{	L"hashtable-size",		fn_hashtable_size		},
-	{	L"alist->hashtable",	fn_alist_to_hashtable	},
+	{	L"hashtable?",		fn_hashtable_p			},
+	{	L"hashtable-size",	fn_hashtable_size		},
+	{	L"hashtable",			fn_alist_to_hashtable	},
 	{	L"hashtable->alist",	fn_hashtable_to_alist	},
 #ifndef NDEBUG
-	{	L"hashtable-stats",		fn_hashtable_stats		},
+	{	L"hashtable-stats",	fn_hashtable_stats		},
 #endif
 	{	NULL,					NULL					}
 };

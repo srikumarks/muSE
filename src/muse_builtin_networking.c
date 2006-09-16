@@ -225,7 +225,8 @@ static muse_port_type_t g_socket_type =
 		NULL,
 		socket_init,
 		NULL,
-		socket_destroy
+		socket_destroy,
+		NULL
 	},
 	
 	socket_close,
@@ -725,7 +726,8 @@ static muse_port_type_t g_multicast_socket_type =
 		NULL,
 		multicast_socket_init,
 		NULL,
-		multicast_socket_destroy
+		multicast_socket_destroy,
+		NULL
 	},
 	
 	multicast_socket_close,

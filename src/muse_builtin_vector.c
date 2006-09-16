@@ -13,6 +13,7 @@
  */
 
 #include "muse_builtins.h"
+#include "muse_port.h"
 #include <stdlib.h>
 
 /** @addtogroup FunctionalObjects */
@@ -89,6 +90,31 @@ static void vector_destroy( void *ptr )
 }
 
 /**
+ * Writes out the vector to the given port in such a
+ * way that the expression written out is converted
+ * to a vector by a trusted read operation.
+ */
+static void vector_write( void *ptr, void *port )
+{
+	vector_t *v = (vector_t*)ptr;
+	muse_port_t p = (muse_port_t)port;
+	
+	port_putc( '{', p );
+	port_write( "vector", 6, p );	
+	
+	{
+		int i;
+		for ( i = 0; i < v->length; ++i )
+		{
+			port_putc( ' ', p );
+			muse_pwrite( p, v->slots[i] );
+		}
+	}
+	
+	port_putc( '}', p );
+}
+
+/**
  * The function that implements vector slot access.
  */
 muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
@@ -124,7 +150,8 @@ static muse_functional_object_type_t g_vector_type =
 	(muse_nativefn_t)fn_vector,
 	vector_init,
 	vector_mark,
-	vector_destroy
+	vector_destroy,
+	vector_write
 };
 
 /**
