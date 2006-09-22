@@ -234,7 +234,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 				if ( value )
 				{
 					/* It already exists. Simply change the value to the new one. */
-					muse_set_tail( *kvpair, value );
+					muse_set_tail( muse_head(*kvpair), value );
 					return value;
 				} 
 				else
@@ -242,6 +242,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 					/* The value is MUSE_NIL. Which means we have to remove
 					the kvpair from the hashtable. */
 					(*kvpair) = muse_tail( *kvpair );
+					--(h->count);
 					return MUSE_NIL;
 				}
 			}
