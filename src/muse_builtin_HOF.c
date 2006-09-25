@@ -28,6 +28,9 @@ static muse_monad_view_t *get_monad_view( muse_cell obj, muse_functional_object_
 
 /**
  * (size obj)
+ *
+ * Returns the size of the given list (i.e. its length) or vector
+ * (same as vector-length) or hashtable (same as hashtable-size).
  */
 muse_cell fn_size( muse_env *env, void *context, muse_cell args )
 {
