@@ -62,8 +62,11 @@ muse_cell fn_append_M( muse_env *env, void *context, muse_cell args );
 
 /** @addtogroup HOFs Higher order functions */
 /*@{*/
+muse_cell fn_size( muse_env *env, void *context, muse_cell args );
 muse_cell fn_map( muse_env *env, void *context, muse_cell args );
+muse_cell fn_join( muse_env *env, void *context, muse_cell args );
 muse_cell fn_collect( muse_env *env, void *context, muse_cell args );
+muse_cell fn_reduce( muse_env *env, void *context, muse_cell args );
 muse_cell fn_find( muse_env *env, void *context, muse_cell args );
 muse_cell fn_andmap( muse_env *env, void *context, muse_cell args );
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args );

@@ -15,6 +15,7 @@
 #include "muse_builtins.h"
 #include "muse_port.h"
 #include <stdlib.h>
+#include <memory.h>
 
 /** @addtogroup FunctionalObjects */
 /*@{*/
@@ -142,12 +143,203 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 	return MUSE_NIL;
 }
 
+static muse_cell vector_size( void *self )
+{
+	return muse_mk_int( ((vector_t*)self)->length );
+}
+
+static void vector_resize( vector_t *self, int new_size )
+{
+	if ( self->length >= new_size )
+		return;
+	
+	self->slots = (muse_cell*)realloc( self->slots, sizeof(muse_cell) * new_size );
+	memset( self->slots + self->length, 0, sizeof(muse_cell) * (new_size - self->length) );
+	self->length = new_size;
+}
+
+static void vector_merge_one( vector_t *v, int i, muse_cell new_value, muse_cell reduction_fn )
+{
+	if ( reduction_fn && v->slots[i] )
+	{
+		/* Value exists at the specified slot. */
+		v->slots[i] = 
+			muse_apply( reduction_fn,
+						muse_cons( v->slots[i],
+								   muse_cons( new_value,
+											  MUSE_NIL ) ),
+						MUSE_TRUE );
+	}
+	else
+	{
+		/* No reduction function, or the slot is empty. */
+		v->slots[i] = new_value;						
+	}	
+}
+
+static void vector_trim( vector_t *v )
+{
+	while ( v->length > 0 && !v->slots[v->length - 1] )
+		--(v->length);
+}
+
+static muse_cell vector_map( void *self, muse_cell fn )
+{
+	vector_t *v = (vector_t*)self;
+	
+	muse_cell result = muse_mk_vector( v->length );
+	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+	
+	muse_cell args = muse_cons( MUSE_NIL, MUSE_NIL );
+	
+	int sp = muse_stack_pos();
+	int i = 0;
+	for ( i = 0; i < v->length; ++i )
+	{
+		/* Initialize the arguments to the mapper function. */
+		muse_set_head( args, v->slots[i] );
+		
+		result_ptr->slots[i] = muse_apply( fn, args, MUSE_TRUE );
+		
+		muse_stack_unwind(sp);
+	}
+	
+	return result;
+}
+
+static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction_fn )
+{
+	vector_t *v1 = (vector_t*)self;
+	
+	/* Compute the required total length. */
+	int total_length = v1->length;
+	{
+		muse_cell temp_objlist = objlist;
+		while ( temp_objlist )
+		{
+			muse_cell obj = _next(&temp_objlist);
+			vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
+			total_length += v2->length;
+		}
+	}
+	
+	muse_cell result = muse_mk_vector( total_length );
+	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+	
+	memcpy( result_ptr->slots, v1->slots, sizeof(muse_cell) * v1->length );
+	
+	{
+		int offset = v1->length;
+		while ( objlist )
+		{
+			muse_cell obj = _next(&objlist);
+			vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
+			memcpy( result_ptr->slots + offset, v2->slots, sizeof(muse_cell) * v2->length );
+			offset += v2->length;
+		}
+	}
+	
+	return result;	
+}
+
+static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
+{
+	vector_t *v1 = (vector_t*)self;
+	
+	muse_cell result = muse_mk_vector( v1->length );
+	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+	
+	muse_cell ix = muse_mk_int(0);
+	muse_cell args = muse_cons( ix, MUSE_NIL );
+	muse_int *ixptr = &(_ptr(ix)->i);
+	
+	{
+		int sp = muse_stack_pos();
+		int i;
+		for ( i = 0; i < v1->length; ++i )
+		{
+			(*ixptr) = i;
+			muse_set_tail( args, v1->slots[i] );
+			
+			if ( !predicate || muse_apply( predicate, args, MUSE_TRUE ) )
+			{
+				if ( mapper )
+				{
+					muse_cell m = muse_apply( mapper, args, MUSE_TRUE );
+					
+					if ( m )
+					{
+						muse_int new_ix = muse_int_value( muse_head(m) );
+						
+						vector_resize( result_ptr, (int)(new_ix + 1) );
+						
+						vector_merge_one( result_ptr, (int)new_ix, muse_tail(m), reduction_fn );
+					}
+				}
+				else
+				{
+					vector_merge_one( result_ptr, i, v1->slots[i], reduction_fn );
+				}
+			}
+			
+			muse_stack_unwind(sp);			
+		}
+	}
+	
+	vector_trim( result_ptr );
+	return result;
+}
+
+static muse_cell vector_reduce( void *self, muse_cell reduction_fn, muse_cell initial )
+{
+	vector_t *v = (vector_t*)self;
+	
+	muse_cell result = initial;
+	
+	{
+		int sp = muse_stack_pos();
+		int i;
+		
+		muse_stack_push(result);
+		
+		for ( i = 0; i < v->length; ++i )
+		{
+			result = muse_apply( reduction_fn,
+								 muse_cons( result, muse_cons( v->slots[i], MUSE_NIL ) ),
+								 MUSE_TRUE );
+			muse_stack_unwind(sp);
+			muse_stack_push(result);
+		}
+	}
+	
+	return result;	
+}
+
+static muse_monad_view_t g_vector_monad_view =
+{
+	vector_size,
+	vector_map,
+	vector_join,
+	vector_collect,
+	vector_reduce
+};
+
+static void *vector_view( int id )
+{
+	switch ( id )
+	{
+		case 'mnad' : return &g_vector_monad_view;
+		default : return NULL;
+	}
+}
+
 static muse_functional_object_type_t g_vector_type =
 {
 	'muSE',
 	'vect',
 	sizeof(vector_t),
 	(muse_nativefn_t)fn_vector,
+	vector_view,
 	vector_init,
 	vector_mark,
 	vector_destroy,

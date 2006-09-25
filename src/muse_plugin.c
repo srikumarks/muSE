@@ -62,7 +62,7 @@ muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist )
 	char buffer[4096];
 	void *dll = NULL;
 	
-	int len = muse_unicode_to_utf8( buffer, 4096, path, wcslen(path) );
+	muse_unicode_to_utf8( buffer, 4096, path, wcslen(path) );
 	
 	dll = dlopen( buffer, RTLD_LAZY | RTLD_LOCAL );
 	if ( !dll )

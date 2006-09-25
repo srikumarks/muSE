@@ -15,6 +15,7 @@
 #include "muse_builtins.h"
 #include "muse_port.h"
 #include <stdlib.h>
+#include <memory.h>
 
 /** @addtogroup FunctionalObjects */
 /*@{*/
@@ -71,7 +72,7 @@ static void hashtable_init( void *p, muse_cell args )
 	if ( args )
 		h->bucket_count = (int)muse_int_value( muse_evalnext(&args) );
 	else
-		h->bucket_count = 8;
+		h->bucket_count = 7;
 	
 	h->buckets = (muse_cell*)calloc( h->bucket_count, sizeof(muse_cell) );	
 }
@@ -149,7 +150,10 @@ static int bucket_for_hash( muse_int hash, int modulus )
 
 static void hashtable_rehash( hashtable_t *h, int new_bucket_count )
 {
-	muse_cell *new_buckets = (muse_cell*)calloc( new_bucket_count, sizeof(muse_cell) );
+	muse_cell *new_buckets;
+	
+	new_bucket_count = new_bucket_count | 1;
+	new_buckets = (muse_cell*)calloc( new_bucket_count, sizeof(muse_cell) );
 	
 	/* Note that in the following rehash loop,
 	no cons happens. */
@@ -208,21 +212,57 @@ muse_cell fn_hashtable_stats( muse_env *env, void *context, muse_cell args )
 }
 #endif
 
+static muse_cell *hashtable_add( hashtable_t *h, muse_cell key, muse_cell value, muse_int *hash_opt )
+{
+	muse_int hash;
+	
+	if ( hash_opt )
+		hash = *hash_opt;
+	else
+		hash = muse_hash( key );
+	
+	{
+		int bucket = bucket_for_hash( hash, h->bucket_count );
+		
+		if ( h->count + 1 >= 2 * h->bucket_count )
+		{
+			/* Need to rehash and determine new bucket. */
+			hashtable_rehash( h, h->bucket_count * 2 );
+			
+			bucket = bucket_for_hash( hash, h->bucket_count );
+		}
+
+		/* Add the kvpair to the determined bucket. */
+		muse_assert( value != MUSE_NIL );
+		h->buckets[bucket] = muse_cons( muse_cons( key, value ), h->buckets[bucket] );
+		++(h->count);
+		
+		return h->buckets + bucket;
+	}
+}
+
+static muse_cell *hashtable_get( hashtable_t *h, muse_cell key, muse_int *hash_out )
+{
+	muse_int hash = muse_hash(key);
+	int bucket = bucket_for_hash( hash, h->bucket_count );
+
+	if ( hash_out ) 
+		(*hash_out) = hash;
+	
+	return muse_assoc_iter( h->buckets + bucket, key );
+}
+
 muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 {
 	muse_assert( h != NULL && "Context 'h' must be a hashtable object!" );
 
 	{
 		muse_cell key = muse_evalnext(&args);
-		muse_cell *kvpair = NULL;
-		
+		muse_int hash = 0;
+
 		/* Find the kvpair if it exists in the hash table. */
-		muse_int hash = muse_hash(key);
-		
-		int bucket = bucket_for_hash( hash, h->bucket_count );
-		
-		kvpair = muse_assoc_iter( h->buckets + bucket, key );
-		
+		muse_cell *kvpair = hashtable_get( h, key, &hash );
+				
 		if ( args )
 		{
 			/* We've been asked to set a property. */
@@ -254,18 +294,8 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 					Check to see if we need to rehash the table. 
 					We rehash if we have to do more than 2 linear
 					searches on the average for each access. */
+					hashtable_add( h, key, value, &hash );
 					
-					if ( h->count + 1 >= 2 * h->bucket_count )
-					{
-						/* Need to rehash and determine new bucket. */
-						hashtable_rehash( h, h->bucket_count * 2 );
-						
-						bucket = bucket_for_hash( hash, h->bucket_count );
-					}
-					
-					/* Add the kvpair to the determined bucket. */
-					h->buckets[bucket] = muse_cons( muse_cons( key, value ), h->buckets[bucket] );
-					++(h->count);
 					return value;
 				}
 				else
@@ -277,7 +307,211 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 			}
 		}
 		
-		return muse_tail( *kvpair );
+		/* We've been asked to get a property. */
+		return muse_tail( muse_head( *kvpair ) );
+	}
+}
+
+static muse_cell hashtable_size( void *self )
+{
+	return muse_mk_int( ((hashtable_t*)self)->count );
+}
+
+static void hashtable_merge_one( hashtable_t *h1, muse_cell key, muse_cell new_value, muse_cell reduction_fn )
+{
+	int sp = muse_stack_pos();
+	muse_int hash = 0;
+	muse_cell *new_kv = hashtable_get( h1, key, &hash );
+	
+	if ( new_kv )
+	{
+		/* Key already exists. */
+		if ( reduction_fn )
+		{
+			/* Set the value to reduction_fn( current_value, new_value ). */
+			muse_set_tail( muse_head( *new_kv ), 
+						   muse_apply( reduction_fn,
+									   muse_cons( muse_tail( muse_head( *new_kv ) ),
+												  muse_cons( new_value,
+															 MUSE_NIL ) ),
+									   MUSE_TRUE ) );					
+		}
+		else
+		{
+			/* No reduction function. Simply replace the old value with the new one. */
+			muse_set_tail( muse_head( *new_kv ), new_value );
+		}
+	}
+	else
+	{
+		/* Key doesn't exist. Need to add new. */
+		hashtable_add( h1, key, new_value, &hash );
+	}
+	
+	muse_stack_unwind(sp);
+}
+
+static muse_cell hashtable_map( void *self, muse_cell fn )
+{
+	hashtable_t *h = (hashtable_t*)self;
+	
+	muse_cell result = muse_mk_hashtable( h->count );
+	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	
+	muse_cell args = muse_cons( MUSE_NIL, MUSE_NIL );
+	
+	int sp = muse_stack_pos();
+	int b;
+	for ( b = 0; b < h->bucket_count; ++b )
+	{
+		muse_cell alist = h->buckets[b];
+		
+		while ( alist )
+		{
+			muse_cell kv = muse_head(alist);
+			
+			muse_set_head( args, muse_tail( kv ) );
+			
+			hashtable_add( result_ptr, muse_head( kv ), muse_apply( fn, args, MUSE_TRUE ), NULL );
+						
+			alist = muse_tail(alist);
+			
+			muse_stack_unwind(sp);
+		}
+	}
+	
+	return result;
+}
+
+
+static void hashtable_merge( hashtable_t *h1, hashtable_t *h2, muse_cell reduction_fn )
+{
+	int b = 0;
+	int sp = muse_stack_pos();
+	
+	for ( b = 0; b < h2->bucket_count; ++b )
+	{
+		muse_cell alist = h2->buckets[b];
+		
+		while ( alist )
+		{
+			muse_cell kv = muse_head(alist);
+			muse_cell key = muse_head(kv);
+			muse_cell value = muse_tail(kv);
+			
+			hashtable_merge_one( h1, key, value, reduction_fn );
+			
+			muse_stack_unwind(sp);
+			alist = muse_tail(alist);
+		}
+	}
+}
+
+static muse_cell hashtable_join( void *self, muse_cell objlist, muse_cell reduction_fn )
+{
+	hashtable_t *h1 = (hashtable_t*)self;
+	
+	muse_cell result = muse_mk_hashtable( h1->count );
+	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	
+	/* First add all the elements of h1. */
+	hashtable_merge( result_ptr, h1, MUSE_NIL );
+	
+	/* Next add all elements of h2 to the result. */
+	while ( objlist )
+	{
+		muse_cell obj = _next(&objlist);
+		hashtable_t *h2 = (hashtable_t*)muse_functional_object_data( obj, 'hash' );
+		hashtable_merge( result_ptr, h2, reduction_fn );
+	}
+	
+	return result;
+}
+
+static muse_cell hashtable_collect( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
+{
+	hashtable_t *h = (hashtable_t*)self;
+	
+	muse_cell result = muse_mk_hashtable( h->count );
+	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	
+	/* Step through self's contents and add all the key-value pairs that satisfy the predicate. */
+	{
+		int sp = muse_stack_pos();
+		int b = 0;
+		for ( b = 0; b < h->bucket_count; ++b )
+		{
+			muse_cell alist = h->buckets[b];
+			
+			while ( alist )
+			{
+				muse_cell kv = muse_head( alist );
+				
+				if ( !predicate || muse_apply( predicate, kv, MUSE_TRUE ) )
+				{
+					/* Key-value pair satisfied the predicate. */
+					if ( mapper )
+						kv = muse_apply( mapper, kv, MUSE_TRUE );
+					
+					hashtable_merge_one( result_ptr, muse_head(kv), muse_tail(kv), reduction_fn );
+				}
+				
+				muse_stack_unwind(sp);
+				alist = muse_tail(alist);
+			}
+		}
+	}
+	
+	return result;
+}
+
+static muse_cell hashtable_reduce( void *self, muse_cell reduction_fn, muse_cell initial )
+{
+	hashtable_t *h = (hashtable_t*)self;
+	
+	muse_cell result = initial;
+	muse_cell args = muse_cons( result, muse_cons( MUSE_NIL, MUSE_NIL ) );
+	muse_cell *arg1 = &(_ptr(args)->cons.head);
+	muse_cell *arg2 = &(_ptr(_tail(args))->cons.head);
+	
+	int sp = muse_stack_pos();
+	int b = 0;
+	for ( b = 0; b < h->bucket_count; ++b )
+	{
+		muse_cell alist = h->buckets[b];
+		
+		while ( alist )
+		{
+			(*arg1) = result;
+			(*arg2) = muse_tail( muse_head( alist ) );
+			
+			result = muse_apply( reduction_fn, args, MUSE_TRUE );
+			
+			muse_stack_unwind(sp);
+			muse_stack_push(result);
+			
+			alist = muse_tail(alist);
+		}
+	}
+	
+	return result;
+}
+
+static muse_monad_view_t g_hashtable_monad_view =
+{
+	hashtable_size,
+	hashtable_map,
+	hashtable_join,
+	hashtable_collect,
+	hashtable_reduce
+};
+
+static void *hashtable_view( int id )
+{
+	switch ( id )
+	{
+		case 'mnad' : return &g_hashtable_monad_view;
+		default : return NULL;
 	}
 }
 
@@ -287,6 +521,7 @@ static muse_functional_object_type_t g_hashtable_type =
 	'hash',
 	sizeof(hashtable_t),
 	(muse_nativefn_t)fn_hashtable,
+	hashtable_view,
 	hashtable_init,
 	hashtable_mark,
 	hashtable_destroy,

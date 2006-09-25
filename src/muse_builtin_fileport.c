@@ -149,6 +149,7 @@ static fileport_type_t g_fileport_type =
 			'port',
 			sizeof(fileport_t),
 			NULL,
+			NULL,
 			fileport_init,
 			NULL,
 			fileport_destroy,
@@ -176,6 +177,7 @@ static fileport_type_t g_port_type_stdin =
 			NULL,
 			NULL,
 			NULL,
+			NULL,
 			NULL
 		},
 
@@ -196,6 +198,7 @@ static fileport_type_t g_port_type_stdout =
 			'muSE',
 			'port',
 			sizeof(fileport_t),
+			NULL,
 			NULL,
 			NULL,
 			NULL,

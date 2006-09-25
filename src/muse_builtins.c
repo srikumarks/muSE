@@ -56,8 +56,11 @@ static const struct _builtins
 {		L"append!",		fn_append_M			},
 
 /************** Higher Order Functions ***************/
+{		L"size",			fn_size				},
 {		L"map",			fn_map				},
+{		L"join",			fn_join				},
 {		L"collect",		fn_collect			},
+{		L"reduce",		fn_reduce			},
 {		L"find",		fn_find				},
 {		L"andmap",		fn_andmap			},
 {		L"ormap",		fn_ormap			},

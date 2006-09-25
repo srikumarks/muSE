@@ -460,6 +460,19 @@ typedef struct
 	 * The function that will be invoked when the object
 	 * is used in the function position.
 	 */
+	
+	void *(*view)( int id );
+	/**<
+	 * A "view" is some arbitrary piece of information descriptive
+	 * of this object's type, what the object can do, or what
+	 * you can do with it. A particular object type can choose
+	 * to provide any "view" it sees as appropriate. Currently
+	 * the only view is as a 'mnad' or a "Monad view" that
+	 * allows the standard map, join, filter and reduce operations
+	 * on it. Its technically not a monad, but I couldn't find any
+	 * other data structure term that can summarize the fact that 
+	 * these functions can be used on lists, vectors, hashtables.
+	 */
 
 	void (*init)( void *obj, muse_cell args );
 	/**<
@@ -623,6 +636,55 @@ muse_cell	muse_hashtable_put( muse_cell ht, muse_cell key, muse_cell value );
 
 /*@}*/
 
+/**
+ * @name Views
+ */
+/*@{*/
+/**
+ * A monad view (id = 'mnad') provides higher order functional
+ * operations over collections.
+ */
+typedef struct
+{
+	muse_cell (*size)( void *self );
+	/**<
+	 * Should return the number of elements in the data structure.
+	 */
+	
+	muse_cell (*map)( void *self, muse_cell fn );
+	/**<
+	 * Iterates the given function over all the "elements" of this object
+	 * and constructs a new object of the same type with the results.
+	 */
+	
+	muse_cell (*join)( void *self, muse_cell obj, muse_cell reduction_fn );
+	/**<
+	 * Joins two objects (must be of the same type) using the given reduction_fn
+	 * to resolve conflicts. Two vectors are joined by concatenation. Two lists are
+	 * are joined by concatenation. Two hashtables are joined by merging their
+	 * key-value pairs into a single table (you can do set union using this).
+	 */
+	
+	muse_cell (*collect)( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn );
+	/**<
+	 * Iterates over the elements of this object, applying the \p predicate.
+	 * All the elements satisfying the predicate are collected into a new
+	 * object of the same type. If the \p mapper parameter is not MUSE_NIL,
+	 * it is expected to be a function that will be used to transform the
+	 * element before collecting it into the new object. If the \p mapper is
+	 * MUSE_NIL, it is equivalent to an identity function.
+	 */
+	
+	muse_cell (*reduce)( void *self, muse_cell reduction_fn, muse_cell initial );	
+	/**<
+	 * Applies the given reduction function, which is expected to be
+	 * commutative and associative for simplicity, and folds the
+	 * results into successive reduction calls, returning the final
+	 * outcome as the result.
+	 */
+} muse_monad_view_t;
+/*@}*/
+ 
 END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_H__ */

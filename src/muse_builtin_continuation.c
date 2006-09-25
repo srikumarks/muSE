@@ -229,6 +229,7 @@ static muse_functional_object_type_t g_continuation_type =
 	'cont',
 	sizeof(continuation_t),
 	(muse_nativefn_t)fn_continuation,
+	NULL,
 	continuation_init,
 	continuation_mark,
 	continuation_destroy
