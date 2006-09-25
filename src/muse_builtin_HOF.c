@@ -100,6 +100,10 @@ static muse_cell list_map( muse_cell list, muse_cell fn, muse_cell h, muse_cell 
  * @code
  * (1 4 9 16 25)
  * @endcode
+ *
+ * map also works with vectors and hashtables. In those cases, it transforms
+ * the "values" of those data structures and creates an isomorphic structure 
+ * with the transformed values.
  */
 muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 {
@@ -157,6 +161,28 @@ static muse_cell list_join( muse_cell lists )
 
 /**
  * (join [reduction-fn] obj1 obj2 ...)
+ *
+ * Joins the given objects, all of which must be of the same type.
+ * Objects can be lists, vectors or hashtables. 
+ *
+ * In the case of lists, the lists are all appended in the given
+ * order and a new list that is a concatenation of the given lists
+ * results.
+ *
+ * In the case of vectors, they are all joined end to end to
+ * create a new vector whose length is the sum of the lengths of
+ * the individual vectors.
+ *
+ * In the case of hashtables, a new hashtable with all the key-value 
+ * pairs in all the given hashtables is created. If two hashtables
+ * contain the same key, the value stored in the later specified 
+ * hashtable takes precedence over the value stored in an earlier 
+ * one. The join function optionally accepts a reduction function
+ * as its first argument. When such a function is given, it is used
+ * to combined the values associated with the same key in multiple
+ * hashtables. If for a given key K the hashtables has values 
+ * V1, V2, ... VN, then the result hashtable will have the value
+ * R(..R(R(V1, V2), V3)...,VN) where R is the reduction function.
  */
 muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 {
@@ -229,6 +255,33 @@ static muse_cell list_collect( muse_cell list, muse_cell predicate, muse_cell ma
 
 /**
  * (collect obj predicate mapper [reduction-fn])
+ * EXPERIMENTAL
+ * Intended for more general iteration over the collection objects.
+ * The \p obj is either a list or a vector or a hashtable.
+ *
+ * The \p predicate is a function that selects items from the 
+ * object. For lists, the predicate is a f(x) where x is a list
+ * item. For vectors, the predicate is a f(i . x) where i is
+ * the index and x is the value of the vector at the index. For
+ * hashtables, the predicate is a f(k . v) where k is a key and v its
+ * corresponding value in the hashtable.
+ *
+ * The \p mapper is a function that transforms items into
+ * other items. For lists, the mapper is a f(x) where x is a
+ * list item. For vectors, the mapper is a f(i . x) where i is
+ * the index and x is the value at the index. The result
+ * is expected to be a similar (j . y) pair. The result vector
+ * is automatically resized to fit the result indices. 
+ * For hashtables, the mapper is a f(k . v) where k is a key
+ * and v is its corresponding value in the hashtable. Similar
+ * to vectors, the mapper has to evaluate to a (k' . v') pair
+ * that will be placed into the result hashtable.
+ *
+ * The optional \p reduction-fn is a f(v1 v2) that is used to
+ * combined multiple values that may be assigned to the same index
+ * or key in the cases of vectors and hashtable respectively. If the
+ * reduction function is not specified, f(v1 v2) = v2 is used as the
+ * function - i.e. replacement.
  */
 muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 {
@@ -274,6 +327,12 @@ static muse_cell list_reduce( muse_cell obj, muse_cell reduction_fn, muse_cell a
 
 /**
  * (reduce fn initial obj)
+ *
+ * Reduces the values of the given collection \p obj using the given
+ * reduction function and the \p initial value. You can use it with
+ * lists, vectors and hashtables. The reduction occurs only over the
+ * values of the collection. Indices (in the case of vectors) and keys
+ * (in the case of hashtables) are not touched at all.
  */
 muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 {
