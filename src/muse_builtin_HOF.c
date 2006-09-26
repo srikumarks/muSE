@@ -228,9 +228,10 @@ static muse_cell list_collect( muse_cell list, muse_cell predicate, muse_cell ma
 	{
 		int sp = muse_stack_pos();
 		muse_cell thing = muse_head(list);
-		muse_cell args = muse_cons( thing, MUSE_NIL );
+		muse_cell args = MUSE_NIL;
 		
 		muse_stack_push(h);
+		args = muse_cons( thing, MUSE_NIL );
 		
 		if ( !predicate || muse_apply( predicate, args, MUSE_TRUE ) )
 		{
@@ -244,10 +245,10 @@ static muse_cell list_collect( muse_cell list, muse_cell predicate, muse_cell ma
 			}
 			else
 				h = t = args;
-			
-			muse_stack_unwind(sp);
 		}
 
+		muse_stack_unwind(sp);
+		
 		return list_collect( muse_tail(list), predicate, mapper, h, t );
 	}
 	else
