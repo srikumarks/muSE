@@ -831,7 +831,7 @@ void muse_mark( muse_cell c )
 static void mark_stack( muse_stack *stack )
 {
 	muse_cell *bottom = stack->bottom;
-	muse_cell *top = bottom + stack->size;
+	muse_cell *top = stack->top;
 	
 	while ( bottom < top )
 		muse_mark( *bottom++ );
