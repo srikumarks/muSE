@@ -152,8 +152,12 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 						do any substitution in the body. */
 						return body;
 					}
-					else if ( fn == syntax_lambda )
+					else if ( fn == syntax_lambda || fn == syntax_block )
 					{
+						/* Need to copy body for subexpressions that are
+						both lexically as well as dynamically scoped. The
+						dynamic scoping behaviour is limited to the nearest
+						lexical scope enclosing the expression. */
 						muse_cell c = MUSE_NIL;
 						muse_cell formals = _head(_tail(body));
 						if ( _head(formals) == _env()->builtin_symbols[MUSE_QUOTE] )
@@ -177,34 +181,6 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 							c = bind_copy_body( _tail(_tail(body)), MUSE_FALSE );
 							_unwind_bindings(bsp);
 							return muse_cons( h, muse_cons( formals, c ) );
-						}
-					}
-					else if ( fn == syntax_block )
-					{
-						/* The difference between a block and an fn is that when
-						bind-copying a block, we can immediately create the block. 
-
-						This code is very similar to syntax_lambda case, so they should
-						probably be merged, but I'm keeping them separate for clarity
-						at the moment. */
-						muse_cell c = MUSE_NIL;
-						muse_cell formals = _head(_tail(body));
-						if ( _head(formals) == _env()->builtin_symbols[MUSE_QUOTE] )
-						{
-							int bsp = _bspos();
-							formals = _tail(formals);
-							anonymize_formals(formals);
-							c = bind_copy_body( _tail(_tail(body)), MUSE_FALSE );
-							_unwind_bindings(bsp);
-							return syntax_block( _env(), NULL, muse_cons( muse_quote(formals), c ) );
-						}
-						else
-						{
-							int bsp = _bspos();
-							anonymize_formals(formals);
-							c = bind_copy_body( _tail(_tail(body)), MUSE_FALSE );
-							_unwind_bindings(bsp);
-							return syntax_block( _env(), NULL, muse_cons(formals, c) );
 						}
 					}
 					else if ( fn == syntax_let )
