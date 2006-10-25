@@ -266,17 +266,6 @@ muse_cell fn_list( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (length l).
- *
- * Returns length of the proper list. Undefined behaviour on
- * improper lists.
- */
-muse_cell fn_length( muse_env *env, void *context, muse_cell args )
-{
-	return muse_mk_int( muse_list_length( muse_evalnext(&args) ) );
-}
-
-/**
  * (append! list1 list2 -so-on- listN).
  * Modifies the tail of list1 to point to list2, tail of list2 to list3 etc.
  * All except listN are modified.

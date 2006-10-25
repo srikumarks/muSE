@@ -13,26 +13,62 @@
 #include "muse_builtins.h"
 #include <stdlib.h>
 
-static muse_monad_view_t *get_monad_view( muse_cell obj, muse_functional_object_t **objptr_out )
+static muse_cell list_iterator( void *self, muse_iterator_callback_t callback, void *context )
+{
+	muse_cell list = (muse_cell)self;
+	int sp = _spos();
+	int cont = MUSE_TRUE;
+	
+	while ( list )
+	{
+		cont = callback( self, context, _head(list) );
+		_unwind(sp);
+		if ( !cont )
+			return list;
+		
+		list = _tail(list);
+	}	
+	
+	return MUSE_NIL;
+}
+
+static void *get_view( int view, muse_cell obj, muse_functional_object_t **objptr_out )
 {
 	muse_functional_object_t *objptr = _fnobjdata(obj);
-		
+	
 	if ( objptr_out )
 		(*objptr_out) = objptr;
 	
 	if ( objptr && objptr->type_info->view )
-		return (muse_monad_view_t*)objptr->type_info->view( 'mnad' );
+		return (muse_iterator_t)objptr->type_info->view( view );
 	else
-		return NULL;
+		return NULL;	
+}
+
+static muse_iterator_t get_iterator_view( muse_cell obj, muse_functional_object_t **objptr_out )
+{
+	if ( _cellt(obj) == MUSE_CONS_CELL )
+	{
+		if ( objptr_out )
+			(*objptr_out) = (void*)obj;
+		return list_iterator;
+	}
+	else
+		return (muse_iterator_t)get_view( 'iter', obj, objptr_out );
+}
+
+static muse_monad_view_t *get_monad_view( muse_cell obj, muse_functional_object_t **objptr_out )
+{
+	return (muse_monad_view_t*)get_view( 'mnad', obj, objptr_out );
 }
 
 /**
- * (size obj)
+ * (size obj) or (length obj)
  *
  * Returns the size of the given list (i.e. its length) or vector
  * (same as vector-length) or hashtable (same as hashtable-size).
  */
-muse_cell fn_size( muse_env *env, void *context, muse_cell args )
+muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj = muse_evalnext(&args);
 	
@@ -337,6 +373,13 @@ static muse_cell list_reduce( muse_cell obj, muse_cell reduction_fn, muse_cell a
  * lists, vectors and hashtables. The reduction occurs only over the
  * values of the collection. Indices (in the case of vectors) and keys
  * (in the case of hashtables) are not touched at all.
+ *
+ * For convenience, the reduction function is expected to be 
+ * associative and commutative. If the function isn't so, then
+ * know that the first argument of the function is the accumulator.
+ * i.e. @code (reduce f init (list 1 2 3 4 5)) @endcode
+ * will give you -
+ * @code (f (f (f (f (f init 1) 2) 3) 4) 5) @endcode
  */
 muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 {
@@ -359,15 +402,25 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 }
 
 
+static muse_boolean finder( void *self, void *what, muse_cell thing )
+{
+	return muse_equal( (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
+}
+
+static muse_boolean hashtable_finder( void *self, void *what, muse_cell thing )
+{
+	return muse_equal( (muse_cell)what, muse_tail(thing) ) ? MUSE_FALSE : MUSE_TRUE;
+}
+
 /**
- * (find predicate list) -> list.
+ * (find object list) -> list.
  *
- * Returns a reference to the first element of the list whose
- * head satisfies the given predicate.
+ * Finds the list position whose head is an object that is
+ * "equal" to the given one. If cannot be found, it returns ().
  * 
  * For example -
  * @code
- * (print (find (fn (x) (> x 4)) (list 1 2 3 4 5 6 7 8)))
+ * (print (find 5 (list 1 2 3 4 5 6 7 8)))
  * @endcode
  * will print
  * @code
@@ -376,34 +429,47 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 {
-	int sp				= _spos();
-	muse_cell predicate	= muse_evalnext(&args);
-	muse_cell list		= muse_evalnext(&args);
+	muse_cell object	= muse_evalnext(&args);
+	muse_cell coll		= muse_evalnext(&args);
 	muse_cell result	= MUSE_NIL;
 	
-	if ( list )
+	muse_functional_object_t *collObj	= NULL;
+	muse_iterator_t iter				= get_iterator_view( coll, &collObj );
+	
+	if ( iter )
 	{
-		muse_cell argcell = muse_cons( MUSE_NIL, MUSE_NIL );
-		
-		while (list)
-		{
-			_seth( argcell, _head(list) );
-			
-			if ( muse_apply( predicate, argcell, MUSE_TRUE ) )
-			{
-				result = list;
-				break;
-			}
-			else
-				list = _tail(list);
-		}
+		if ( collObj && collObj->type_info->type_word == 'hash' )
+			result = iter( collObj, hashtable_finder, (void*)object );
+		else
+			result = iter( collObj, finder, (void*)object );
 	}
 	
-	_unwind(sp);
-	if ( result )
-		return _spush(result);
-	else
-		return MUSE_NIL;
+	return result;
+}
+
+typedef struct
+{
+	muse_cell fn;
+	muse_cell temp;
+} mapinfo_t;
+
+static muse_boolean domapper( void *self, mapinfo_t *info, muse_cell thing )
+{
+	_seth( info->temp, thing );
+	muse_apply( info->fn, info->temp, MUSE_TRUE );
+	return MUSE_TRUE;
+}
+
+static muse_boolean andmapper( void *self, mapinfo_t *info, muse_cell thing )
+{
+	_seth( info->temp, thing );
+	return muse_apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_TRUE : MUSE_FALSE;
+}
+
+static muse_boolean ormapper( void *self, mapinfo_t *info, muse_cell thing )
+{
+	_seth( info->temp, thing );
+	return muse_apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
@@ -419,20 +485,16 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell predicate = muse_evalnext(&args);
 	muse_cell list = muse_evalnext(&args);
-	int sp = _spos();
 	
-	while ( list )
+	mapinfo_t info = { predicate, muse_cons(MUSE_NIL, MUSE_NIL) };
+	muse_functional_object_t *collObj = NULL;
+	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	if ( iter )
 	{
-		muse_cell p = muse_apply( predicate, _next(&list), MUSE_TRUE );
-		if ( !p )
-		{
-			_unwind(sp);
-			return MUSE_NIL;
-		}
+		return iter( collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t();
 	}
 	
-	_unwind(sp);
-	return _t();
+	return MUSE_NIL;
 }
 
 /**
@@ -447,24 +509,21 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell predicate = muse_evalnext(&args);
 	muse_cell list = muse_evalnext(&args);
-	int sp = _spos();
 	
-	while ( list )
+	mapinfo_t info = { predicate, muse_cons(MUSE_NIL, MUSE_NIL) };
+	muse_functional_object_t *collObj = NULL;
+	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	if ( iter )
 	{
-		muse_cell p = muse_apply( predicate, _next(&list), MUSE_TRUE );
-		if ( p )
-		{
-			_unwind(sp);
-			return _t();
-		}
+		return iter( collObj, (muse_iterator_callback_t)ormapper, &info );
 	}
 	
-	_unwind(sp);
 	return MUSE_NIL;
 }
 
+
 /**
-* (for-each fn list [result]).
+ * (for-each fn list [result]).
  *
  * Same as fn_map(), but doesn't collect results into a list.
  * You can optionally give a result expression which will be
@@ -472,14 +531,15 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn	= muse_evalnext(&args);
-	muse_cell list	= muse_evalnext(&args);
+	muse_cell fn = muse_evalnext(&args);
+	muse_cell list = muse_evalnext(&args);
 	
-	while ( list )
+	mapinfo_t info = { fn, muse_cons(MUSE_NIL, MUSE_NIL) };
+	muse_functional_object_t *collObj = NULL;
+	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	if ( iter )
 	{
-		int sp2 = _spos();
-		muse_apply( fn, muse_cons( _next(&list), MUSE_NIL ), MUSE_TRUE );
-		_unwind(sp2);
+		iter( collObj, (muse_iterator_callback_t)domapper, &info );
 	}
 	
 	return muse_evalnext(&args);

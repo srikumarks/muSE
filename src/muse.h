@@ -685,6 +685,22 @@ typedef struct
 } muse_monad_view_t;
 /*@}*/
  
+typedef muse_boolean (*muse_iterator_callback_t)( void *self, void *context, muse_cell entry );
+/**<
+ * An iterator function that is invoked by the "iterator" monad operator on all elements
+ * of a collection.
+ *
+ * @param self This is the object itself.
+ * @param context The arbitrary context data pointer passed to the iterator function.
+ * @param entry The next object to be iterated over.
+ * @return Returning MUSE_TRUE will continue the iteration. Returning MUSE_FALSE will stop it.
+ */
+
+typedef muse_cell (*muse_iterator_t)( void *self, muse_iterator_callback_t callback, void *context );
+/**<
+ * An 'iter' view will provide this function to call that can be used to iterate over collections.
+ */
+
 END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_H__ */

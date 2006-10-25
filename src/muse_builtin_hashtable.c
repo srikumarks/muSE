@@ -497,6 +497,30 @@ static muse_cell hashtable_reduce( void *self, muse_cell reduction_fn, muse_cell
 	return result;
 }
 
+static muse_cell hashtable_iterator( hashtable_t *self, muse_iterator_callback_t callback, void *context )
+{
+	int sp = _spos();
+	int b;
+	muse_boolean cont = MUSE_TRUE;
+	
+	for ( b = 0; b < self->bucket_count; ++b )
+	{
+		muse_cell alist = self->buckets[b];
+		
+		while ( alist )
+		{
+			cont = callback( self, context, _head(alist) );
+			_unwind(sp);
+			if ( !cont )
+				return _head(_head(alist)); /**< Return the key. */
+			
+			alist = _tail(alist);
+		}
+	}	
+	
+	return MUSE_NIL;
+}
+
 static muse_monad_view_t g_hashtable_monad_view =
 {
 	hashtable_size,
@@ -511,6 +535,7 @@ static void *hashtable_view( int id )
 	switch ( id )
 	{
 		case 'mnad' : return &g_hashtable_monad_view;
+		case 'iter' : return hashtable_iterator;
 		default : return NULL;
 	}
 }

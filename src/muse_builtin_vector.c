@@ -315,6 +315,23 @@ static muse_cell vector_reduce( void *self, muse_cell reduction_fn, muse_cell in
 	return result;	
 }
 
+static muse_cell vector_iterator( vector_t *self, muse_iterator_callback_t callback, void *context )
+{
+	int sp = _spos();
+	int i;
+	muse_boolean cont = MUSE_TRUE;
+	
+	for ( i = 0; i < self->length; ++i )
+	{
+		cont = callback( self, context, self->slots[i] );
+		_unwind(sp);
+		if ( !cont )
+			return muse_mk_int(i); /**< Return the current index. */
+	}
+	
+	return MUSE_NIL;
+}
+
 static muse_monad_view_t g_vector_monad_view =
 {
 	vector_size,
@@ -329,6 +346,7 @@ static void *vector_view( int id )
 	switch ( id )
 	{
 		case 'mnad' : return &g_vector_monad_view;
+		case 'iter' : return vector_iterator;
 		default : return NULL;
 	}
 }
