@@ -23,7 +23,7 @@ Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. 
 
    ADDITIONAL GRANTS AND RESTRICTIONS
 
-   10. Clause (6) of the Apache License 2.0 is to be interpreted to 
+   10. Clause (5) of the Apache License 2.0 is to be interpreted to 
       include the terms in this section - i.e. if You submit modifications,
       bug fixes, enhancements, additional features, port to other platforms
       back to the public either by contributing your work back to original
