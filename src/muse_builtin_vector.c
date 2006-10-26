@@ -259,8 +259,8 @@ static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapp
 	
 	{
 		int sp = muse_stack_pos();
-		int i;
-		for ( i = 0; i < v1->length; ++i )
+		int i, j;
+		for ( i = 0, j = 0; i < v1->length; ++i )
 		{
 			(*ixptr) = i;
 			muse_set_tail( args, v1->slots[i] );
@@ -269,7 +269,10 @@ static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapp
 			{
 				if ( mapper )
 				{
-					muse_cell m = muse_apply( mapper, args, MUSE_TRUE );
+					muse_cell m;
+					
+					(*ixptr) = j;
+					m = muse_apply( mapper, args, MUSE_TRUE );
 					
 					if ( m )
 					{
@@ -282,8 +285,10 @@ static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapp
 				}
 				else
 				{
-					vector_merge_one( result_ptr, i, v1->slots[i], reduction_fn );
+					vector_merge_one( result_ptr, j, v1->slots[i], reduction_fn );
 				}
+
+				++j;
 			}
 			
 			muse_stack_unwind(sp);			
