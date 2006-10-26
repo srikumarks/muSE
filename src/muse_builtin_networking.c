@@ -62,13 +62,14 @@ library! What a stupid thing to have to do! */
 		
         /* Startup the socket API. This makes sure we have the
         requested sockets version installed on the system. */
-        fprintf(stderr, "Starting up the socket system...\n");
         if (WSAStartup(kRequestedVersion, &wsadata) != 0)
         {
-            fprintf(stderr,	"Error: Socket API can't startup. "
-					"Need version %x.\n", 
-					kRequestedVersion
-					);
+			MUSE_DIAGNOSTICS3({
+	            fprintf(stderr,	"Error: Socket API can't startup. "
+						"Need version %x.\n", 
+						kRequestedVersion
+						);
+			});
 			return MUSE_FALSE;
         }
 		
@@ -111,7 +112,7 @@ library! What a stupid thing to have to do! */
 
 		if ( sigaction(SIGPIPE, &ignoreSIG, NULL) < 0 ) 
 		{
-			fprintf(stderr, "FATAL ERROR: Couldn't ignore SIGPIPE!\n");
+			MUSE_DIAGNOSTICS3({ fprintf(stderr, "FATAL ERROR: Couldn't ignore SIGPIPE!\n"); });
 			exit(0);
 		}
 		
@@ -272,8 +273,12 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 	const muse_char *serverWstringAddress = muse_text_contents( serverport, &length );
 	if ( length > 17 )
 	{
-		fprintf( stderr, "Invalid server address spec '%S'\n", serverWstringAddress );
-		fprintf( stderr, "Address must have the form NNN.NNN.NNN.NNN:PPPP\n");
+		MUSE_DIAGNOSTICS({
+			muse_message( L"(with-connection-to-server >>addr<< ...)",
+						  L"Invalid server address spec '%s'\n"
+						  L"Address must have the form NNN.NNN.NNN.NNN:PPPP\n", 
+						  serverWstringAddress );
+		});
 		goto UNDO_CONN;
 	}
 	
@@ -330,7 +335,7 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 	/* Connect to the server. */
 	if ( connect( port->socket, (struct sockaddr*)&(port->address), sizeof(port->address) ) == SOCKET_ERROR )
 	{
-		fprintf( stderr, "Connection to server '%s:%s' failed!\n", serverStringAddress, serverPortAddress );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%s' failed!\n", serverStringAddress, serverPortAddress ); });
 		goto UNDO_CONN;
 	}
 	
@@ -400,7 +405,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	conn->listenSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if ( conn->listenSocket == INVALID_SOCKET )
 	{
-		fprintf( stderr, "Couldn't create socket to listen for connections.\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Couldn't create socket to listen for connections.\n" ); });
 		goto BAIL;
 	}
 	
@@ -417,14 +422,14 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 		== SOCKET_ERROR
 		)
 	{
-		fprintf( stderr, "Couldn't bind listen-socket to local address.\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Couldn't bind listen-socket to local address.\n" ); });
 		goto SHUTDOWN_SERVER;
 	}
 	
 	/* Use "listen" to set the connection backlog buffer. */
 	if ( listen( conn->listenSocket, SOMAXCONN ) == SOCKET_ERROR )
 	{
-		fprintf( stderr, "'listen' failed.\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "'listen' failed.\n" ); });
 		goto SHUTDOWN_SERVER;
 	}
 	
@@ -433,7 +438,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	 * won't listen for any more. 
 	 */
 	ACCEPT_CONNECTIONS:
-	fprintf( stderr, "Waiting for connections to port %d ...\n", ntohs(conn->localSocketAddress.sin_port) );
+	MUSE_DIAGNOSTICS3({ fprintf( stderr, "Waiting for connections to port %d ...\n", ntohs(conn->localSocketAddress.sin_port) ); });
 	{
 		socklen_t sockAddrSize = sizeof(struct sockaddr_in);
 		struct sockaddr_in client_address;
@@ -441,11 +446,13 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 
 		if ( client >= 0 )
 		{
-			fprintf( stderr,
-					 "Accepted connection from machine %s on port %d.\n",
-					 inet_ntoa( client_address.sin_addr ),
-					 ntohs( client_address.sin_port )
-					);
+			MUSE_DIAGNOSTICS3({ 
+				fprintf( stderr,
+						 "Accepted connection from machine %s on port %d.\n",
+						 inet_ntoa( client_address.sin_addr ),
+						 ntohs( client_address.sin_port )
+						);
+			});
 
 			conn->client_port->socket = client;
 			conn->client_port->base.mode = MUSE_PORT_READ_WRITE;
@@ -476,7 +483,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 		
 		/* Recycle the same port object for use with the next connection. */
 		port_close( (muse_port_t)conn->client_port );
-		printf( "\nConnection closed.\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "\nConnection closed.\n" ); });
 		if ( result )
 		{
 			port_init( (muse_port_t)conn->client_port );
@@ -544,7 +551,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 	{
 		/* No port specified. Use default port 31415. */
 		group_port = MUSE_DEFAULT_MULTICAST_PORT;
-		fprintf( stderr, "No port specified for multicast. Using default port 31415.\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "No port specified for multicast. Using default port 31415.\n" ); });
 	}
 	
 	if ( group )
@@ -564,7 +571,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 	{
 		/* No group specified. Use a default group. */
 		strcpy( group_address, MUSE_DEFAULT_MULTICAST_GROUP );
-		fprintf( stderr, "No group specified. Using default group %s\n", group_address );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "No group specified. Using default group %s\n", group_address ); });
 	}
 		
 	port_init(&s->base);
@@ -589,7 +596,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 		int yes = 1;
 		if ( (result = setsockopt( s->socket, SOL_SOCKET, MUSE_SO_REUSE, (const char *)&yes, sizeof(yes) )) < 0 )
 		{
-			fprintf( stderr, "Cannot reuse same address for multiple sockets!\n" );
+			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Cannot reuse same address for multiple sockets!\n" ); });
 		}
 	}
 
@@ -608,7 +615,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 	/* Bind the socket to the address. */
 	if ( (result = bind( s->socket, (struct sockaddr*)&s->src_addr, sizeof(s->src_addr) )) < 0 )
 	{
-		fprintf( stderr, "Binding to multicast group port failed!\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Binding to multicast group port failed!\n" ); });
 		s->base.error = 2;
 		goto CLOSE_SOCKET_AND_BAIL;
 	}
@@ -618,7 +625,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 		u_char loop = 0;
 		if ( (result = setsockopt(s->socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop))) < 0 )
 		{
-			fprintf( stderr, "Failed to disable multicast loop back!\n" );
+			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Failed to disable multicast loop back!\n" ); });
 		}
 	}
 
@@ -627,7 +634,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 	s->mreq.imr_multiaddr.s_addr	= inet_addr(group_address);
 	if ( (result = setsockopt( s->socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char *)&(s->mreq), sizeof(s->mreq) )) < 0 )
 	{
-		fprintf( stderr, "Couldn't join the multicast group!\n" );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Couldn't join the multicast group!\n" ); });
 		s->base.error = 3;
 		goto CLOSE_SOCKET_AND_BAIL;
 	}
@@ -654,7 +661,7 @@ static void multicast_socket_close( void *p )
 		int result = 0;
 		if ( (result = setsockopt( s->socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (const char *)&(s->mreq), sizeof(s->mreq) )) < 0 )
 		{
-			fprintf( stderr, "Couldn't remove kernel from multicast group!\n" );
+			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Couldn't remove kernel from multicast group!\n" ); });
 		}
 		
 		/* We're done with the socket. */
@@ -690,7 +697,7 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 			return 0;
 		}
 
-		fprintf( stderr, "Received datagram from %s on port %d\n", inet_ntoa(s->src_addr.sin_addr), ntohs(s->src_addr.sin_port) );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Received datagram from %s on port %d\n", inet_ntoa(s->src_addr.sin_addr), ntohs(s->src_addr.sin_port) ); });
 		return (size_t)result;
 	}
 }

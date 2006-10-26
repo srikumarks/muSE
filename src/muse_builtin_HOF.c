@@ -95,13 +95,14 @@ static muse_cell list_map( muse_cell list, muse_cell fn, muse_cell h, muse_cell 
 	{
 		{
 			int sp = muse_stack_pos();
+			muse_cell val;
 			
 			muse_stack_push(h);
 
-			muse_cell val = muse_cons( muse_apply( fn, 
-												   muse_cons( muse_head(list), MUSE_NIL ),
-												   MUSE_TRUE ),
-									   MUSE_NIL );
+			val = muse_cons( muse_apply( fn, 
+										 muse_cons( muse_head(list), MUSE_NIL ),
+										 MUSE_TRUE ),
+							 MUSE_NIL );
 			
 			muse_stack_unwind(sp);
 			

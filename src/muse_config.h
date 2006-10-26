@@ -12,8 +12,8 @@
 #ifndef __MUSE_CONFIG_H__
 #define __MUSE_CONFIG_H__
 
-#define MUSE_VERSION 0x0001
-#define MUSE_VERSION_STRING "0.1a"
+#define MUSE_VERSION 0x0002
+#define MUSE_VERSION_STRING "0.2a"
 
 #ifndef FUSSY_RELEASE
 /*	To enable FUSSY_RELEASE builds, uncomment the following #define. */
@@ -30,5 +30,9 @@
 #undef MUSE_DIAGNOSTICS_LEVEL
 #define MUSE_DIAGNOSTICS_LEVEL 2
 #endif
+
+/*	Define the following constant to 0 to redirect the diagnostics to
+	stderr instead of popping up a message box. */
+#define MUSE_DIAGNOSTICS_POPS_MESSAGE 1
 
 #endif /* __MUSE_CONFIG_H__ */

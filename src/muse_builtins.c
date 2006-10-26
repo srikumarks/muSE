@@ -496,7 +496,7 @@ static void gendoc_for_symbol( muse_cell symbol, muse_port_t p )
 	{
 		char buffer[1024];
 		int size;
-		fprintf( stderr, "symbol: %S\n", muse_symbol_name(symbol) );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "symbol: %S\n", muse_symbol_name(symbol) ); });
 
 		/* Generate documentation only if there is a plist for the symbol. */
 		size = sprintf(buffer, "/**\n@defgroup g%d %S\n", symbol, muse_symbol_name(symbol) );

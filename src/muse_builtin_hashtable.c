@@ -157,20 +157,22 @@ static void hashtable_rehash( hashtable_t *h, int new_bucket_count )
 	
 	/* Note that in the following rehash loop,
 	no cons happens. */
-	int i = 0, N = h->bucket_count;
-	for ( ; i < N; ++i )
 	{
-		muse_cell alist = h->buckets[i];
-					
-		while ( alist )
+		int i = 0, N = h->bucket_count;
+		for ( ; i < N; ++i )
 		{
-			muse_int hash_i = muse_hash( muse_head( muse_head( alist ) ) );
-			int new_b		= bucket_for_hash( hash_i, new_bucket_count );
-			muse_cell next	= muse_tail(alist);
+			muse_cell alist = h->buckets[i];
 						
-			muse_set_tail( alist, new_buckets[new_b] );
-			new_buckets[new_b] = alist;
-			alist = next;
+			while ( alist )
+			{
+				muse_int hash_i = muse_hash( muse_head( muse_head( alist ) ) );
+				int new_b		= bucket_for_hash( hash_i, new_bucket_count );
+				muse_cell next	= muse_tail(alist);
+							
+				muse_set_tail( alist, new_buckets[new_b] );
+				new_buckets[new_b] = alist;
+				alist = next;
+			}
 		}
 	}
 				
@@ -308,7 +310,10 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 		}
 		
 		/* We've been asked to get a property. */
-		return muse_tail( muse_head( *kvpair ) );
+		if ( kvpair )
+			return muse_tail( muse_head( *kvpair ) );
+		else
+			return MUSE_NIL;
 	}
 }
 

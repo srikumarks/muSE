@@ -1517,8 +1517,10 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 		
 		if ( r.expr < 0 )
 		{
-			if ( !port_eof(p) )
-				fprintf( stderr, "Syntax error %d: Expected end of group character ')' or term.\n", r.expr );
+			MUSE_DIAGNOSTICS({ 			
+				if ( !port_eof(p) )
+					fprintf( stderr, "Syntax error %d: Expected end of group character ')' or term.\n", r.expr );
+			});
 			return r;
 		}
 		
@@ -1527,8 +1529,10 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 			
 			if ( eog.expr != PARSE_END_OF_GROUP )
 			{
-				if ( !port_eof(p) )
-					fprintf( stderr, "Syntax error %d: Expected end of group character ')'.\n", eog.expr );
+				MUSE_DIAGNOSTICS({ 			
+					if ( !port_eof(p) )
+						fprintf( stderr, "Syntax error %d: Expected end of group character ')'.\n", eog.expr );
+				});
 			}
 			else
 				port_getc(p); /* Get the pending ')' character. */
@@ -1576,8 +1580,10 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 
 			if ( r.expr < 0 )
 			{
-				if ( !port_eof(p) )
-					fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
+				MUSE_DIAGNOSTICS({ 			
+					if ( !port_eof(p) )
+						fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
+				});
 					
 				return ez_expr( h, col, r.col_end );
 			}
@@ -1596,7 +1602,9 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 		} while ( !port_eof(p) );
 		
 		/* EOF ends list. */
-		fprintf( stderr, "Syntax error: No ']' before end of file.\n" );
+		MUSE_DIAGNOSTICS({ 			
+			fprintf( stderr, "Syntax error: No ']' before end of file.\n" );
+		});
 		return ez_expr( h, col, r.col_end );
 	}
 }

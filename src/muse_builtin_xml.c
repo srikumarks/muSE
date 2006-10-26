@@ -162,7 +162,7 @@ static void write_tag_attrs( muse_port_t port, muse_cell attrs )
 				muse_pwrite( port, value );
 				break;
 			default:
-				fprintf( stderr, "XML error: Invalid attribute value of type %s\n", _typename(value) );
+				MUSE_DIAGNOSTICS3({ fprintf( stderr, "XML error: Invalid attribute value of type %s\n", _typename(value) ); });
 			}
 		}
 

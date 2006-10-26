@@ -1065,7 +1065,7 @@ static muse_boolean muse_test_one( const muse_char *context, muse_boolean force,
 			}
 			break;
 		default :
-			muse_assert( !"Invalid character in test spec for symbol! Must be one of \"?!=()[]\"." );
+//			muse_assert( !"Invalid character in test spec for symbol! Must be one of \"?!=()[]\"." );
 			return MUSE_FALSE;
 	}
 }

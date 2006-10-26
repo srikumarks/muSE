@@ -47,14 +47,20 @@ typedef long long longlong_t;
 
 #if MUSE_DIAGNOSTICS_LEVEL > 0
 	#define MUSE_DIAGNOSTICS(statement) do { statement; } while (0)
-	#if MUSE_DIAGNOSTICS_LEVEL > 1
-		#define MUSE_DIAGNOSTICS2(statement) do { statement; } while (0)
-	#else
-		#define MUSE_DIAGNOSTICS2(statement)
-	#endif	
 #else
 	#define MUSE_DIAGNOSTICS(statement)
+#endif
+
+#if MUSE_DIAGNOSTICS_LEVEL > 1
+	#define MUSE_DIAGNOSTICS2(statement) do { statement; } while (0)
+#else
 	#define MUSE_DIAGNOSTICS2(statement)
+#endif	
+
+#if MUSE_DIAGNOSTICS_LEVEL > 2
+	#define MUSE_DIAGNOSTICS3(statement) do { statement; } while (0)
+#else
+	#define MUSE_DIAGNOSTICS3(statement)
 #endif
 
 #endif /* __MUSE_PLATFORM_H__ */

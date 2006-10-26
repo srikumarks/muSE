@@ -190,8 +190,6 @@ static muse_boolean grow_heap( muse_heap *heap, int new_size )
 		else
 			return MUSE_FALSE;
 	}
-
-	return MUSE_TRUE;
 }
 
 static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symbol_table[] =

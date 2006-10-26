@@ -111,7 +111,15 @@ muse_cell fn_new( muse_env *env, void *context, muse_cell args )
 			case MUSE_SYMBOL_CELL : supers = muse_cons( className, MUSE_NIL ); break;
 			case MUSE_CONS_CELL : supers = className; break;
 			default :
-			  fprintf( stderr, "Syntax error: new's first argument must either be class symbol or a list of class symbools.\n");
+				MUSE_DIAGNOSTICS({ 
+					if ( !muse_expect( L"(new >>class/-or-supers<< ...)",
+									   L"v|??|", className, MUSE_SYMBOL_CELL, MUSE_CONS_CELL ) )
+					{
+						muse_message( L"(new >>class-or-supers<< ...)",
+									  L"new's first argument is expected to be a class symbol\n"
+									  L"or a list of super class symbols." );
+					}
+				});
 		}
 		
 		muse_put_prop( obj, muse_builtin_symbol(MUSE_SUPER), supers );

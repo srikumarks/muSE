@@ -93,6 +93,20 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	{
 		muse_cell value = muse_eval(_head(args));
 		muse_define( sym, value );
+
+		MUSE_DIAGNOSTICS({
+			if ( _tail(args) )
+			{
+				muse_char ctxt[128];
+				muse_sprintf( ctxt, 128, L"(define %m ...)", sym );
+
+				muse_message( ctxt, L"You've given the following extra parameters -\n"
+									L"\t%m\n"
+									L"that will all be ignored. Maybe you meant to do something else.",
+									_tail(args) );
+			}
+		});
+
 		return value;
 	}
 }

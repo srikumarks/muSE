@@ -63,7 +63,7 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 	/* If there is a write error, return () and clear the error code. */
 	if ( port->error )
 	{
-		fprintf( stderr, "IO: write error %d!\n", port->error );
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "IO: write error %d!\n", port->error ); });
 		port->error = 0;
 		return MUSE_NIL;
 	}
@@ -175,7 +175,13 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 {
 	int sp				= _spos();
 	muse_cell filename	= muse_evalnext(&args);
-	FILE *f				= muse_fopen( muse_text_contents(filename,NULL), L"rb" );
+	FILE *f				= NULL;
+	
+	MUSE_DIAGNOSTICS({
+		muse_expect( L"(load >>file<<)", L"v?", filename, MUSE_TEXT_CELL );
+	});
+
+	f = muse_fopen( muse_text_contents(filename,NULL), L"rb" );
 
 	if ( f )
 	{
@@ -187,6 +193,11 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 	else
 	{
 		_unwind(sp);
+
+		MUSE_DIAGNOSTICS({
+			muse_message( L"(load >>file<<)", L"The file [%m] doesn't exist!", filename );
+		});
+
 		return MUSE_NIL;
 	}
 }

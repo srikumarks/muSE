@@ -210,6 +210,8 @@ static muse_cell vector_map( void *self, muse_cell fn )
 static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction_fn )
 {
 	vector_t *v1 = (vector_t*)self;
+	muse_cell result;
+	vector_t *result_ptr;
 	
 	/* Compute the required total length. */
 	int total_length = v1->length;
@@ -223,19 +225,21 @@ static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction
 		}
 	}
 	
-	muse_cell result = muse_mk_vector( total_length );
-	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
-	
-	memcpy( result_ptr->slots, v1->slots, sizeof(muse_cell) * v1->length );
-	
 	{
-		int offset = v1->length;
-		while ( objlist )
+		result = muse_mk_vector( total_length );
+		result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+		
+		memcpy( result_ptr->slots, v1->slots, sizeof(muse_cell) * v1->length );
+		
 		{
-			muse_cell obj = _next(&objlist);
-			vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
-			memcpy( result_ptr->slots + offset, v2->slots, sizeof(muse_cell) * v2->length );
-			offset += v2->length;
+			int offset = v1->length;
+			while ( objlist )
+			{
+				muse_cell obj = _next(&objlist);
+				vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
+				memcpy( result_ptr->slots + offset, v2->slots, sizeof(muse_cell) * v2->length );
+				offset += v2->length;
+			}
 		}
 	}
 	
