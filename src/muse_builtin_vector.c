@@ -125,6 +125,13 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 		int index = (int)muse_int_value(muse_evalnext(&args));
 
 		muse_assert( index >= 0 && index < v->length );
+		
+		MUSE_DIAGNOSTICS({
+    		if ( index < 0 || index >= v->length )
+    		{
+        		muse_message( L"vector", L"Given index %d is not in the range [0,%d).", (muse_int)index, (muse_int)v->length );
+    		}
+		});
 
 		if ( args )
 		{
