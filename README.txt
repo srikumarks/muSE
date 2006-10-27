@@ -5,7 +5,7 @@ for use as an embedded language in applications.
 It has a reasonably well documented C-API for embedding. 
 For more info, see -
 
-	http://code.google.com/p/muvee-scheme
+	http://code.google.com/p/muvee-symbolic-expressions
 
 
 == LICENSE ==
@@ -18,15 +18,15 @@ which this software is being provided to you.
 
 Currently muSE builds on MacOSX and WIN32 platforms. 
 It should build on most POSIX compatible unices as well, 
-using GCC.
+using gcc.
 
-You simply need to load up all the C files in the src/ 
-directory into your favourite IDE and hit build. You should 
-get a working REPL.
+Look in the "build" directory for platform dependent
+build scripts. Currently, a VC++ solution file and
+a POSIX build script (using gcc) are provided.
 
-A convenience script is provided for unices using GCC. Run 
-"build-posix" from the command line and you should get the 
-REPL executable in the bin/ directory.
+In general, you simply need to load up all the C files in 
+the src/ directory into your favourite IDE and hit build. 
+You should get a working REPL.
 
 If you wish to use muSE as a library, include all files 
 except main.c in your project and set the project type to

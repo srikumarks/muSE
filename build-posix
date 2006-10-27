@@ -1,6 +1,0 @@
-#!/bin/sh
-echo Building muSE ...
-mkdir bin
-gcc -o bin/muse -O3 -DNDEBUG src/*.c
-echo ... done
-echo Output file - bin/muse
