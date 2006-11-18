@@ -1422,5 +1422,5 @@ void enter_atomic()
  */
 void leave_atomic()
 {
-	_env()->current_process->atomicity++;
+	_env()->current_process->atomicity--;
 }
