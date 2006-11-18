@@ -304,22 +304,7 @@ static muse_cell quick_unquote_list( muse_cell list )
 muse_cell muse_apply( muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
 {
 	/* Check whether we've devoted enough attention to this process. */
-	{
-		muse_process_frame_t *p = _env()->current_process;
-
-		if ( p->atomicity == 0 )
-		{
-			/* Not in an atomic block. So check remaining attention. */
-			if ( p->remaining_attention == 0 )
-			{
-				/* Give time to the next process. */
-				p->remaining_attention = p->attention;
-				switch_to_process( _env(), p->next );
-			}
-			else
-				p->remaining_attention--;
-		}
-	}
+	yield_process(1);
 
 	{
 		int sp = _spos();

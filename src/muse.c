@@ -1304,7 +1304,26 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 			return switch_to_process( env, process );
 	}
 
-	return MUSE_FALSE;
+	/* Can't run this one. Try the next process. */
+	return switch_to_process( env, process->next );
+}
+
+void yield_process( int spent_attention )
+{
+	muse_process_frame_t *p = _env()->current_process;
+
+	if ( p->atomicity == 0 )
+	{
+		/* Not in an atomic block. So check remaining attention. */
+		if ( p->remaining_attention <= 0 )
+		{
+			/* Give time to the next process. */
+			p->remaining_attention = p->attention;
+			switch_to_process( _env(), p->next );
+		}
+		else
+			p->remaining_attention -= spent_attention;
+	}
 }
 
 muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
