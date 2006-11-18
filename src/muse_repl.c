@@ -36,6 +36,8 @@ void muse_repl()
  			 "muSE (muvee Symbolic Expressions) version %s\n"
 			 "See LICENSE.txt or http://muvee-symbolic-expressions.googlecode.com/svn/trunk/LICENSE.txt\n"
 			 "for terms and conditions under which this software is distributed.\n"
+			 "\n"
+			 "(process support)\n"
 			 "--------------------------------------------------------------------------------\n",
 			 MUSE_VERSION_STRING );
 
