@@ -738,7 +738,7 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 				do
 				{
 					p->locals.bottom[local_ix] = sym;
-					p->locals.top++;
+					p->locals.top = p->locals.bottom + _env()->num_symbols;
 					p = p->next;
 				}
 				while ( p != cp );
@@ -1181,6 +1181,10 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 
 	/* Initialize the queue pointers. */
 	p->next = p->prev = p;
+
+	/* Copy all the currently defined symbols over to the new process. */
+	if ( env->current_process )
+		memcpy( p->locals.bottom, env->current_process->locals.bottom, sizeof(muse_cell) * env->num_symbols );
 
 	return p;
 }

@@ -768,8 +768,9 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 		{
 			p->state_bits |= MUSE_PROCESS_HAS_TIMEOUT;
 			p->timeout_us = muse_elapsed_us(env->timer) + timeout_us;
-			switch_to_process( env, p->next );
 		}
+
+		switch_to_process( env, p->next );
 	}
 
 	/* Check for message again. If there's still no message, return with MUSE_NIL. 
