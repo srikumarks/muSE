@@ -180,7 +180,7 @@ const muse_char *muse_symbol_name( muse_cell sym )
  */
 muse_cell muse_symbol_value( muse_cell sym )
 {
-	return _head(sym);
+	return _symval(sym);
 }
 
 /*************************************************/
@@ -313,7 +313,7 @@ muse_cell muse_pushdef( muse_cell symbol, muse_cell value )
  */
 muse_cell muse_popdef( muse_cell symbol )
 {
-	muse_stack *s = &_env()->bindings_stack;
+	muse_stack *s = &_env()->current_process->bindings_stack;
 	muse_cell val = _symval(symbol);
 	muse_assert( s->top[-2] == symbol );
 	s->top -= 2;

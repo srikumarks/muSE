@@ -261,6 +261,7 @@ typedef enum
 	MUSE_DISCARD_DOC,			/**< Boolean parameter indicating that documentation should not be kept. Default = MUSE_FALSE. */
 	MUSE_PRETTY_PRINT,			/**< Boolean parameter indicating whether write and print should indent their output. Default = MUSE_TRUE */
 	MUSE_TAB_SIZE,				/**< Defaults to 4. Controls pretty printed output. */
+	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 10. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;
@@ -386,7 +387,8 @@ muse_int	muse_hash( muse_cell obj );
 muse_int	muse_hash_text( const muse_char *start, const muse_char *end, muse_int initial );
 muse_int	muse_hash_data( const unsigned char *start, const unsigned char *end, muse_int initial );
 void*		muse_tick();
-muse_int	muse_tock(void*);
+muse_int	muse_elapsed_us( void *timer );
+muse_int	muse_tock( void *timer );
 void		muse_sleep( muse_int time_us );
 FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
 /*@}*/

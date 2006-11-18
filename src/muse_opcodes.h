@@ -115,19 +115,31 @@ typedef struct
 											future for efficiency reasons. */
 } muse_heap;
 
-/**
- * The muse environment contains all info relevant to
- * evaluation of expressions in muSE.
- * 
- * @see g_muse_env
- */
-struct _muse_env
+typedef enum
 {
-	muse_heap			heap;
-	muse_stack			stack;
-	muse_stack			symbol_stack;
-	int					num_symbols;
-	muse_stack			bindings_stack;
+	MUSE_PROCESS_DEAD			= 0x0,
+	MUSE_PROCESS_VIRGIN			= 0x1,
+	MUSE_PROCESS_PAUSED			= 0x2,
+	MUSE_PROCESS_RUNNING		= 0x4,
+	MUSE_PROCESS_WAITING		= 0x8,
+	MUSE_PROCESS_HAS_TIMEOUT	= 0x10
+} muse_process_state_bits_t;
+
+/**
+ * A frame is the local environment of a process.
+ */
+typedef struct _muse_process_frame_t
+{
+	struct _muse_process_frame_t *next, *prev;
+
+	int			state_bits;
+	int			attention;
+	int			remaining_attention;
+	int			atomicity;
+	jmp_buf		jmp;
+	muse_int	timeout_us;
+	muse_stack	stack;
+	muse_stack	bindings_stack;
 	/**<
 	 * The bindings stack is used to manage bindings during
 	 * continuation invocation. The stack structure is similar
@@ -137,10 +149,40 @@ struct _muse_env
 	 * and the odd indices are all their bound values.
 	 */
 
+	muse_stack	locals;
+	/**<
+	 * The "locals" are a set of process-local storage values.
+	 * A symbol's value is different for each process.
+	 */
+
+	muse_stack	cstack; ///< Holds the C stack pointer. If the pointer is NULL, its the main process.
+
+	muse_cell	thunk;
+	muse_cell	mailbox;
+	muse_cell	mailbox_end;
+
+} muse_process_frame_t;
+
+/**
+ * The muse environment contains all info relevant to
+ * evaluation of expressions in muSE.
+ * 
+ * @see g_muse_env
+ */
+struct _muse_env
+{
+	muse_heap			heap;
+//	muse_stack			stack;
+	muse_stack			symbol_stack;
+	int					num_symbols;
+//	muse_stack			bindings_stack;
+
 	muse_cell			specials;
 	muse_cell			*builtin_symbols;
 	int					*parameters;
 	void				*stack_base;
+	void				*timer;
+	muse_process_frame_t	*current_process;
 };
 
 extern muse_env *g_muse_env;
@@ -177,6 +219,19 @@ static inline muse_cell _celli( muse_cell cell )
 static inline muse_cell _cellati( int i )
 {
 	return i << 3;
+}
+
+/**
+ * Returns a newly allocated process local cell.
+ * The return value is an index into the locals stack.
+ */
+static inline int _newlocal()
+{
+	return _env()->num_symbols++;
+}
+static inline muse_cell _localcell(int ix)
+{
+	return 7 + (ix << 3);
 }
 
 /**
@@ -254,26 +309,27 @@ static inline muse_heap *_heap()
 }
 static inline muse_stack *_stack()
 {
-	return &_env()->stack;
+	muse_stack *s = &_env()->current_process->stack;
+	return s;
 }
 static inline muse_cell _spush( muse_cell cell )
 {
 	if ( cell )
 	{
-		muse_assert( _env()->stack.top - _env()->stack.bottom < _env()->stack.size );
+		muse_assert( _stack()->top - _stack()->bottom < _stack()->size );
 		muse_assert( _celli(cell) >= 0 && _celli(cell) < _env()->heap.size_cells );
-		return *(_env()->stack.top++) = cell;
+		return *(_stack()->top++) = cell;
 	}
 	else
 		return MUSE_NIL;
 }
 static inline int _spos()
 {
-	return (int)(_env()->stack.top - _env()->stack.bottom);
+	return (int)(_stack()->top - _stack()->bottom);
 }
 static inline void _unwind( int stack_pos )
 {
-	_env()->stack.top = _env()->stack.bottom + stack_pos;
+	_stack()->top = _stack()->bottom + stack_pos;
 }
 static inline muse_stack *_symstack()
 {
@@ -329,27 +385,27 @@ static inline void _setht( muse_cell c, muse_cell h, muse_cell t )
 }
 static inline muse_cell _def( muse_cell symbol, muse_cell value )
 {
-	_seth(symbol,value);
+	_env()->current_process->locals.bottom[_head(symbol)>>3] = value;
 	return value;
 }
 static inline muse_cell _symval( muse_cell symbol )
 {
-	return _head(symbol);
+	return _env()->current_process->locals.bottom[_head(symbol)>>3];
 }
 static inline int _bspos()
 {
-	return (int)(_env()->bindings_stack.top - _env()->bindings_stack.bottom);
+	return (int)(_env()->current_process->bindings_stack.top - _env()->current_process->bindings_stack.bottom);
 }
 static inline void _push_binding( muse_cell symbol )
 {
-	muse_stack *s = &_env()->bindings_stack;
+	muse_stack *s = &_env()->current_process->bindings_stack;
 	muse_assert( s->top - s->bottom < s->size - 1 );
 	*(s->top++) = symbol;
 	*(s->top++) = _symval(symbol);
 }
 static inline void _unwind_bindings( int pos )
 {
-	muse_stack *s = &_env()->bindings_stack;
+	muse_stack *s = &_env()->current_process->bindings_stack;
 	muse_assert( pos >= 0 && pos <= s->top - s->bottom );
 
 	{
@@ -377,10 +433,15 @@ static inline void _unmark( muse_cell c )
 }
 static inline int _ismarked( muse_cell c )
 {
-	int ci = _celli(c);
-	const unsigned char *m = _heap()->marks + (ci >> 3);
-	muse_assert( ci >= 0 && ci < _heap()->size_cells );
-	return (*m) & (1 << (ci & 7));
+	if ( (c & 7) == 7 ) 
+		return 7; /**< TLS is always considered marked. */
+	else
+	{
+		int ci = _celli(c);
+		const unsigned char *m = _heap()->marks + (ci >> 3);
+		muse_assert( ci >= 0 && ci < _heap()->size_cells );
+		return (*m) & (1 << (ci & 7));
+	}
 }
 static inline int _iscompound( muse_cell c )
 {
@@ -409,6 +470,18 @@ static inline muse_cell _quq( muse_cell c )
 {
 	return c < 0 ? -c : c;
 }
+
+/* Process functions. */
+muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell thunk, void *sp );
+muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p );
+muse_boolean prime_process( muse_env *env, muse_process_frame_t *process );
+muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process );
+muse_boolean kill_process( muse_env *env, muse_process_frame_t *process );
+muse_cell process_id( muse_process_frame_t *process );
+void mark_process( muse_process_frame_t *p );
+static muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
+void enter_atomic();
+void leave_atomic();
 
 END_MUSE_C_FUNCTIONS
 

@@ -303,61 +303,81 @@ static muse_cell quick_unquote_list( muse_cell list )
  */
 muse_cell muse_apply( muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
 {
-	int sp = _spos();
-	muse_cell result = fn;
-	_spush(fn);
-	_spush(args);
-	
-	switch ( _cellt(fn) )
+	/* Check whether we've devoted enough attention to this process. */
 	{
-		case MUSE_NATIVEFN_CELL		: 
-			if ( args_already_evaluated )
+		muse_process_frame_t *p = _env()->current_process;
+
+		if ( p->atomicity == 0 )
+		{
+			/* Not in an atomic block. So check remaining attention. */
+			if ( p->remaining_attention == 0 )
 			{
-				result = muse_apply_nativefn( fn, quick_quote_list(args) );
-				quick_unquote_list(args);
+				/* Give time to the next process. */
+				p->remaining_attention = p->attention;
+				switch_to_process( _env(), p->next );
 			}
 			else
-			{
-				result = muse_apply_nativefn( fn, args );
-			}
-			break;
-		case MUSE_LAMBDA_CELL		: 
-			/* The head of fn gives us the list of formal parameters. If the formals
-			list is -ve (i.e. quick-quoted) we must not evaluate the arguments and pass
-			the arg list as it was given, unevaluated. Otherwise, we evaluate all the
-			arguments in list order. 
-			
-			See also syntax_lambda and muse_apply_lambda implementation. */
-			result = muse_apply_lambda( fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(args) );
-			break;
-		default						:
-			/*	If the first argument is not a function, simply return the sexpr. 
-				In this case, apply behaves like list. */
-
-			MUSE_DIAGNOSTICS2({ 
-				if ( _cellt(fn) == MUSE_SYMBOL_CELL ) 
-					muse_message( L"apply", L"You tried to use the symbol [%m] as a function.\n"
-											L"You haven't defined it to one though, so the expression\n\n"
-											L"%m\n\n"
-											L"will be considered as a list.\n"
-											L".. or did you mean to use [%m] instead?",
-											fn,
-											muse_cons( fn, args ),
-											muse_similar_symbol( fn, NULL ) );
-				else
-					muse_message( L"apply", L"You're trying to use [%m] as a function\n"
-											L"in the expression -\n\n%m\n\n"
-											L"It will be considered as a list.",
-											fn, muse_cons( fn, args ) );
-			});
-
-			result = muse_cons( fn, args_already_evaluated ? args : muse_eval_list(args) );
-			break;
+				p->remaining_attention--;
+		}
 	}
-	
-	_unwind(sp);
-	_spush(result);
-	return result;
+
+	{
+		int sp = _spos();
+		muse_cell result = fn;
+		_spush(fn);
+		_spush(args);
+		
+		switch ( _cellt(fn) )
+		{
+			case MUSE_NATIVEFN_CELL		: 
+				if ( args_already_evaluated )
+				{
+					result = muse_apply_nativefn( fn, quick_quote_list(args) );
+					quick_unquote_list(args);
+				}
+				else
+				{
+					result = muse_apply_nativefn( fn, args );
+				}
+				break;
+			case MUSE_LAMBDA_CELL		: 
+				/* The head of fn gives us the list of formal parameters. If the formals
+				list is -ve (i.e. quick-quoted) we must not evaluate the arguments and pass
+				the arg list as it was given, unevaluated. Otherwise, we evaluate all the
+				arguments in list order. 
+				
+				See also syntax_lambda and muse_apply_lambda implementation. */
+				result = muse_apply_lambda( fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(args) );
+				break;
+			default						:
+				/*	If the first argument is not a function, simply return the sexpr. 
+					In this case, apply behaves like list. */
+
+				MUSE_DIAGNOSTICS2({ 
+					if ( _cellt(fn) == MUSE_SYMBOL_CELL ) 
+						muse_message( L"apply", L"You tried to use the symbol [%m] as a function.\n"
+												L"You haven't defined it to one though, so the expression\n\n"
+												L"%m\n\n"
+												L"will be considered as a list.\n"
+												L".. or did you mean to use [%m] instead?",
+												fn,
+												muse_cons( fn, args ),
+												muse_similar_symbol( fn, NULL ) );
+					else
+						muse_message( L"apply", L"You're trying to use [%m] as a function\n"
+												L"in the expression -\n\n%m\n\n"
+												L"It will be considered as a list.",
+												fn, muse_cons( fn, args ) );
+				});
+
+				result = muse_cons( fn, args_already_evaluated ? args : muse_eval_list(args) );
+				break;
+		}
+		
+		_unwind(sp);
+		_spush(result);
+		return result;
+	}
 }
 
 /**

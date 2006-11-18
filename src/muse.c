@@ -237,7 +237,8 @@ static void init_parameters( muse_env *env, const int *parameters )
 		4096,	/* MUSE_MAX_SYMBOLS */
 		0,		/* MUSE_DISCARD_DOC */
 		1,		/* MUSE_PRETTY_PRINT */
-		4		/* MUSE_TAB_SIZE */
+		4,		/* MUSE_TAB_SIZE */
+		10		/* MUSE_DEFAULT_ATTENTION */
 	};
 
 	/* Initialize default values. */
@@ -281,9 +282,9 @@ muse_env *muse_init_env( const int *parameters )
 	init_parameters( env, parameters );
 	
 	init_heap( &env->heap, env->parameters[MUSE_HEAP_SIZE] );
-	init_stack( &env->stack, env->parameters[MUSE_STACK_SIZE] );
+//GONE!	init_stack( &env->stack, env->parameters[MUSE_STACK_SIZE] );
 	init_stack( &env->symbol_stack, env->parameters[MUSE_MAX_SYMBOLS] );
-	init_stack( &env->bindings_stack, env->parameters[MUSE_STACK_SIZE] * 2 );
+//GONE!	init_stack( &env->bindings_stack, env->parameters[MUSE_STACK_SIZE] * 2 );
 		/**< 
 		 * We need a x2 in the size for the bindings stack 
 		 * above because the bindings stack is an array of 
@@ -294,6 +295,27 @@ muse_env *muse_init_env( const int *parameters )
 	containing lists of symbols and is of fixed size. We use a hashing
 	algorithm to uniquify a symbol. */
 	env->symbol_stack.top = env->symbol_stack.bottom + env->symbol_stack.size;
+
+	/* Start a time reference point. */
+	env->timer = muse_tick();
+
+	{
+		void *saved_sp = NULL;
+		__asm
+		{
+			mov saved_sp, esp
+		};
+
+		{
+			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );
+			env->current_process = p;
+			init_process_mailbox(p);
+			prime_process( env, p );
+
+			/* Immediately switch to running state. */
+			p->state_bits = MUSE_PROCESS_RUNNING;
+		}
+	}
 
 	env->builtin_symbols = (muse_cell*)calloc( MUSE_NUM_BUILTIN_SYMBOLS, sizeof(muse_cell) );
 	init_builtin_symbols( env->builtin_symbols );
@@ -312,13 +334,26 @@ void muse_network_shutdown();
  */
 void muse_destroy_env( muse_env *env )
 {
+	/* Mark all processes as dead. */
+	{
+		muse_process_frame_t *cp = env->current_process;
+		muse_process_frame_t *p = cp;
+		do
+		{
+			p->state_bits = MUSE_PROCESS_DEAD;
+			p = p->next;
+		}
+		while ( p != cp );
+	}
+
 	muse_gc(0);
 	muse_network_shutdown();
+	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
-	destroy_stack( &env->bindings_stack );
+//GONE!	destroy_stack( &env->bindings_stack );
 	destroy_stack( &env->symbol_stack );
-	destroy_stack( &env->stack );
+//GONE!	destroy_stack( &env->stack );
 	destroy_heap( &env->heap );
 	free( env->parameters );
 	
@@ -678,10 +713,11 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 	else
 	{
 		muse_stack *ss = _symstack();
+		int local_ix = _newlocal();
 		
 		/* sym -> ( . ) */
 		p = _spos();
-		sym = _setcellt( muse_cons( MUSE_NIL, MUSE_NIL ), MUSE_SYMBOL_CELL );
+		sym = _setcellt( muse_cons( _localcell(local_ix), MUSE_NIL ), MUSE_SYMBOL_CELL );
 		
 		{
 			muse_cell name = muse_mk_text( start, end );
@@ -692,7 +728,21 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 											MUSE_NIL );
 			
 			/* sym -> ( sym . symplist ) */
-			_setht( sym, sym, symplist );
+			_sett( sym, symplist );
+
+			/* Define the symbol to be itself in all processes. */
+			{
+				muse_process_frame_t *cp = _env()->current_process;
+				muse_process_frame_t *p = cp;
+
+				do
+				{
+					p->locals.bottom[local_ix] = sym;
+					p->locals.top++;
+					p = p->next;
+				}
+				while ( p != cp );
+			}
 		}
 		
 		/* Add the symbol to its hash bucket. */
@@ -703,7 +753,6 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 
 		_unwind(p);
 		
-		++_env()->num_symbols;
 		return sym;
 	}
 }
@@ -1011,12 +1060,19 @@ void muse_gc_impl( int free_cells_needed )
 			/*mark_stack( _symstack() );*/
 			mark_stack( _symstack() );
 			
-			/* 3. Mark everything (and related) on the stack. */
-			mark_stack( _stack() );
+			/* 3. Mark references held by every process. */
+			{
+				muse_process_frame_t *cp = _env()->current_process;
+				muse_process_frame_t *p = cp;
 
-			/* 4. Mark everything on the bindings stack. */
-			mark_stack( &_env()->bindings_stack );
-			
+				do 
+				{
+					mark_process(p);
+					p = p->next;
+				}
+				while ( p != cp );
+			}
+
 			/* 4. Go through the specials list and release 
 				  everything that isn't referenced. */
 			free_unused_specials( &_env()->specials );
@@ -1084,4 +1140,264 @@ muse_functional_object_t *muse_functional_object_data( muse_cell fobj, int type_
 		return obj;
 	else
 		return NULL;
+}
+
+muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell thunk, void *sp )
+{
+	muse_process_frame_t *p = (muse_process_frame_t*)calloc( 1, sizeof(muse_process_frame_t) );
+
+	muse_assert( attention > 0 );
+
+	p->attention				= attention;
+	p->remaining_attention		= attention;
+	p->state_bits				= MUSE_PROCESS_PAUSED;
+	p->thunk					= thunk;
+	
+	/* Create all the stacks. */
+	init_stack( &p->stack,			env->parameters[MUSE_STACK_SIZE]		);
+	init_stack( &p->bindings_stack, env->parameters[MUSE_STACK_SIZE] * 2	);
+		/**< 
+		 * We need a x2 in the size for the bindings stack 
+		 * above because the bindings stack is an array of 
+		 * symbol-value pairs.
+		 */
+	init_stack( &p->locals,			env->parameters[MUSE_MAX_SYMBOLS]		);
+
+	if ( sp == NULL )
+	{
+		/* This is not the main process. Create a stack frame. 
+		The cstack frame is different from the other stack frame
+		in that it grows down. So top is the place the SP has to
+		jump to when entering the process and it'll be decremented
+		as more items gets pushed onto it. */
+		init_stack( &p->cstack, env->parameters[MUSE_STACK_SIZE] );
+		p->cstack.top = p->cstack.bottom + p->cstack.size - 1;
+	}
+	else
+	{
+		/* Its the main process. We just use the main stack frame as is. */
+		p->cstack.top = (muse_cell*)sp;
+	}
+
+	/* Initialize the queue pointers. */
+	p->next = p->prev = p;
+
+	return p;
+}
+
+muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
+{
+	/* Messages get appended at the end of the mailbox
+	and popped off at the beginning. */
+	p->mailbox = muse_cons( muse_mk_destructor( (muse_nativefn_t)fn_pid, p ), MUSE_NIL );
+	p->mailbox_end = p->mailbox;
+	return p;
+}
+
+muse_cell process_id( muse_process_frame_t *p )
+{
+	return muse_head(p->mailbox);
+}
+
+/**
+ * Should be called after create_process to get it rolling.
+ */
+muse_boolean prime_process( muse_env *env, muse_process_frame_t *process )
+{
+	if ( env->current_process && env->current_process != process )
+	{
+		muse_assert( env->current_process->next != process );
+
+		/* Insert the process into the circular queue of processes,
+		right after the current process. */
+		{
+			muse_process_frame_t *temp	= env->current_process->next;
+			env->current_process->next	= process;
+			process->next				= temp;
+			process->prev				= env->current_process;
+			temp->prev					= process;
+		}
+	}
+
+	/* The process is being primed for first run.
+	Just save the current state. */
+	process->state_bits = MUSE_PROCESS_VIRGIN;
+
+	return MUSE_TRUE;
+}
+
+muse_boolean run_process( muse_env *env )
+{
+	if ( env->current_process->cstack.size > 0 && env->current_process->thunk )
+	{
+		/* Repeatedly evaluate the thunk in a loop until the
+		thunk returns a non-NIL value. */
+		while ( !muse_apply( env->current_process->thunk, env->current_process->mailbox, MUSE_TRUE ) );
+
+		/* Process completed. Switch to the next one. */
+		return kill_process( env, env->current_process );
+	}
+	else
+		return MUSE_TRUE;
+}
+
+muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
+{
+	if ( env->current_process == process )
+		return MUSE_TRUE;
+
+	if ( process->state_bits & (MUSE_PROCESS_RUNNING | MUSE_PROCESS_VIRGIN) )
+	{
+		/* The process is running. Save current process state
+		and switch to the given process. */
+
+		if ( env->current_process->state_bits & MUSE_PROCESS_DEAD )
+			env->current_process = process;
+
+		if ( setjmp( env->current_process->jmp ) == 0 )
+		{
+			env->current_process = process;
+
+			if ( env->current_process->state_bits & MUSE_PROCESS_VIRGIN )
+			{
+				env->current_process->state_bits = MUSE_PROCESS_RUNNING;
+
+				/* Change the ESP for the virgin process. */
+				{
+					void *new_sp = (void*)(env->current_process->cstack.top);
+					__asm
+					{
+						push new_sp
+						pop esp
+					};
+				}
+
+				return run_process( _env() );
+			}
+			else
+				longjmp( env->current_process->jmp, 1 );
+		} 
+
+		return MUSE_TRUE;
+	}
+
+	if ( process->state_bits & MUSE_PROCESS_WAITING )
+	{
+		/* Process is waiting for a message. Check if there are any messages
+		in the mailbox. If there is any, resume the process. If there aren't
+		any messages, check the timeout value in order to resume the process. */
+
+		if ( _tail(process->mailbox) )
+		{
+			/* There is a message. Resume it. */
+			process->state_bits = MUSE_PROCESS_RUNNING;
+		}
+		else if ( process->state_bits & MUSE_PROCESS_HAS_TIMEOUT )
+		{
+			/* Check timeout. */
+			muse_int elapsed_us = muse_elapsed_us(env->timer);
+			if ( elapsed_us >= process->timeout_us )
+				process->state_bits = MUSE_PROCESS_RUNNING;
+		}
+
+		if ( process->state_bits == MUSE_PROCESS_RUNNING )
+			return switch_to_process( env, process );
+	}
+
+	return MUSE_FALSE;
+}
+
+muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
+{
+	/* First take the process out of the ring. */
+	muse_process_frame_t 
+		*prev = process->prev,
+		*next = process->next;
+
+	if ( next && next != process )
+	{
+		muse_assert( prev != process );
+		next->prev = prev;
+	}
+
+	if ( prev && prev != process )
+	{
+		muse_assert( next != process );
+		prev->next = next;
+	}
+
+	process->state_bits = MUSE_PROCESS_DEAD;
+	process->next = process->prev = process;
+
+	if ( env->current_process == process )
+		return switch_to_process( env, next );
+	else
+		return MUSE_TRUE;
+}
+
+/**
+ * Used to send asynchronous messages to a process.
+ * Also serves as its process ID.
+ */
+static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
+{
+	/* The PID of a process is stored in the head of the mailbox list.
+	The tail of the mailbox list consists of the message queue. */
+	if ( args && p->state_bits != MUSE_PROCESS_DEAD )
+	{
+		/* The list of arguments is the message in its full structure.
+		To this, we prepend the pid of the sending process and append
+		the result to the message queue of our process. */
+		muse_cell msg = muse_cons( muse_head(env->current_process->mailbox), muse_eval_list(args) );
+
+		muse_cell msg_entry = muse_cons( msg, MUSE_NIL );
+
+		muse_set_tail( p->mailbox_end, msg_entry );
+		p->mailbox_end = msg_entry;
+
+		return muse_builtin_symbol( MUSE_T );
+	}
+
+	if ( p->state_bits == MUSE_PROCESS_DEAD )
+	{
+		/* Cleanup process memory. */
+		destroy_stack( &p->locals );
+		destroy_stack( &p->bindings_stack );
+		destroy_stack( &p->stack );
+		free(p);
+	}
+
+	return MUSE_NIL;
+}
+
+/**
+ * Marks all references held by the given process.
+ */
+void mark_process( muse_process_frame_t *p )
+{
+	mark_stack( &p->stack );
+	mark_stack( &p->bindings_stack );
+	mark_stack( &p->locals );
+	muse_mark( p->thunk );
+	muse_mark( p->mailbox );
+}
+
+/**
+ * Enters an atomic block that should be evaluated
+ * without switching to another process.
+ */
+void enter_atomic()
+{
+	_env()->current_process->atomicity++;
+}
+
+/**
+ * Leaves the current atomic block that should be evaluated
+ * without switching to another process. Atomic blocks can be
+ * nested, but must always be matched. Use the fn_atomic
+ * muSE function to mark an atomic do block.
+ */
+void leave_atomic()
+{
+	_env()->current_process->atomicity++;
 }

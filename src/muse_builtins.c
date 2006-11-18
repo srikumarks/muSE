@@ -134,14 +134,19 @@ static const struct _builtins
 {		L"write-xml",	fn_write_xml		},
 {		L"exit",		fn_exit				},
 
-/************** Performance measurement **************/
-{		L"format",		fn_format			},
-{		L"string-length", fn_string_length	},
-{		L"time-taken-us", fn_time_taken_us	},
-{		L"generate-documentation", fn_generate_documentation	},
-{		L"load-plugin",	fn_load_plugin		},
-{		L"list-files",	fn_list_files		},
-{		L"list-folders",	fn_list_folders	},
+/************** Ports ***************/
+{		L"spawn",		fn_spawn			},
+{		L"atomic",		fn_atomic			},
+{		L"receive",		fn_receive			},
+
+/************** Miscellaneous **************/
+{		L"format",					fn_format					},
+{		L"string-length",			fn_string_length			},
+{		L"time-taken-us",			fn_time_taken_us			},
+{		L"generate-documentation",	fn_generate_documentation	},
+{		L"load-plugin",				fn_load_plugin				},
+{		L"list-files",				fn_list_files				},
+{		L"list-folders",			fn_list_folders				},
 	
 {		NULL,			NULL				}
 };
@@ -367,7 +372,7 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
 {
 	int free_cell_count		= _env()->heap.free_cell_count;
-	int stack_size			= (int)(_env()->stack.top - _env()->stack.bottom);
+	int stack_size			= (int)(_stack()->top - _stack()->bottom);
 	return muse_cons( 
 					 muse_mk_int(free_cell_count),
 					 muse_cons(
@@ -709,4 +714,80 @@ muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell filename = muse_evalnext(&args);
 	return muse_link_plugin( muse_text_contents( filename, NULL ), args );
+}
+
+/**
+ * (spawn (fn (pid . _) ...) [attention]) -> pid
+ * Spawns a new process which will evaluate the given thunk until
+ * it returns T.
+ */
+muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thunk = muse_evalnext(&args);
+	int attention = args ? (int)muse_int_value( muse_evalnext(&args) ) : env->parameters[MUSE_DEFAULT_ATTENTION];
+
+	muse_process_frame_t *p = init_process_mailbox( create_process( env, attention, thunk, NULL ) );
+	prime_process( env, p );
+	return process_id(p);
+}
+
+/**
+ * (atomic ...)
+ * Behaves like do, but executes the entire body atomically,
+ * without switching to another process.
+ */
+muse_cell fn_atomic( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell result = MUSE_NIL;
+	enter_atomic();
+	result = muse_do(args);
+	leave_atomic();
+	return result;
+}
+
+/**
+ * (receive)
+ * (receive timeout_us)
+ * 
+ * Waits for and returns the next message
+ */
+muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
+{
+	muse_int timeout_us = args ? muse_int_value( muse_evalnext(&args) ) : -1;
+
+	muse_process_frame_t *p = env->current_process;
+
+	muse_cell msgs = muse_tail( p->mailbox );
+
+	if ( !msgs )
+	{
+		/* Wait for timeout value if specified. */
+		p->state_bits = MUSE_PROCESS_WAITING;
+
+		if ( timeout_us > 0 )
+		{
+			p->state_bits |= MUSE_PROCESS_HAS_TIMEOUT;
+			p->timeout_us = muse_elapsed_us(env->timer) + timeout_us;
+			switch_to_process( env, p->next );
+		}
+	}
+
+	/* Check for message again. If there's still no message, return with MUSE_NIL. 
+	An actual message will never be MUSE_NIL because it will contain the PID of the
+	sending process at the head. */
+	msgs = muse_tail( p->mailbox );
+
+	if ( msgs )
+	{
+		/* Yes! We've received a message. Remove it from the queue and return it. */
+		muse_set_tail( p->mailbox, muse_tail( msgs ) );
+
+		/* After removing, check if we've reached the end of the message queue. */
+		if ( msgs == p->mailbox_end )
+			p->mailbox_end = p->mailbox;
+
+		return muse_head( msgs );
+	}
+	else
+		return MUSE_NIL;
 }

@@ -122,12 +122,10 @@ void* muse_tick()
 }
 
 /**
- * When passed the timing handle returned by \c muse_tick(),
- * it returns the time elapsed between the \c muse_tick()
- * call and this \c muse_tock() call in microseconds. The
- * handle becomes unusable after it is passed to \c muse_tock().
+ * Returns the time elapsed since the start of the given timer.
+ * The timer is the object returned by muse_tick().
  */
-muse_int muse_tock(void* arg)
+muse_int muse_elapsed_us(void *arg)
 {
 	ticktock_t *timing = (ticktock_t*)arg;
 	muse_int diff = 0;
@@ -145,7 +143,19 @@ muse_int muse_tock(void* arg)
 	diff += timing->t2.tv_usec - timing->t1.tv_usec;
 #endif
 
-	free(timing);
+	return diff;
+}
+
+/**
+ * When passed the timing handle returned by \c muse_tick(),
+ * it returns the time elapsed between the \c muse_tick()
+ * call and this \c muse_tock() call in microseconds. The
+ * handle becomes unusable after it is passed to \c muse_tock().
+ */
+muse_int muse_tock(void* arg)
+{
+	muse_int diff = muse_elapsed_us(arg);
+	free(arg);
 	return diff;
 }
 

@@ -19,6 +19,7 @@ typedef struct _continuation_t
 {
 	muse_functional_object_t base;
 	jmp_buf		state;
+	muse_process_frame_t *process;
 	size_t		system_stack_size;
 	void		*system_stack_from;
 	void		*system_stack_copy;
@@ -50,6 +51,8 @@ static void continuation_mark( void *p )
 {
 	continuation_t *c = (continuation_t*)p;
 	
+	muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
+
 	mark_array( c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
 	mark_array( c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
 	mark_array( c->bindings_copy, c->bindings_copy + c->bindings_size );
@@ -149,7 +152,7 @@ static muse_cell capture_continuation( muse_cell cont )
 			/* Save system state up to the c variable. Note that c's address is 
 			less than result's, therefore result will also get saved. */
 			c->system_stack_from = min3(&c, &result, &stack_grows_down);
-			c->system_stack_size = (char*)_env()->stack_base - (char*)c->system_stack_from;
+			c->system_stack_size = (char*)_env()->current_process->cstack.top - (char*)c->system_stack_from;
 			c->system_stack_copy = malloc( c->system_stack_size );
 			memcpy( c->system_stack_copy, c->system_stack_from, c->system_stack_size );
 		}
@@ -157,7 +160,7 @@ static muse_cell capture_continuation( muse_cell cont )
 		{
 			/* Save system state up to the result variable. Note that result's address is 
 			greater than c's, therefore c will also get saved. */
-			c->system_stack_from = _env()->stack_base;
+			c->system_stack_from = _env()->current_process->cstack.top;
 			c->system_stack_size = (char*)max3(&c, &result, &stack_grows_down) - (char*)_env()->stack_base;
 			c->system_stack_copy = malloc( c->system_stack_size );
 			memcpy( c->system_stack_copy, c->system_stack_from, c->system_stack_size );
@@ -173,10 +176,13 @@ static muse_cell capture_continuation( muse_cell cont )
 		c->bindings_stack_from = 0;
 		c->bindings_stack_size = _bspos();
 		c->bindings_stack_copy = malloc( sizeof(muse_cell) * c->bindings_stack_size );
-		memcpy( c->bindings_stack_copy, _env()->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
+		memcpy( c->bindings_stack_copy, _env()->current_process->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
 
 		/* Save all bindings. */
 		c->bindings_copy = copy_current_bindings( &c->bindings_size );
+
+		/* Save a pointer to the current process. */
+		c->process = _env()->current_process;
 
 		c->this_cont = cont;
 		
@@ -195,8 +201,8 @@ static muse_cell capture_continuation( muse_cell cont )
 		_unwind( c->muse_stack_from + c->muse_stack_size );
 
 		/* Restore the bindings stack. */
-		memcpy( _env()->bindings_stack.bottom + c->bindings_stack_from, c->bindings_stack_copy, sizeof(muse_cell) * c->bindings_stack_size );
-		_env()->bindings_stack.top = _env()->bindings_stack.bottom + c->bindings_stack_from + c->bindings_stack_size;
+		memcpy( c->process->bindings_stack.bottom + c->bindings_stack_from, c->bindings_stack_copy, sizeof(muse_cell) * c->bindings_stack_size );
+		c->process->bindings_stack.top = c->process->bindings_stack.bottom + c->bindings_stack_from + c->bindings_stack_size;
 
 		/* Restore the saved symbol values. */
 		restore_bindings( c->bindings_copy, c->bindings_size );
