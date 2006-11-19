@@ -138,6 +138,7 @@ static const struct _builtins
 {		L"spawn",		fn_spawn			},
 {		L"atomic",		fn_atomic			},
 {		L"receive",		fn_receive			},
+{		L"run",			fn_run				},
 
 /************** Miscellaneous **************/
 {		L"format",					fn_format					},
@@ -791,4 +792,26 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 	}
 	else
 		return MUSE_NIL;
+}
+
+
+/**
+ * (run)
+ * (run duration-us)
+ *
+ * The first version never returns and keeps running all processes.
+ * The second version runs for the given duration (in microseconds).
+ */
+muse_cell fn_run( muse_env *env, void *context, muse_cell args )
+{
+	muse_int timeout_us = args ? muse_int_value( muse_evalnext(&args) ) : -1;
+	muse_int endtime_us = timeout_us + muse_elapsed_us(env->timer);
+
+	do
+	{
+		switch_to_process( env, env->current_process->next );
+	}
+	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
+
+	return MUSE_NIL;
 }

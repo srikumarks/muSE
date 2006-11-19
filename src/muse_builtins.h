@@ -142,6 +142,7 @@ muse_cell fn_exit( muse_env *env, void *context, muse_cell args );
 muse_cell fn_spawn( muse_env *env, void *context, muse_cell args );
 muse_cell fn_atomic( muse_env *env, void *context, muse_cell args );
 muse_cell fn_receive( muse_env *env, void *context, muse_cell args );
+muse_cell fn_run( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @name Misc */
