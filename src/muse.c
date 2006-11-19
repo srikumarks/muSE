@@ -282,14 +282,7 @@ muse_env *muse_init_env( const int *parameters )
 	init_parameters( env, parameters );
 	
 	init_heap( &env->heap, env->parameters[MUSE_HEAP_SIZE] );
-//GONE!	init_stack( &env->stack, env->parameters[MUSE_STACK_SIZE] );
 	init_stack( &env->symbol_stack, env->parameters[MUSE_MAX_SYMBOLS] );
-//GONE!	init_stack( &env->bindings_stack, env->parameters[MUSE_STACK_SIZE] * 2 );
-		/**< 
-		 * We need a x2 in the size for the bindings stack 
-		 * above because the bindings stack is an array of 
-		 * symbol-value pairs.
-		 */
 	
 	/* The symbol stack is not really a stack. Its an array of buckets 
 	containing lists of symbols and is of fixed size. We use a hashing
@@ -299,6 +292,7 @@ muse_env *muse_init_env( const int *parameters )
 	/* Start a time reference point. */
 	env->timer = muse_tick();
 
+	/* Create the main process. */
 	{
 		void *saved_sp = NULL;
 		__asm
@@ -317,10 +311,16 @@ muse_env *muse_init_env( const int *parameters )
 		}
 	}
 
-	env->builtin_symbols = (muse_cell*)calloc( MUSE_NUM_BUILTIN_SYMBOLS, sizeof(muse_cell) );
-	init_builtin_symbols( env->builtin_symbols );
-	
-	muse_load_builtin_fns();
+	/* Make sure the built-in symbol initialization doesn't use any net stack space. */
+	{
+		int sp = _spos();
+		env->builtin_symbols = (muse_cell*)calloc( MUSE_NUM_BUILTIN_SYMBOLS, sizeof(muse_cell) );
+		init_builtin_symbols( env->builtin_symbols );
+		
+		muse_load_builtin_fns();
+		_unwind(sp);
+	}
+
 	return env;
 }
 
@@ -1193,8 +1193,10 @@ muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
 {
 	/* Messages get appended at the end of the mailbox
 	and popped off at the beginning. */
+	int sp = _spos();
 	p->mailbox = muse_cons( muse_mk_destructor( (muse_nativefn_t)fn_pid, p ), MUSE_NIL );
 	p->mailbox_end = p->mailbox;
+	_unwind(sp);
 	return p;
 }
 
@@ -1364,6 +1366,8 @@ muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
  */
 static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 {
+	int sp = _spos();
+
 	/* The PID of a process is stored in the head of the mailbox list.
 	The tail of the mailbox list consists of the message queue. */
 	if ( args && p->state_bits != MUSE_PROCESS_DEAD )
@@ -1377,6 +1381,8 @@ static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args 
 
 		muse_set_tail( p->mailbox_end, msg_entry );
 		p->mailbox_end = msg_entry;
+
+		_unwind(sp);
 
 		return muse_builtin_symbol( MUSE_T );
 	}
