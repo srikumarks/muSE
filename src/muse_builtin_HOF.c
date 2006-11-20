@@ -439,7 +439,7 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 	
 	if ( iter )
 	{
-		if ( collObj && collObj->type_info->type_word == 'hash' )
+		if ( collObj && (collObj != coll) && collObj->type_info->type_word == 'hash' )
 			result = iter( collObj, hashtable_finder, (void*)object );
 		else
 			result = iter( collObj, finder, (void*)object );
