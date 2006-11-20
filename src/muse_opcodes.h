@@ -380,6 +380,8 @@ static inline void _setht( muse_cell c, muse_cell h, muse_cell t )
 {
 	muse_cell_data *p = _ptr(c);
 	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( h < 0 || _celli(h) < _env()->heap.size_cells );
+	muse_assert( t < 0 || _celli(t) < _env()->heap.size_cells );
 	p->cons.head = h;
 	p->cons.tail = t;
 }
