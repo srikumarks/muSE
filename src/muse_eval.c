@@ -199,6 +199,41 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 		
 			/* No matches. */
 			return MUSE_FALSE;
+		case MUSE_LAMBDA_CELL:
+			/* In case there is a lambda in the pattern, it is used like a guard.
+			That is, its argument pattern is first bound to the value and the body
+			evaluated. If the body evaluates to a non-NIL value, then the argument
+			pattern is left bound as is. Otherwise the binding is unwound. 
+			
+			See muse_apply_lambda for details. */
+			{
+				muse_cell fn = formals;
+				muse_cell subformals = _quq(_head(fn));
+				int bsp = _bspos();
+
+				/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
+				if ( muse_bind_formals( subformals, args ) )
+				{
+					/*	Evaluate the body. If the body evaluates to a non-NIL
+					value, then leave the bindings as is and continue. */
+					int sp = _spos();
+					muse_cell result = muse_do( _tail(fn) );
+					_unwind(sp);
+					if ( !result )
+					{
+						/* Condition failed. Unbind the latest bindings. */
+						_unwind_bindings(bsp);
+						return MUSE_FALSE;
+					}
+					else
+					{
+						/* Leave the bindings on the bindings stack as is. */
+					}
+						
+				}
+
+				return MUSE_TRUE;
+			}
 		default : return muse_equal( formals, args );
 	}
 }
