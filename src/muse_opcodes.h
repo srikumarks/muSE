@@ -160,6 +160,7 @@ typedef struct _muse_process_frame_t
 	muse_cell	thunk;
 	muse_cell	mailbox;
 	muse_cell	mailbox_end;
+	muse_cell	waiting_for_pid;
 
 } muse_process_frame_t;
 

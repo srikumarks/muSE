@@ -748,19 +748,53 @@ muse_cell fn_atomic( muse_env *env, void *context, muse_cell args )
 
 /**
  * (receive)
+ * (receive pid)
  * (receive timeout_us)
+ * (receive pid timeout_us)
  * 
  * Waits for and returns the next message
  */
 muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 {
-	muse_int timeout_us = args ? muse_int_value( muse_evalnext(&args) ) : -1;
-
 	muse_process_frame_t *p = env->current_process;
+	muse_cell pid = MUSE_NIL;
+	muse_int timeout_us = -1;
+	muse_cell msgs = MUSE_NIL;
 
-	muse_cell msgs = muse_tail( p->mailbox );
+	if ( args )
+	{
+		/* Check whether the first arg is a pid that we have to wait for. */
+		pid = muse_evalnext(&args);
 
-	if ( !msgs )
+		switch ( _cellt(pid) )
+		{
+		case MUSE_NATIVEFN_CELL :
+			/* Yes it is. Check whether the next argument is a timeout value. */
+			timeout_us = args ? muse_int_value( muse_evalnext(&args) ) : -1;
+			break;
+		case MUSE_INT_CELL :
+		case MUSE_FLOAT_CELL :
+			/* Its not. It is a timeout value. */
+			timeout_us = muse_int_value( pid );
+			pid = MUSE_NIL;
+			break;
+		default:
+			muse_assert( !"Invalid argument to (receive...)" );
+		}
+	}
+
+	/* Set the pid wwe're waiting for. */
+	p->waiting_for_pid = pid;
+	msgs = p->mailbox;
+
+	if ( pid )
+	{
+		/* Search for the message. */
+		while ( _tail(msgs) && _head(_head(_tail(msgs))) != pid )
+			msgs = _tail(msgs);
+	}
+
+	if ( !_tail(msgs) )
 	{
 		/* Wait for timeout value if specified. */
 		p->state_bits = MUSE_PROCESS_WAITING;
@@ -777,21 +811,30 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 	/* Check for message again. If there's still no message, return with MUSE_NIL. 
 	An actual message will never be MUSE_NIL because it will contain the PID of the
 	sending process at the head. */
-	msgs = muse_tail( p->mailbox );
+	msgs = p->mailbox;
 
-	if ( msgs )
+	if ( pid )
+	{
+		/* Search for the message. */
+		while ( _tail(msgs) && _head(_head(_tail(msgs))) != pid )
+			msgs = _tail(msgs);
+	}
+
+	if ( _tail(msgs) )
 	{
 		/* Yes! We've received a message. Remove it from the queue and return it. */
-		muse_set_tail( p->mailbox, muse_tail( msgs ) );
+		muse_cell msg = _tail(msgs);
+		p->waiting_for_pid = MUSE_NIL; /**< No longer waiting for a pid. */
+		_sett( msgs, _tail( msg ) );
 
 		/* After removing, check if we've reached the end of the message queue. */
-		if ( msgs == p->mailbox_end )
-			p->mailbox_end = p->mailbox;
+		if ( msg == p->mailbox_end )
+			p->mailbox_end = _tail(msgs);
 
-		return muse_head( msgs );
+		return _head( msg );
 	}
 	else
-		return MUSE_NIL;
+		return MUSE_NIL; /**< We've timed out. */
 }
 
 

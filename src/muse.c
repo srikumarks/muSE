@@ -1289,16 +1289,11 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 
 	if ( process->state_bits & MUSE_PROCESS_WAITING )
 	{
-		/* Process is waiting for a message. Check if there are any messages
-		in the mailbox. If there is any, resume the process. If there aren't
-		any messages, check the timeout value in order to resume the process. */
+		/* If process is waiting for a message and it got one, the
+		fn_pid would have activated the process already. If it is still
+		waiting, check the timeout value in order to resume the process. */
 
-		if ( _tail(process->mailbox) )
-		{
-			/* There is a message. Resume it. */
-			process->state_bits = MUSE_PROCESS_RUNNING;
-		}
-		else if ( process->state_bits & MUSE_PROCESS_HAS_TIMEOUT )
+		if ( process->state_bits & MUSE_PROCESS_HAS_TIMEOUT )
 		{
 			/* Check timeout. */
 			muse_int elapsed_us = muse_elapsed_us(env->timer);
@@ -1383,6 +1378,12 @@ static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args 
 		p->mailbox_end = msg_entry;
 
 		_unwind(sp);
+
+		if ( p->state_bits & MUSE_PROCESS_WAITING )
+		{
+			if ( !(p->waiting_for_pid) || p->waiting_for_pid == _head(env->current_process->mailbox) )
+				p->state_bits = MUSE_PROCESS_RUNNING;
+		}
 
 		return muse_builtin_symbol( MUSE_T );
 	}
