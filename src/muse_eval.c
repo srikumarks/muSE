@@ -138,6 +138,23 @@ muse_cell muse_apply_nativefn( muse_cell fn, muse_cell args )
  * 	- b = 2
  * 	- c = 3
  * 	- d = (4 5 6)
+ *
+ * You're allowed to use function values in patterns, which you can create
+ * using the braces notation to evaluate code at read-time. When such a function
+ * value is encountered, its arguments are first pattern tested against the 
+ * value at the position of the function. If the pattern testing succeeds and the
+ * body of the function evalutes to a non-NIL value, then the bindings are
+ * left as is for the remainder of the evaluation context. If either the
+ * argument pattern didn't match or the function body evaluated to nil, then
+ * the bindings are reversed and the pattern match is taken to have failed.
+ * These functions in patterns therefore serve as guards.
+ *
+ * For example, here is a contrived function of two arguments "a" and "b" which
+ * returns "b-a" if b > a and fails otherwise -
+ *
+ * @code
+ * (fn {fn (a b) (< a b)} (- b a))
+ * @endcode
  * 
  * @return MUSE_TRUE if the match succeeded and MUSE_FALSE if
  * some element failed. In case of failure, no variables are bound.
@@ -229,7 +246,6 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 					{
 						/* Leave the bindings on the bindings stack as is. */
 					}
-						
 				}
 
 				return MUSE_TRUE;
