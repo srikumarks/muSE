@@ -1238,7 +1238,13 @@ muse_boolean run_process( muse_env *env )
 	{
 		/* Repeatedly evaluate the thunk in a loop until the
 		thunk returns a non-NIL value. */
-		while ( !muse_apply( env->current_process->thunk, env->current_process->mailbox, MUSE_TRUE ) );
+		muse_cell result = MUSE_NIL;
+		do
+		{
+			int sp = _spos();
+			result = muse_apply( env->current_process->thunk, env->current_process->mailbox, MUSE_TRUE );
+			_unwind(sp);
+		} while ( !result );
 
 		/* Process completed. Switch to the next one. */
 		return kill_process( env, env->current_process );
