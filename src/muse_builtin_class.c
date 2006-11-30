@@ -280,7 +280,7 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 		else
 		{
 			pty = muse_cons(memberName, muse_evalnext(&args));
-			_sett( _tail(_tail(obj)), muse_cons( pty, _tail(_tail(_tail(obj))) ) );
+			_sett( _tail(obj), muse_cons( pty, _tail(_tail(obj)) ) );
 			return pty;
 		}
 	}
