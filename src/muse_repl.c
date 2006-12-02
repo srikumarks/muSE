@@ -69,6 +69,7 @@ void muse_repl()
 				case MUSE_TEXT_CELL :
 				case MUSE_CONS_CELL :
 				case MUSE_NATIVEFN_CELL :
+				case MUSE_SYMBOL_CELL :
 					muse_pprint( pstdout, c );
 					port_flush( pstdout );
 				default:;
