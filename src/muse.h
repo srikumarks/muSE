@@ -295,6 +295,7 @@ void		muse_stack_unwind( int stack_pos );
 muse_cell	muse_stack_push( muse_cell obj );
 void		muse_gc( int free_cells_needed );
 void		muse_mark( muse_cell cell );
+muse_boolean muse_doing_gc( muse_env *env );
 /*@}*/
 
 /** @name Cell access */

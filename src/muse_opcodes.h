@@ -173,10 +173,8 @@ typedef struct _muse_process_frame_t
 struct _muse_env
 {
 	muse_heap			heap;
-//	muse_stack			stack;
 	muse_stack			symbol_stack;
 	int					num_symbols;
-//	muse_stack			bindings_stack;
 
 	muse_cell			specials;
 	muse_cell			*builtin_symbols;
@@ -184,6 +182,7 @@ struct _muse_env
 	void				*stack_base;
 	void				*timer;
 	muse_process_frame_t	*current_process;
+	muse_boolean		collecting_garbage;
 };
 
 extern muse_env *g_muse_env;
