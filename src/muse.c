@@ -984,12 +984,25 @@ void muse_gc( int free_cells_needed )
 	{
 		muse_int time_taken;
 		void *timer = muse_tick();
+		_env()->collecting_garbage = MUSE_TRUE;
 		muse_gc_impl( free_cells_needed );
+		_env()->collecting_garbage = MUSE_FALSE;
 		time_taken = muse_tock(timer);
 		fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
 		fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
 		fflush( stderr );
 	}
+}
+
+/**
+ * You can call this to know whether the garbage collection
+ * is in progress. This is useful inside destructor 
+ * functions to decide whether to do destruction or some other
+ * operation.
+ */
+muse_boolean muse_doing_gc( muse_env *env )
+{
+	return env->collecting_garbage;
 }
 
 void muse_gc_impl( int free_cells_needed )

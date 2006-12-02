@@ -141,6 +141,7 @@ struct _muse_env
 	muse_cell			*builtin_symbols;
 	int					*parameters;
 	void				*stack_base;
+	muse_boolean		collecting_garbage;
 };
 
 extern muse_env *g_muse_env;
