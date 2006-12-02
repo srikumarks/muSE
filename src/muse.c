@@ -1333,6 +1333,9 @@ void yield_process( int spent_attention )
 	}
 }
 
+/**
+ *
+ */
 muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
 {
 	/* First take the process out of the ring. */
@@ -1376,7 +1379,7 @@ static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args 
 		/* The list of arguments is the message in its full structure.
 		To this, we prepend the pid of the sending process and append
 		the result to the message queue of our process. */
-		muse_cell msg = muse_cons( muse_head(env->current_process->mailbox), muse_eval_list(args) );
+		muse_cell msg = muse_cons( process_id(env->current_process), muse_eval_list(args) );
 
 		muse_cell msg_entry = muse_cons( msg, MUSE_NIL );
 
@@ -1387,7 +1390,7 @@ static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args 
 
 		if ( p->state_bits & MUSE_PROCESS_WAITING )
 		{
-			if ( !(p->waiting_for_pid) || p->waiting_for_pid == _head(env->current_process->mailbox) )
+			if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(env->current_process) )
 				p->state_bits = MUSE_PROCESS_RUNNING;
 		}
 
