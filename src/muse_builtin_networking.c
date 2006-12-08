@@ -38,6 +38,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	define SOCKET_ERROR (-1)
 #	define INVALID_SOCKET (-1)
 #	define closesocket(x) close(x)
+#	define ioctlsocket(a,b,c) ioctl(a,b,c)
 #else
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
@@ -125,6 +126,57 @@ library! What a stupid thing to have to do! */
 	}
 #endif
 
+typedef struct _muse_net_t
+{
+	fd_set fdsets[3]; // 0 = read, 1 = write, 2 = except
+	int reductions;
+} muse_net_t;
+
+
+static void prepare_for_network_poll( muse_env *env, SOCKET s, int cat )
+{
+	FD_CLR( s, &(env->net->fdsets[cat]) );
+	FD_CLR( s, &(env->net->fdsets[2]) );
+}
+
+static muse_boolean poll_network( muse_env *env, SOCKET s, int cat )
+{
+	while ( !FD_ISSET(s, &(env->net->fdsets[cat])) )
+	{
+		FD_SET(s, &(env->net->fdsets[cat]) );
+		FD_SET(s, &(env->net->fdsets[2]) );
+
+		{
+			int current_reductions = env->net->reductions;
+			procrastinate(env);
+
+			if ( env->net->reductions == current_reductions )
+			{
+				/* We have to do the reduction. */
+				static const struct timeval g_tv = {0,500};
+				int nfds = select( FD_SETSIZE, &(env->net->fdsets[0]), &(env->net->fdsets[1]), &(env->net->fdsets[2]), &g_tv );
+				env->net->reductions++;
+
+				if ( nfds == SOCKET_ERROR )
+				{
+					FD_ZERO( &(env->net->fdsets[0]) );
+					FD_ZERO( &(env->net->fdsets[1]) );
+					FD_ZERO( &(env->net->fdsets[2]) );
+					return MUSE_FALSE;
+				}
+			}
+			else
+			{
+				/* Reduction was done by another polling process. */
+			}
+
+			if ( FD_ISSET( s, &(env->net->fdsets[2]) ) )
+				return MUSE_FALSE;
+		}
+	}
+
+	return MUSE_TRUE;
+}
 
 /**
  * @name Point to point communication
@@ -173,7 +225,9 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 {
 	socketport_t *p = (socketport_t*)s;
 	
-	muse_int result = recv( p->socket, buffer, (int)nbytes, 0 );
+	muse_int result;
+	
+	result = poll_network( _env(), p->socket, 0 ) ? recv( p->socket, buffer, (int)nbytes, 0 ) : SOCKET_ERROR;
 	
 	if ( result <= 0 )
 	{
@@ -193,10 +247,12 @@ static size_t socket_write( void *buffer, size_t nbytes, void *s )
 	socketport_t *p = (socketport_t*)s;
 	unsigned char *b = buffer;
 	unsigned char *b_end = b + nbytes;
+	muse_env *env = _env();
+	muse_int bytes_sent = 0;
 	
 	while ( b < b_end )
 	{
-		muse_int bytes_sent = send( p->socket, b, (int)(b_end - b), 0 );
+		bytes_sent = poll_network( env, p->socket, 1 ) ? send( p->socket, b, (int)(b_end - b), 0 ) : SOCKET_ERROR;
 		
 		if ( bytes_sent <= 0 )
 		{
@@ -236,9 +292,6 @@ static muse_port_type_t g_socket_type =
 	socket_write,
 	socket_flush
 };
-
-static muse_cell fn_network_client_receive( muse_env *env, void *context, muse_cell args );
-static muse_cell fn_network_client_send( muse_env *env, void *context, muse_cell args );
 
 /**
  * (with-connection-to-server server-port-string service-fn).
@@ -329,11 +382,18 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
     if ( port->socket > 0 ) 
 	{
         struct linger lingerParams = { 1, 0 };
+		u_long nbmode = 1;
         setsockopt( port->socket, SOL_SOCKET, SO_LINGER, (const char *)&lingerParams, sizeof(struct linger) );
+		ioctlsocket( port->socket, FIONBIO, &nbmode );
     }
 	
-	/* Connect to the server. */
-	if ( connect( port->socket, (struct sockaddr*)&(port->address), sizeof(port->address) ) == SOCKET_ERROR )
+	/* Connect to the server. Connection will proceed asynchronously. 
+	We poll the network for writeability of this socket in order to determine
+	whether it is connected. */
+	prepare_for_network_poll( env, port->socket, 1 );
+	connect( port->socket, (struct sockaddr*)&(port->address), sizeof(port->address) );
+
+	if ( !poll_network( env, port->socket, 1 ) )
 	{
 		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%s' failed!\n", serverStringAddress, serverPortAddress ); });
 		goto UNDO_CONN;
@@ -370,9 +430,6 @@ typedef struct muse_server_stream_socket__
 	SOCKET		listenSocket;		/**< We listen for connections on this one. */
 	
 	struct sockaddr_in	localSocketAddress;	/**< The local socket address we bind to. */
-			
-	muse_cell	client_port_cell;
-	socketport_t *client_port;
 	
 } muse_server_stream_socket_t;
 
@@ -397,9 +454,6 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	int sp					= _spos();
 	muse_server_stream_socket_t *conn = (muse_server_stream_socket_t*)calloc( 1, sizeof(muse_server_stream_socket_t) );
 	muse_cell result = MUSE_NIL;
-	
-	conn->client_port_cell = muse_mk_functional_object( &g_socket_type.obj, MUSE_NIL );
-	conn->client_port = (socketport_t*)muse_port( conn->client_port_cell );
 	
 	/* Create the socket we should listen to. */
 	conn->listenSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -440,12 +494,27 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	ACCEPT_CONNECTIONS:
 	MUSE_DIAGNOSTICS3({ fprintf( stderr, "Waiting for connections to port %d ...\n", ntohs(conn->localSocketAddress.sin_port) ); });
 	{
+		u_long nbmode = 1;
+		ioctlsocket( conn->listenSocket, FIONBIO, &nbmode );
+	}
+
+	{
 		socklen_t sockAddrSize = sizeof(struct sockaddr_in);
 		struct sockaddr_in client_address;
-		SOCKET client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
-
-		if ( client >= 0 )
+		SOCKET client = INVALID_SOCKET;
+		
+		prepare_for_network_poll( env, conn->listenSocket, 0 );
+		client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
+		if ( client == INVALID_SOCKET && poll_network( env, conn->listenSocket, 0 ) )
 		{
+			client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
+		}
+
+		if ( client != INVALID_SOCKET )
+		{
+			muse_cell client_port_cell = MUSE_NIL;
+			socketport_t *client_port = NULL;
+
 			MUSE_DIAGNOSTICS3({ 
 				fprintf( stderr,
 						 "Accepted connection from machine %s on port %d.\n",
@@ -454,46 +523,38 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 						);
 			});
 
-			conn->client_port->socket = client;
-			conn->client_port->base.mode = MUSE_PORT_READ_WRITE;
-			conn->client_port->base.eof = 0;
-			conn->client_port->base.error = 0;
-			
-			if ( client == SOCKET_ERROR )
-				goto CLOSE_CLIENT_CONTINUE;
-		}
-		
-		/* Client connection accepted successfully. Call the handler. */
-		{
-			muse_cell handlerArgs = muse_list( "ct", 
-												conn->client_port_cell, 
-												inet_ntoa( client_address.sin_addr ) );			
+			client_port_cell = muse_mk_functional_object( &g_socket_type.obj, MUSE_NIL );
+			client_port = (socketport_t*)muse_port( client_port_cell );
+	
+			client_port->socket = client;
+			client_port->base.mode = MUSE_PORT_READ_WRITE;
+			client_port->base.eof = 0;
+			client_port->base.error = 0;
 
-			result = muse_apply( handler, handlerArgs, MUSE_TRUE );
-			
-			/* Save the result. The handler must return a non-NIL value to indicate that
-				subsequent connections have to be processed. It should return MUSE_NIL
-				to terminate the server. */
-			_unwind(sp);
-			_spush(result);
+			/* Client connection accepted successfully. Call the handler. */
+			{
+				muse_cell handlerArgs = muse_list( "ct", 
+													client_port_cell, 
+													inet_ntoa( client_address.sin_addr ) );			
+
+				result = muse_apply( handler, handlerArgs, MUSE_TRUE );
+				
+				/* Save the result. The handler must return a non-NIL value to indicate that
+					subsequent connections have to be processed. It should return MUSE_NIL
+					to terminate the server. */
+				_unwind(sp);
+				_spush(result);
+			}
 		}
 		
-	CLOSE_CLIENT_CONTINUE:
-		muse_assert( conn->client_port );
-		
-		/* Recycle the same port object for use with the next connection. */
-		port_close( (muse_port_t)conn->client_port );
-		MUSE_DIAGNOSTICS3({ fprintf( stderr, "\nConnection closed.\n" ); });
 		if ( result )
 		{
-			port_init( (muse_port_t)conn->client_port );
 			goto ACCEPT_CONNECTIONS;
 		}
 	}
 	
 	/* We've completed processing all client connections. Shutdown the server. */
 SHUTDOWN_SERVER:
-	port_destroy( (muse_port_t)conn->client_port );
 	if ( conn->listenSocket ) closesocket( conn->listenSocket );
 	memset( conn, 0, sizeof(muse_server_stream_socket_t) );
 	
@@ -689,7 +750,11 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 	s->src_addr_len = sizeof(s->src_addr);
 
 	{
-		int result = recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len );
+		int result = 
+			poll_network( _env(), s->socket, 0 )
+				? recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len )
+				: SOCKET_ERROR;
+
 		if ( result < 0 )
 		{
 			s->base.eof		= EOF;
@@ -709,7 +774,11 @@ static size_t multicast_socket_write( void *buffer, size_t nbytes, void *p )
 	/* Multicast the datagram to the group or the individual. */
 	const struct sockaddr *addr = (const struct sockaddr *)(s->reply ? &s->src_addr : &s->dst_addr);
 	int addr_len = s->reply ? s->src_addr_len : sizeof(s->dst_addr);
-	int result = sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len );
+	int result = 
+			poll_network( _env(), s->socket, 1 )
+				? sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len )
+				: SOCKET_ERROR;
+
 	if ( result < 0 )
 	{
 		s->base.error = 1;
@@ -862,6 +931,8 @@ muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
  */
 static muse_cell fn_network_shutdown( muse_env *env, void *context, muse_cell args )
 {
+	free(env->net);
+	env->net = NULL;
 	muse_network_shutdown();
 	return MUSE_NIL;
 }
@@ -882,6 +953,11 @@ void muse_define_builtin_networking()
 	};
 
 	muse_network_startup();
+
+	_env()->net = (muse_net_t*)calloc( 1, sizeof(muse_net_t) );
+	FD_ZERO( &(_env()->net->fdsets[0]) );	// read
+	FD_ZERO( &(_env()->net->fdsets[1]) );	// write
+	FD_ZERO( &(_env()->net->fdsets[2]) );	// except
 
 	/* Define a destructor function to shutdown the network when everything is done. 
 	Using braces in the symbol name ensures that this symbol cannot be written directly
