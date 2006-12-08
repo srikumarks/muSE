@@ -1328,6 +1328,15 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 	return switch_to_process( env, process->next );
 }
 
+/**
+ * Goes around the processes list and returns to the same point
+ * after one round-robin cycle.
+ */
+muse_boolean procrastinate( muse_env *env )
+{
+	return switch_to_process( env, env->current_process->next );
+}
+
 void yield_process( int spent_attention )
 {
 	muse_process_frame_t *p = _env()->current_process;
@@ -1344,6 +1353,11 @@ void yield_process( int spent_attention )
 		else
 			p->remaining_attention -= spent_attention;
 	}
+}
+
+muse_boolean is_main_process( muse_env *env )
+{
+	return (env->current_process->cstack.size > 0) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**

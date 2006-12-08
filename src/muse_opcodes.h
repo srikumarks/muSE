@@ -183,6 +183,7 @@ struct _muse_env
 	void				*timer;
 	muse_process_frame_t	*current_process;
 	muse_boolean		collecting_garbage;
+	struct _muse_net_t	*net;
 };
 
 extern muse_env *g_muse_env;
@@ -479,8 +480,10 @@ muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p );
 muse_boolean prime_process( muse_env *env, muse_process_frame_t *process );
 muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process );
 void yield_process( int spent_attention );
+muse_boolean procrastinate( muse_env *env );
 muse_boolean kill_process( muse_env *env, muse_process_frame_t *process );
 muse_cell process_id( muse_process_frame_t *process );
+muse_boolean is_main_process( muse_env *env );
 void mark_process( muse_process_frame_t *p );
 static muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
 void enter_atomic();
