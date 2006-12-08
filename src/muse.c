@@ -1330,11 +1330,15 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 
 /**
  * Goes around the processes list and returns to the same point
- * after one round-robin cycle.
+ * after one round-robin cycle. procrastinate() will not 
+ * switch to the next process if an atomic operation is going on.
  */
 muse_boolean procrastinate( muse_env *env )
 {
-	return switch_to_process( env, env->current_process->next );
+	if ( env->current_process->atomicity == 0 )
+		return switch_to_process( env, env->current_process->next );
+	else
+		return MUSE_TRUE;
 }
 
 void yield_process( int spent_attention )
