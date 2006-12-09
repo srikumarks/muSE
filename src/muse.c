@@ -294,11 +294,7 @@ muse_env *muse_init_env( const int *parameters )
 
 	/* Create the main process. */
 	{
-		void *saved_sp = NULL;
-		__asm
-		{
-			mov saved_sp, esp
-		};
+		GET_STACK_POINTER( void*, saved_sp )
 
 		{
 			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );

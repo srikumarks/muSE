@@ -52,6 +52,7 @@ static void continuation_mark( void *p )
 	continuation_t *c = (continuation_t*)p;
 	
 	muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
+	mark_process( c->process );
 
 	mark_array( c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
 	mark_array( c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
@@ -76,26 +77,13 @@ static void continuation_destroy( void *p )
 
 static muse_cell *copy_current_bindings( int *size )
 {
-	muse_stack *s = _symstack();
-	muse_cell *begin = s->bottom;
-	muse_cell *end = s->bottom + s->size;
+	muse_stack *s = &(_env()->current_process->locals);
 	muse_cell *copy = NULL;
 	int i = 0;
 
-	(*size) = _env()->num_symbols * 2;
+	(*size) = _env()->num_symbols;
 	copy = (muse_cell*)malloc( sizeof(muse_cell) * (*size) );
-
-	while ( begin < end )
-	{
-		muse_cell b = *begin++;
-
-		while ( b )
-		{
-			muse_cell sym = _next(&b);
-			copy[i++] = sym;
-			copy[i++] = _symval(sym);
-		}
-	}
+	memcpy( copy, s->bottom, sizeof(muse_cell) * (*size) );
 
 	return copy;
 }
@@ -105,13 +93,9 @@ static void restore_bindings( muse_cell *bindings, int size )
 {
 	muse_cell *end = bindings + size;
 	
-	muse_assert( size >= 0 && (size % 2 == 0) );
+	muse_assert( size >= 0 );
 
-	while ( bindings < end )
-	{
-		_def( bindings[0], bindings[1] );
-		bindings += 2;
-	}
+	memcpy( _env()->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
 }
 
 static void *min3( void *p1, void *p2, void *p3 )
@@ -134,7 +118,7 @@ static void *max3( void *p1, void *p2, void *p3 )
 	return c;	
 }
 
-static muse_cell capture_continuation( muse_cell cont )
+static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 {
 	continuation_t *c = (continuation_t*)muse_functional_object_data(cont,'cont');
 
@@ -145,22 +129,28 @@ static muse_cell capture_continuation( muse_cell cont )
 		/* We're capturing the continuation. Save all state. */
 		
 		/* First determine if the stack grows up or down. */
-		muse_boolean stack_grows_down = ((char *)_env()->stack_base > (char *)&cont) ? MUSE_TRUE : MUSE_FALSE;
+		muse_boolean stack_grows_down = ((char *)env->current_process->cstack.top > (char *)&cont) ? MUSE_TRUE : MUSE_FALSE;
 		
 		if ( stack_grows_down )
 		{
 			/* Save system state up to the c variable. Note that c's address is 
 			less than result's, therefore result will also get saved. */
-			c->system_stack_from = min3(&c, &result, &stack_grows_down);
-			c->system_stack_size = (char*)_env()->current_process->cstack.top - (char*)c->system_stack_from;
+			GET_STACK_POINTER( void*, saved_sp );
+			
+			c->system_stack_from = saved_sp;
+			c->system_stack_size = (char*)env->current_process->cstack.top - (char*)c->system_stack_from;
 			c->system_stack_copy = malloc( c->system_stack_size );
+			muse_assert( is_main_process(env) || c->system_stack_size < env->current_process->cstack.size * sizeof(muse_cell) );
+
 			memcpy( c->system_stack_copy, c->system_stack_from, c->system_stack_size );
 		}
 		else
 		{
+			muse_assert( MUSE_FALSE && "Unsupported stack growth direction!" );
+
 			/* Save system state up to the result variable. Note that result's address is 
 			greater than c's, therefore c will also get saved. */
-			c->system_stack_from = _env()->current_process->cstack.top;
+			c->system_stack_from = env->current_process->cstack.top;
 			c->system_stack_size = (char*)max3(&c, &result, &stack_grows_down) - (char*)_env()->stack_base;
 			c->system_stack_copy = malloc( c->system_stack_size );
 			memcpy( c->system_stack_copy, c->system_stack_from, c->system_stack_size );
@@ -176,13 +166,13 @@ static muse_cell capture_continuation( muse_cell cont )
 		c->bindings_stack_from = 0;
 		c->bindings_stack_size = _bspos();
 		c->bindings_stack_copy = malloc( sizeof(muse_cell) * c->bindings_stack_size );
-		memcpy( c->bindings_stack_copy, _env()->current_process->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
+		memcpy( c->bindings_stack_copy, env->current_process->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
 
 		/* Save all bindings. */
 		c->bindings_copy = copy_current_bindings( &c->bindings_size );
 
 		/* Save a pointer to the current process. */
-		c->process = _env()->current_process;
+		c->process = env->current_process;
 
 		c->this_cont = cont;
 		
@@ -211,6 +201,7 @@ static muse_cell capture_continuation( muse_cell cont )
 		memcpy( c->system_stack_from, c->system_stack_copy, c->system_stack_size );
 
 		muse_assert( c->invoke_result >= 0 );
+		muse_assert( (c->process->state_bits & MUSE_PROCESS_DEAD) == 0 );
 
 		/* We return to fn_callcc after this. So to ensure we get into the
 		"continuation invoked" branch, we have to make sure that the result
@@ -224,8 +215,12 @@ static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell ar
 {
 	c->invoke_result = muse_evalnext(&args);
 	
-	longjmp( c->state, c->this_cont + 1 );
-	
+	if ( env->current_process == c->process || setjmp(env->current_process->jmp) == 0 )
+	{
+		env->current_process = c->process;
+		longjmp( c->state, c->this_cont + 1 );
+	}
+
 	return MUSE_NIL;
 }
 
@@ -327,7 +322,7 @@ muse_cell fn_callcc( muse_env *env, void *context, muse_cell args )
 	
 	muse_cell cont = muse_mk_functional_object( &g_continuation_type, MUSE_NIL );
 	
-	muse_cell result = capture_continuation(cont);
+	muse_cell result = capture_continuation(env,cont);
 	
 	if ( result < 0 )
 	{

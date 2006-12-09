@@ -33,6 +33,8 @@
 
 typedef __int64 longlong_t;
 
+#define GET_STACK_POINTER( type, var ) type var = NULL; __asm { mov var, esp };
+
 #define MUSE_PLATFORM_WINDOWS 1
 
 #endif /* __MUSE_WIN32_H__ */
