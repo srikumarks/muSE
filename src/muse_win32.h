@@ -33,7 +33,16 @@
 
 typedef __int64 longlong_t;
 
-#define GET_STACK_POINTER( type, var ) type var = NULL; __asm { mov var, esp };
+#define SAVE_STACK_POINTER( var ) void *var = NULL; __asm { mov var, esp }
+
+#define CHANGE_STACK_POINTER(sp_value) \
+				do\
+				{\
+					void *new_sp = (void*)(sp_value);\
+					__asm push new_sp\
+					__asm pop esp\
+				}\
+				while(0)
 
 #define MUSE_PLATFORM_WINDOWS 1
 

@@ -135,7 +135,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		{
 			/* Save system state up to the c variable. Note that c's address is 
 			less than result's, therefore result will also get saved. */
-			GET_STACK_POINTER( void*, saved_sp );
+			SAVE_STACK_POINTER( saved_sp );
 			
 			c->system_stack_from = saved_sp;
 			c->system_stack_size = (char*)env->current_process->cstack.top - (char*)c->system_stack_from;

@@ -294,7 +294,7 @@ muse_env *muse_init_env( const int *parameters )
 
 	/* Create the main process. */
 	{
-		GET_STACK_POINTER( void*, saved_sp )
+		SAVE_STACK_POINTER( saved_sp )
 
 		{
 			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );
@@ -1283,15 +1283,8 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 			{
 				env->current_process->state_bits = MUSE_PROCESS_RUNNING;
 
-				/* Change the ESP for the virgin process. */
-				{
-					void *new_sp = (void*)(env->current_process->cstack.top);
-					__asm
-					{
-						push new_sp
-						pop esp
-					};
-				}
+				/* Change the SP for the virgin process. */
+				CHANGE_STACK_POINTER(env->current_process->cstack.top);
 
 				return run_process( _env() );
 			}
