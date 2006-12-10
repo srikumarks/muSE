@@ -20,6 +20,7 @@ typedef struct _continuation_t
 	muse_functional_object_t base;
 	jmp_buf		state;
 	muse_process_frame_t *process;
+	int			process_atomicity;
 	size_t		system_stack_size;
 	void		*system_stack_from;
 	void		*system_stack_copy;
@@ -173,6 +174,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 
 		/* Save a pointer to the current process. */
 		c->process = env->current_process;
+		c->process_atomicity = env->current_process->atomicity;
 
 		c->this_cont = cont;
 		
@@ -186,6 +188,10 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		c = (continuation_t*)muse_functional_object_data(result-1,'cont');
 		muse_assert( c && c->base.type_info->type_word == 'cont' );
 		
+		/* Restore the process and the atomicity that was at capture time. */
+		_env()->current_process = c->process;
+		c->process->atomicity = c->process_atomicity;
+
 		/* Restore the evaluation stack. */
 		memcpy( _stack()->bottom + c->muse_stack_from, c->muse_stack_copy, sizeof(muse_cell) * c->muse_stack_size );
 		_unwind( c->muse_stack_from + c->muse_stack_size );
@@ -217,6 +223,7 @@ static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell ar
 	
 	if ( env->current_process == c->process || setjmp(env->current_process->jmp) == 0 )
 	{
+		muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
 		env->current_process = c->process;
 		longjmp( c->state, c->this_cont + 1 );
 	}
