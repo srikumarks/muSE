@@ -1272,7 +1272,7 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 		/* The process is running. Save current process state
 		and switch to the given process. */
 
-		if ( env->current_process->state_bits & MUSE_PROCESS_DEAD )
+		if ( env->current_process->state_bits == MUSE_PROCESS_DEAD )
 			env->current_process = process;
 
 		if ( setjmp( env->current_process->jmp ) == 0 )
