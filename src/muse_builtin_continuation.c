@@ -486,17 +486,18 @@ static muse_functional_object_type_t g_trap_point_type =
  *
  * First it tries to evaluate the given \c expr. If the expression
  * raised an exception using (raise...), then each of the handlers
- * is tried in turn until one matches. The handlers are all unevaluated
- * until an exception is actually raised, to avoid unnecessary
- * work, 'cos exceptions are not expected to be thrown very often, but
- * the expression might be evaluated frequently.
+ * is tried in turn until one matches. The handlers are expected to
+ * be in-place values. They are not evaluated when entering a try
+ * block or when an exception is raised, so you *must* use the 
+ * read-time expansion facility to define handlers for a try block.
  * 
- * A handler can be a function expression - like (fn args expr) or
- * (fn: args expr). If it is such an expression, each handler is
+ * A handler can be a function expression - like {fn args expr} or
+ * {fn: args expr}. If it is such an expression, each handler is
  * tried in turn until the argument pattern of one of the handlers
  * matches the raised exception. The body of the handler whose
  * arguments matched the exception is evaluated and the result
- * is returned as the result of the try block. 
+ * is returned as the result of the try block. Handlers may themselves
+ * raise exceptions in order to jump up to the enclosing try block.
  *
  * The first argument to the handler is an exception object whose
  * sole purpose is to enable the handler to resume the computation
@@ -574,7 +575,9 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 
 	while ( handlers )
 	{
-		muse_cell h = muse_evalnext(&handlers);
+		/* Note that handlers are expected to be in-place values,
+		defined using macro braces. */
+		muse_cell h = _next(&handlers);
 
 		if ( _cellt(h) == MUSE_LAMBDA_CELL )
 		{
