@@ -133,6 +133,7 @@ typedef struct _muse_process_frame_t
 	struct _muse_process_frame_t *next, *prev;
 
 	int			state_bits;
+	int			error;
 	int			attention;
 	int			remaining_attention;
 	int			atomicity;
