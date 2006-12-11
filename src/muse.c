@@ -1030,7 +1030,9 @@ void muse_gc( int free_cells_needed )
 		muse_int time_taken;
 		void *timer = muse_tick();
 		_env()->collecting_garbage = MUSE_TRUE;
+		enter_atomic();
 		muse_gc_impl( free_cells_needed );
+		leave_atomic();
 		_env()->collecting_garbage = MUSE_FALSE;
 		time_taken = muse_tock(timer);
 		fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
