@@ -481,7 +481,7 @@ muse_boolean prime_process( muse_env *env, muse_process_frame_t *process );
 muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process );
 void yield_process( int spent_attention );
 muse_boolean procrastinate( muse_env *env );
-muse_boolean kill_process( muse_env *env, muse_process_frame_t *process );
+muse_boolean remove_process( muse_env *env, muse_process_frame_t *process );
 muse_cell process_id( muse_process_frame_t *process );
 muse_boolean is_main_process( muse_env *env );
 void mark_process( muse_process_frame_t *p );

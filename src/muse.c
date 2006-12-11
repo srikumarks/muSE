@@ -1256,7 +1256,7 @@ muse_boolean run_process( muse_env *env )
 		} while ( !result );
 
 		/* Process completed. Switch to the next one. */
-		return kill_process( env, env->current_process );
+		return remove_process( env, env->current_process );
 	}
 	else
 		return MUSE_TRUE;
@@ -1356,7 +1356,7 @@ muse_boolean is_main_process( muse_env *env )
 /**
  *
  */
-muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
+muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
 {
 	/* First take the process out of the ring. */
 	muse_process_frame_t 
@@ -1376,10 +1376,18 @@ muse_boolean kill_process( muse_env *env, muse_process_frame_t *process )
 	}
 
 	process->state_bits = MUSE_PROCESS_DEAD;
-	process->next = process->prev = process;
+	process->next = process->prev = NULL;
 
 	if ( env->current_process == process )
-		return switch_to_process( env, next );
+	{
+		if ( process == next )
+		{
+			muse_assert( !"All processes exited!" );
+			exit(0); /* All processes exited! */
+		}
+		else
+			return switch_to_process( env, next );
+	}
 	else
 		return MUSE_TRUE;
 }

@@ -53,7 +53,6 @@ static void continuation_mark( void *p )
 	continuation_t *c = (continuation_t*)p;
 	
 	muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
-	mark_process( c->process );
 
 	mark_array( c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
 	mark_array( c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
@@ -188,8 +187,11 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		c = (continuation_t*)muse_functional_object_data(result-1,'cont');
 		muse_assert( c && c->base.type_info->type_word == 'cont' );
 		
-		/* Restore the process and the atomicity that was at capture time. */
-		_env()->current_process = c->process;
+		/* Restore the process atomicity that was at capture time. 
+		Also, continuation invocations cannot cross process boundaries, so
+		the current process must be the one in which the continuation
+		was captured. */
+		muse_assert( _env()->current_process == c->process );
 		c->process->atomicity = c->process_atomicity;
 
 		/* Restore the evaluation stack. */
@@ -219,14 +221,12 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 
 static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell args )
 {
+	/* Continuation invocation cannot cross process boundaries. */
+	muse_assert( c->process == env->current_process );
+
 	c->invoke_result = muse_evalnext(&args);
 	
-	if ( env->current_process == c->process || setjmp(env->current_process->jmp) == 0 )
-	{
-		muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
-		env->current_process = c->process;
-		longjmp( c->state, c->this_cont + 1 );
-	}
+	longjmp( c->state, c->this_cont+1 );
 
 	return MUSE_NIL;
 }
