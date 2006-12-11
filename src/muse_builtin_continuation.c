@@ -348,3 +348,304 @@ muse_cell fn_callcc( muse_env *env, void *context, muse_cell args )
 		return result-1;
 	}
 }
+
+/*------------------------------------------*/
+/* Exceptions                               */
+/*------------------------------------------*/
+
+/**
+ * Captures all the information required to jump
+ * back to an execution point within stack scope.
+ */
+typedef struct _resume_point_t
+{
+	jmp_buf state;
+	int spos;
+	int bspos;
+	int atomicity;
+	muse_cell trapval;
+	muse_cell result;
+} resume_point_t;
+
+/**
+ * Usage: if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
+ *            ...
+ *        else
+ *            ...
+ *            return rp->result;
+ */
+static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result )
+{
+	if ( setjmp_result == 0 )
+	{
+		rp->spos = _spos();
+		rp->bspos = _bspos();
+		rp->atomicity = env->current_process->atomicity;
+		rp->trapval = _symval( muse_builtin_symbol( MUSE_TRAP_POINT ) );
+		rp->result = 0;
+	}
+	else
+	{
+		env->current_process->atomicity = rp->atomicity;
+		_unwind( rp->spos );
+		_unwind_bindings( rp->bspos );
+		_def( muse_builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
+		rp->result = setjmp_result-1;
+	}
+
+	return setjmp_result;
+}
+
+/**
+ * Invokes an already captured resume point with the given result.
+ * The longjmp call is made with result+1 and rp->result will
+ * be set to the longjmp return value minus 1.
+ */
+static void resume_invoke( muse_env *env, resume_point_t *p, muse_cell result )
+{
+	longjmp( p->state, result+1 );
+}
+
+/**
+ * The function that gets called to resume a particular exception.
+ * At exception raise time, a resume point is captured and passed
+ * on to the handlers. A handler may choose to resume the computation
+ * by calling the resume function with a particular result value.
+ */
+static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
+{
+	resume_point_t *rp = (resume_point_t*)context;
+
+	resume_invoke( env, rp, muse_evalnext(&args) );
+
+	return MUSE_NIL;
+}
+
+/**
+ * A trap point is a marker for the beginning of a
+ * (try...) block. When you return to a trap point,
+ * you return with a value that is supposed to be the
+ * value of the try block. Trap points are maintained as
+ * a stack of values of the built-in symbol "{{trap}}",
+ * which is available via MUSE_TRAP_POINT.
+ */
+typedef struct _trap_point_t
+{
+	muse_functional_object_t base;
+	resume_point_t escape;	/**< The resume point to invoke to return from the try block. */
+	muse_cell handlers;		/**< A list of unevaluated handlers. */
+	muse_cell prev;			/**< The previous trap point. */
+} trap_point_t;
+
+
+static void trap_point_init( void *p, muse_cell args )
+{
+	trap_point_t *trap = (trap_point_t*)p;
+
+	trap->handlers = args;
+	trap->prev = muse_symbol_value( muse_builtin_symbol( MUSE_TRAP_POINT ) );
+}
+
+static void trap_point_mark( void *p )
+{
+	trap_point_t *trap = (trap_point_t*)p;
+	muse_mark(trap->handlers);
+	muse_mark(trap->prev);
+}
+
+static muse_cell fn_trap_point( muse_env *env, void *trap_point, muse_cell args )
+{
+	muse_assert( !"fn_trap_point should never be called!" );
+	return MUSE_NIL;
+}
+
+static muse_functional_object_type_t g_trap_point_type =
+{
+	'muSE',
+	'trap',
+	sizeof(trap_point_t),
+	fn_trap_point,
+	NULL,
+	trap_point_init,
+	trap_point_mark,
+	NULL
+};
+
+
+/**
+ * Marks an expression that needs to be protected by
+ * exception handlers. A try block has the following syntax -
+ * @code
+ *  (try
+ *       expr
+ *       handler1
+ *       handler2
+ *       ....
+ *  )
+ * @endcode
+ *
+ * First it tries to evaluate the given \c expr. If the expression
+ * raised an exception using (raise...), then each of the handlers
+ * is tried in turn until one matches. The handlers are all unevaluated
+ * until an exception is actually raised, to avoid unnecessary
+ * work, 'cos exceptions are not expected to be thrown very often, but
+ * the expression might be evaluated frequently.
+ * 
+ * A handler can be a function expression - like (fn args expr) or
+ * (fn: args expr). If it is such an expression, each handler is
+ * tried in turn until the argument pattern of one of the handlers
+ * matches the raised exception. The body of the handler whose
+ * arguments matched the exception is evaluated and the result
+ * is returned as the result of the try block. 
+ *
+ * The first argument to the handler is an exception object whose
+ * sole purpose is to enable the handler to resume the computation
+ * with a given value as the result of the (raise...) expression that
+ * raised the exception. The rest of the arguments to a handler
+ * are the same arguments that were passed to \c raise.
+ *
+ * If a handler is not a function object, then its value is
+ * used as the value of the try block without further checks.
+ * Such a "handler" always succeeds.
+ *
+ * If none of the handlers match, then the handlers of
+ * the previous enclosing try block are examined.
+ *
+ * A handler may choose to resume the computation by invoking
+ * the exception object with the desired value that should be
+ * returned by the (raise ...) expression.
+ *
+ * If continuations are captured in the middle of try blocks,
+ * they will automatically include the correct state of the
+ * try block nesting because they will capture the correct
+ * value of the "{{trap}}" symbol.
+ *
+ * It is convenient to use read-time evaluated dynamically
+ * scoped function objects as handlers since they cause the
+ * least overhead and are usually sufficiently general.
+ * For example -
+ * @code
+ *  (try (if (> a b) (raise 'NotInOrder a b) (- b a))
+ *       {fn: (e 'NotInOrder a b) (e (- a b))}
+ *   )
+ * @endcode
+ */
+muse_cell fn_try( muse_env *env, void *context, muse_cell args ) 
+{
+	muse_cell trapval = muse_mk_functional_object( &g_trap_point_type, _tail(args) );
+
+	trap_point_t *tp = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+
+	muse_cell result = MUSE_NIL;
+
+	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trapval );
+
+	if ( resume_capture( env, &(tp->escape), setjmp(tp->escape.state) ) == 0 )
+	{
+		/* Evaluate the body of the try block. */
+		result = muse_evalnext(&args);
+	}
+	else
+	{
+		/* Exception raised and a handler was invoked which 
+		gave us this value. Return from the try block with the
+		given result. */
+		result = tp->escape.result;
+	}
+
+	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
+	return result;
+}
+
+/**
+ * Examines the handlers of the given scope first, then followed by
+ * the handlers of the enclosing try scope, and so on until a successful
+ * handler was invoked or execution reached the top level without a handler.
+ * In the latter case, the process is terminated with an "unhandled exception"
+ * error.
+ */
+static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handler_args )
+{
+	muse_cell sym_trap_point = muse_builtin_symbol( MUSE_TRAP_POINT );
+
+	trap_point_t *trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+
+	muse_cell handlers = trap->handlers;
+
+	while ( handlers )
+	{
+		muse_cell h = muse_evalnext(&handlers);
+
+		if ( _cellt(h) == MUSE_LAMBDA_CELL )
+		{
+			/* A handler needs to be examined. */
+			muse_cell formals = _quq(_head(h));
+			int bsp = _bspos();
+
+			if ( muse_bind_formals( formals, handler_args ) )
+			{
+				muse_cell result;
+				_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+				result = muse_do(_tail(h));
+				_unwind_bindings(bsp);
+				resume_invoke( env, &(trap->escape), result );
+			}
+		}
+		else
+		{
+			/* The "handler" itself is the result of the try block. */
+			resume_invoke( env, &(trap->escape), h );
+		}
+
+		/* Switch to handlers of shallower scopes if necessary. */
+		while ( !handlers )
+		{
+			trapval = trap->prev;
+			trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+
+			if ( trap == NULL )
+			{
+				handlers = NULL;
+				break;
+			}
+
+			handlers = trap->handlers;
+		}
+	}
+
+	/* No handler succeeded in handling the exception. */
+	muse_message( L"Unhandled exception!", L"%m", _tail(handler_args) );
+	exit(0);
+}
+
+/**
+ * (raise ...)
+ * Raises an exception described by the given arguments. Handlers are
+ * matched against the pattern of arguments to determine which handler
+ * to use to handle the exception. It is useful to use a quoted symbol
+ * as the first argument which describes the exception. A handler can
+ * then specify the same quoted symbol as its second argument in order
+ * to get to handle the exception.
+ *
+ * (raise..) evaluates the matching handler without unwinding the stack
+ * to the point of the try block. This means any raised exception can be
+ * resumed by invoking the exception object (passed as the first argument
+ * to the handler) with the resume value as the argument.
+ *
+ * @see fn_try
+ */ 
+muse_cell fn_raise( muse_env *env, void *context, muse_cell args ) 
+{
+	resume_point_t *rp = (resume_point_t*)calloc( 1, sizeof(resume_point_t) );
+	muse_cell resume_pt = muse_mk_destructor( fn_resume, rp );
+	muse_cell handler_args = muse_cons( resume_pt, muse_eval_list(args) );
+
+	if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
+	{
+		return try_handlers( env, muse_symbol_value( muse_builtin_symbol( MUSE_TRAP_POINT ) ), handler_args );
+	}
+	else
+	{
+		return rp->result;
+	}
+}

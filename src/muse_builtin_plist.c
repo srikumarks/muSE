@@ -87,3 +87,22 @@ muse_cell fn_name( muse_env *env, void *context, muse_cell args )
 	else
 		return MUSE_NIL;
 }
+
+/* Defined in muse.c */
+muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash );
+
+/**
+ * Generates an interned anonymous symbol that can be
+ * used as a variable in macro generated code. Previously,
+ * (before processes) it was possible to use (new) to do the 
+ * same thing, but after processes were implemented, symbols need
+ * be interned before they can be used as variables since
+ * any function may be evaluated in multiple processes
+ * and it needs to maintain the state of its variables
+ * consistently in the process in which it is being evaluated.
+ */
+muse_cell fn_gensym( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell sym = muse_mk_anon_symbol();
+	return muse_intern_symbol( sym, _newlocal(), sym );
+}

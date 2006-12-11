@@ -30,6 +30,8 @@ static const struct _builtins
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
 {		L"call/cc",		fn_callcc			},
+{		L"try",			fn_try				},
+{		L"raise",		fn_raise			},
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
@@ -38,6 +40,7 @@ static const struct _builtins
 {		L"plist",		fn_plist			},
 {		L"symbol",		fn_symbol			},
 {		L"name",		fn_name				},
+{		L"gensym",		fn_gensym			},
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},

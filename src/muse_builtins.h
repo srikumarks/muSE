@@ -30,6 +30,8 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args );
 muse_cell fn_apply( muse_env *env, void *context, muse_cell args );
 muse_cell fn_eval( muse_env *env, void *context, muse_cell args );
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
+muse_cell fn_try( muse_env *env, void *context, muse_cell args );
+muse_cell fn_raise( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup PropertyLists Property lists */
@@ -40,6 +42,7 @@ muse_cell fn_assoc( muse_env *env, void *context, muse_cell args);
 muse_cell fn_plist( muse_env *env, void *context, muse_cell args);
 muse_cell fn_symbol( muse_env *env, void *context, muse_cell args );
 muse_cell fn_name( muse_env *env, void *context, muse_cell args ); 
+muse_cell fn_gensym( muse_env *env, void *context, muse_cell args ); 
 /*@}*/
 
 /** @addtogroup CellManipulation Basic cell, list and symbol manipulation */

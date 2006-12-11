@@ -684,6 +684,41 @@ static muse_cell lookup_symbol( const muse_char *start, const muse_char *end, mu
 }
 
 /**
+ * Includes the given symbol in the symbol table
+ * and makes its value process-local. Note that no check
+ * is performed to see whether the symbol is already
+ * interned or not.
+ */
+muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash )
+{
+	muse_stack *ss = _symstack();
+
+	muse_assert( _cellt(sym) == MUSE_SYMBOL_CELL );
+
+	/* Define the symbol to be itself in all processes. */
+	{
+		muse_process_frame_t *cp = _env()->current_process;
+		muse_process_frame_t *p = cp;
+
+		do
+		{
+			p->locals.bottom[local_ix] = sym;
+			p->locals.top = p->locals.bottom + _env()->num_symbols;
+			p = p->next;
+		}
+		while ( p != cp );
+	}
+
+	/* Add the symbol to its hash bucket. */
+	{
+		int bucket = (int)(((hash % ss->size) + ss->size) % ss->size);
+		ss->bottom[bucket] = muse_cons( sym, ss->bottom[bucket] );
+	}
+
+	return sym;
+}
+
+/**
  * Returns a reference to a named symbol with the given name.
  * All symbols with the same name have identical symbol references.
  * Therefore you can compare whether two symbols are the same
@@ -727,27 +762,9 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 			/* sym -> ( sym . symplist ) */
 			_sett( sym, symplist );
 
-			/* Define the symbol to be itself in all processes. */
-			{
-				muse_process_frame_t *cp = _env()->current_process;
-				muse_process_frame_t *p = cp;
-
-				do
-				{
-					p->locals.bottom[local_ix] = sym;
-					p->locals.top = p->locals.bottom + _env()->num_symbols;
-					p = p->next;
-				}
-				while ( p != cp );
-			}
+			muse_intern_symbol( sym, local_ix, hash );
 		}
 		
-		/* Add the symbol to its hash bucket. */
-		{
-			int bucket = (int)(((hash % ss->size) + ss->size) % ss->size);
-			ss->bottom[bucket] = muse_cons( sym, ss->bottom[bucket] );
-		}
-
 		_unwind(p);
 		
 		return sym;

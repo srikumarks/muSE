@@ -289,7 +289,6 @@ muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
 		/* Unbind the latest bindings. */
 		_unwind_bindings(bsp);
 		
-		_env()->current_process->error = 0;
 		return result;
 	}
 	else
@@ -302,7 +301,6 @@ muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
 							formals );
 		});
 
-		_env()->current_process->error = 1;
 		return MUSE_NIL;
 	}
 }
