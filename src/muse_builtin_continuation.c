@@ -581,6 +581,10 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 
 	muse_cell handlers = trap->handlers;
 
+	/* The trap point state must be redefined to the previous
+	one because if an exception is raised within a handler,
+	it must evaluate it w.r.t. the try block that encloses
+	the try block in which the first exception was raised. */
 	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 
 	while ( handlers )
@@ -622,6 +626,8 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 			}
 
 			handlers = trap->handlers;
+
+			/* See note above on similar line. */
 			_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 		}
 	}
