@@ -573,9 +573,11 @@ muse_cell fn_try( muse_env *env, void *context, muse_cell args )
  * In the latter case, the process is terminated with an "unhandled exception"
  * error.
  */
-static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handler_args )
+static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 {
 	muse_cell sym_trap_point = muse_builtin_symbol( MUSE_TRAP_POINT );
+
+	muse_cell trapval = muse_symbol_value( sym_trap_point );
 
 	trap_point_t *trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
 
@@ -661,7 +663,7 @@ muse_cell fn_raise( muse_env *env, void *context, muse_cell args )
 
 	if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
 	{
-		return try_handlers( env, muse_symbol_value( muse_builtin_symbol( MUSE_TRAP_POINT ) ), handler_args );
+		return try_handlers( env, handler_args );
 	}
 	else
 	{
