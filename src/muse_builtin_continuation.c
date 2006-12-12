@@ -617,7 +617,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 
 			if ( trap == NULL )
 			{
-				handlers = NULL;
+				handlers = MUSE_NIL;
 				break;
 			}
 
