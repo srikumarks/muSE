@@ -442,7 +442,13 @@ static void trap_point_init( void *p, muse_cell args )
 {
 	trap_point_t *trap = (trap_point_t*)p;
 
-	trap->handlers = args;
+	/* We're evaluating the list of handlers here. This is
+	fairly expensive to simply enter a try block. We either accept
+	this overhead or accept the overhead of capturing a full 
+	continuation at the point at which the exception is raised
+	in order to get resumable exceptions. */
+	trap->handlers = muse_eval_list(args);
+
 	trap->prev = muse_symbol_value( muse_builtin_symbol( MUSE_TRAP_POINT ) );
 }
 
@@ -486,10 +492,12 @@ static muse_functional_object_type_t g_trap_point_type =
  *
  * First it tries to evaluate the given \c expr. If the expression
  * raised an exception using (raise...), then each of the handlers
- * is tried in turn until one matches. The handlers are expected to
- * be in-place values. They are not evaluated when entering a try
- * block or when an exception is raised, so you *must* use the 
- * read-time expansion facility to define handlers for a try block.
+ * is tried in turn until one matches. The handlers are evaluated
+ * at the time the try block is entered, not when an exception is 
+ * raised, so for efficiency reasons you should always use
+ * in-place handlers (using the macro brace facility) which do not
+ * refer to the lexical context of the try block if possible and
+ * use closures for handlers only when you absolutely need them.
  * 
  * A handler can be a function expression - like {fn args expr} or
  * {fn: args expr}. If it is such an expression, each handler is
@@ -573,6 +581,8 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 
 	muse_cell handlers = trap->handlers;
 
+	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+
 	while ( handlers )
 	{
 		/* Note that handlers are expected to be in-place values,
@@ -588,7 +598,6 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 			if ( muse_bind_formals( formals, handler_args ) )
 			{
 				muse_cell result;
-				_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 				result = muse_do(_tail(h));
 				_unwind_bindings(bsp);
 				resume_invoke( env, &(trap->escape), result );
@@ -613,6 +622,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell trapval, muse_cell handl
 			}
 
 			handlers = trap->handlers;
+			_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 		}
 	}
 
