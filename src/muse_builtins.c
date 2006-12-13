@@ -730,7 +730,7 @@ muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (spawn (fn (pid . _) ...) [attention]) -> pid
+ * (spawn (fn () ...) [attention]) -> pid
  * Spawns a new process which will evaluate the given thunk until
  * it returns T.
  */
