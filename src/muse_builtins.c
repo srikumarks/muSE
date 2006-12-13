@@ -139,6 +139,7 @@ static const struct _builtins
 
 /************** Ports ***************/
 {		L"spawn",		fn_spawn			},
+{		L"this-process", fn_this_process	},
 {		L"atomic",		fn_atomic			},
 {		L"receive",		fn_receive			},
 {		L"run",			fn_run				},
@@ -718,6 +719,14 @@ muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell filename = muse_evalnext(&args);
 	return muse_link_plugin( muse_text_contents( filename, NULL ), args );
+}
+
+/**
+ * Evaluates to the pid of the process in which it is evaluated.
+ */
+muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
+{
+	return process_id( env->current_process );
 }
 
 /**
