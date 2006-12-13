@@ -13,7 +13,7 @@
 #define __MUSE_CONFIG_H__
 
 #define MUSE_VERSION 0x0002
-#define MUSE_VERSION_STRING "0.2a"
+#define MUSE_VERSION_STRING "0.2cp"
 
 #ifndef FUSSY_RELEASE
 /*	To enable FUSSY_RELEASE builds, uncomment the following #define. */

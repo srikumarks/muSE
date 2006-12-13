@@ -1271,7 +1271,7 @@ muse_boolean run_process( muse_env *env )
 		do
 		{
 			int sp = _spos();
-			result = muse_apply( env->current_process->thunk, env->current_process->mailbox, MUSE_TRUE );
+			result = muse_apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
 			_unwind(sp);
 		} while ( !result );
 
