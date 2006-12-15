@@ -37,51 +37,13 @@ static void anonymize_formals( muse_cell syms )
 				anonymize_formals( _tail(syms) );
 			}
 			break;
+		case MUSE_LAMBDA_CELL :
+			/* This is the case of a guarded pattern. 
+			Anonymize the lambda's argument pattern. */
+			anonymize_formals( _head(syms) );
+			break;
+
 		default:;
-	}
-}
-
-static muse_cell unanonymize_formals( muse_cell formals )
-{
-	if ( formals <= 0 )
-		return formals;
-	
-	switch ( _cellt(formals) )
-	{
-		case MUSE_SYMBOL_CELL :
-			return muse_popdef(formals);
-		case MUSE_CONS_CELL :
-			if ( _isquote( _head(formals) ) )
-				return formals;
-			else
-				return muse_cons( unanonymize_formals(_head(formals)), 
-								  unanonymize_formals(_tail(formals)) );
-		default:
-			return formals;
-	}
-}
-
-static void unanonymize_formals_nocons( muse_cell formals )
-{
-	if ( formals <= 0 )
-		return;
-	
-	switch ( _cellt(formals) )
-	{
-		case MUSE_SYMBOL_CELL :
-			muse_popdef(formals);
-			return;
-		case MUSE_CONS_CELL :
-			if ( _isquote( _head(formals) ) )
-				return;
-			else
-			{
-				unanonymize_formals_nocons(_head(formals));
-				unanonymize_formals_nocons(_tail(formals));
-				return;
-			}
-		default:
-			return;
 	}
 }
 
@@ -92,14 +54,6 @@ static void anonymize_letvars( muse_cell bindings )
 	{
 		anonymize_formals( _head(_next(&bindings)) );
 		_unwind(sp);
-	}
-}
-
-static void unanonymize_letvars( muse_cell bindings )
-{
-	while ( bindings )
-	{
-		unanonymize_formals_nocons( _head(_next(&bindings)) );
 	}
 }
 
