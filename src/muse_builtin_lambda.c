@@ -40,7 +40,7 @@ static void anonymize_formals( muse_cell syms )
 		case MUSE_LAMBDA_CELL :
 			/* This is the case of a guarded pattern. 
 			Anonymize the lambda's argument pattern. */
-			anonymize_formals( _head(syms) );
+			anonymize_formals( _quq(_head(syms)) );
 			break;
 
 		default:;
