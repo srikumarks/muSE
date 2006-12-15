@@ -33,6 +33,9 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
  * 
+ * Version 0.2cp adds support for Erlang style processes and
+ * resumable exception handling.
+ *
  * @section Objects Basic objects
  * 
  * Everything in muSE is built from the following set of objects -
@@ -75,9 +78,10 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_StructuringCode Structuring code
  *	- \ref fn_define "define", \ref syntax_let "let", \ref syntax_do "do"
  * 	- \ref syntax_lambda "fn", \ref syntax_block "fn:"
+ *	- \ref syntax_do "do", \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
- * 	- \ref syntax_while "while", \ref syntax_for "for"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
+ *	- \ref syntax_try "try", \ref fn_raise "raise"
  * 
  * @subsection ML_MathOps Mathematical operators
  *	- Binary operators 
@@ -103,6 +107,10 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- \ref fn_write "write"
  * 	- \ref fn_read "read"
  *	- \ref fn_open_file "open-file"
+ *
+ * @subsection ML_Processes Processes
+ *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic"
+ *	- \ref fn_run "run", \ref fn_this_process "this-process",
  */
  
 /**

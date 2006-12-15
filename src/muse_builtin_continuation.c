@@ -494,13 +494,16 @@ static muse_functional_object_type_t g_trap_point_type =
  * raised an exception using (raise...), then each of the handlers
  * is tried in turn until one matches. The handlers are evaluated
  * at the time the try block is entered, not when an exception is 
- * raised, so for efficiency reasons you should always use
+ * raised, so for efficiency reasons you should use
  * in-place handlers (using the macro brace facility) which do not
  * refer to the lexical context of the try block if possible and
  * use closures for handlers only when you absolutely need them.
+ * If your handlers are predetermined before entering the try block
+ * and you only need to evaluate a symbol to get at the handlers,
+ * then entering a try block is efficient.
  * 
- * A handler can be a function expression - like {fn args expr} or
- * {fn: args expr}. If it is such an expression, each handler is
+ * A handler can be a function expression - like (fn args expr) or
+ * (fn: args expr). If it is such an expression, each handler is
  * tried in turn until the argument pattern of one of the handlers
  * matches the raised exception. The body of the handler whose
  * arguments matched the exception is evaluated and the result
@@ -534,12 +537,18 @@ static muse_functional_object_type_t g_trap_point_type =
  * least overhead and are usually sufficiently general.
  * For example -
  * @code
- *  (try (if (> a b) (raise 'NotInOrder a b) (- b a))
- *       {fn: (e 'NotInOrder a b) (e (- a b))}
- *   )
+ * (try 
+ *   (do (write "Difference = "
+ *         (if (< a b)
+ * 	           (- b a)
+ *             (raise 'NotInOrder a b)))
+ *       (write "Product = " (* a b)))
+ *       
+ *   {fn: (ex 'NotInOrder x y)
+ * 	      (ex (- x y))})
  * @endcode
  */
-muse_cell fn_try( muse_env *env, void *context, muse_cell args ) 
+muse_cell syntax_try( muse_env *env, void *context, muse_cell args ) 
 {
 	muse_cell trapval = muse_mk_functional_object( &g_trap_point_type, _tail(args) );
 
@@ -640,7 +649,8 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 }
 
 /**
- * (raise ...)
+ * (raise [exception-details])
+ *
  * Raises an exception described by the given arguments. Handlers are
  * matched against the pattern of arguments to determine which handler
  * to use to handle the exception. It is useful to use a quoted symbol
@@ -648,12 +658,12 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
  * then specify the same quoted symbol as its second argument in order
  * to get to handle the exception.
  *
- * (raise..) evaluates the matching handler without unwinding the stack
- * to the point of the try block. This means any raised exception can be
+ * (raise..) evaluates the matching handler without unwinding
+ * to the enclosing try block. This means any raised exception can be
  * resumed by invoking the exception object (passed as the first argument
  * to the handler) with the resume value as the argument.
  *
- * @see fn_try
+ * @see syntax_try
  */ 
 muse_cell fn_raise( muse_env *env, void *context, muse_cell args ) 
 {

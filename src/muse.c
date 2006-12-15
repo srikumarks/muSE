@@ -1481,7 +1481,7 @@ void enter_atomic()
 /**
  * Leaves the current atomic block that should be evaluated
  * without switching to another process. Atomic blocks can be
- * nested, but must always be matched. Use the fn_atomic
+ * nested, but must always be matched. Use the syntax_atomic
  * muSE function to mark an atomic do block.
  */
 void leave_atomic()

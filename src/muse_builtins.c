@@ -30,7 +30,7 @@ static const struct _builtins
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
 {		L"call/cc",		fn_callcc			},
-{		L"try",			fn_try				},
+{		L"try",			syntax_try				},
 {		L"raise",		fn_raise			},
 
 /************** Property list and alist functions ***************/
@@ -140,7 +140,7 @@ static const struct _builtins
 /************** Ports ***************/
 {		L"spawn",		fn_spawn			},
 {		L"this-process", fn_this_process	},
-{		L"atomic",		fn_atomic			},
+{		L"atomic",		syntax_atomic			},
 {		L"receive",		fn_receive			},
 {		L"run",			fn_run				},
 
@@ -730,9 +730,16 @@ muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (spawn (fn () ...) [attention]) -> pid
- * Spawns a new process which will evaluate the given thunk until
- * it returns T.
+ * (spawn (fn () [body]) [attention]) -> pid
+ *
+ * Spawns a new process which will repeatedly evaluate the given thunk until
+ * it evaluates to T. The (optional) attention value is a positive integer
+ * giving the number of reductions to perform in the created process
+ * before yielding to other processes. The default value is 10.
+ *
+ * The result of the spawn expression is a pid using which you can
+ * identify the created process and send messages to it by using the
+ * pid as a normal function.
  */
 muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
 {
@@ -745,11 +752,13 @@ muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (atomic ...)
- * Behaves like do, but executes the entire body atomically,
- * without switching to another process.
+ * (atomic [body])
+ *
+ * Behaves like \ref syntax_do "do", but evaluates the entire body atomically,
+ * i.e. without switching to another process, as long as you don't use the
+ * pausing functions \ref fn_receive "receive" and \ref fn_run "run".
  */
-muse_cell fn_atomic( muse_env *env, void *context, muse_cell args )
+muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell result = MUSE_NIL;
 	enter_atomic();
@@ -759,12 +768,19 @@ muse_cell fn_atomic( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (receive)
- * (receive pid)
- * (receive timeout_us)
- * (receive pid timeout_us)
+ * (receive [pid] [timeout-us])
+ *
+ * Waits for and returns the next message in the process' mailbox.
+ * It has four forms -
+ *	- (receive)
+ *	- (receive pid)
+ *	- (receive timeout-us)
+ *	- (receive pid timeout-us)
  * 
- * Waits for and returns the next message
+ * If a process-id is given as the argument, it waits until a message is 
+ * received from that specific process. If a timeout value (in microseconds) 
+ * is given, it waits until either a message is received or the timeout expires. 
+ * If the timeout expired, the receive expression evaluates to MUSE_NIL - i.e. to ().
  */
 muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 {
@@ -851,10 +867,10 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (run)
- * (run duration-us)
+ * - (run)
+ * - (run duration-us)
  *
- * The first version never returns and keeps running all processes.
+ * The first version never terminates and keeps running all processes.
  * The second version runs for the given duration (in microseconds).
  */
 muse_cell fn_run( muse_env *env, void *context, muse_cell args )

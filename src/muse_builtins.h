@@ -30,7 +30,7 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args );
 muse_cell fn_apply( muse_env *env, void *context, muse_cell args );
 muse_cell fn_eval( muse_env *env, void *context, muse_cell args );
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
-muse_cell fn_try( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_try( muse_env *env, void *context, muse_cell args );
 muse_cell fn_raise( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
@@ -144,7 +144,7 @@ muse_cell fn_exit( muse_env *env, void *context, muse_cell args );
 /*@{*/
 muse_cell fn_spawn( muse_env *env, void *context, muse_cell args );
 muse_cell fn_this_process( muse_env *env, void *context, muse_cell args );
-muse_cell fn_atomic( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args );
 muse_cell fn_receive( muse_env *env, void *context, muse_cell args );
 muse_cell fn_run( muse_env *env, void *context, muse_cell args );
 /*@}*/

@@ -1,10 +1,10 @@
-# Doxyfile 1.4.7
+# Doxyfile 1.4.6
 
 #---------------------------------------------------------------------------
 # Project related configuration options
 #---------------------------------------------------------------------------
 PROJECT_NAME           = muSE
-PROJECT_NUMBER         = 0.2a
+PROJECT_NUMBER         = 0.2cp
 OUTPUT_DIRECTORY       = doc
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
@@ -45,14 +45,14 @@ SUBGROUPING            = YES
 #---------------------------------------------------------------------------
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = YES
-EXTRACT_STATIC         = YES
+EXTRACT_STATIC         = NO
 EXTRACT_LOCAL_CLASSES  = YES
 EXTRACT_LOCAL_METHODS  = NO
 HIDE_UNDOC_MEMBERS     = YES
 HIDE_UNDOC_CLASSES     = NO
 HIDE_FRIEND_COMPOUNDS  = NO
-HIDE_IN_BODY_DOCS      = NO
-INTERNAL_DOCS          = YES
+HIDE_IN_BODY_DOCS      = YES
+INTERNAL_DOCS          = NO
 CASE_SENSE_NAMES       = YES
 HIDE_SCOPE_NAMES       = NO
 SHOW_INCLUDE_FILES     = YES
@@ -105,7 +105,6 @@ INLINE_SOURCES         = NO
 STRIP_CODE_COMMENTS    = YES
 REFERENCED_BY_RELATION = YES
 REFERENCES_RELATION    = YES
-REFERENCES_LINK_SOURCE = YES
 USE_HTAGS              = NO
 VERBATIM_HEADERS       = YES
 #---------------------------------------------------------------------------
@@ -218,11 +217,10 @@ TEMPLATE_RELATIONS     = NO
 INCLUDE_GRAPH          = YES
 INCLUDED_BY_GRAPH      = YES
 CALL_GRAPH             = NO
-CALLER_GRAPH           = NO
 GRAPHICAL_HIERARCHY    = YES
 DIRECTORY_GRAPH        = YES
 DOT_IMAGE_FORMAT       = png
-DOT_PATH               = /Applications/Graphviz.app/Contents/MacOS
+DOT_PATH               = 
 DOTFILE_DIRS           = 
 MAX_DOT_GRAPH_WIDTH    = 1024
 MAX_DOT_GRAPH_HEIGHT   = 1024
