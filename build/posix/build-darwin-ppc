@@ -1,0 +1,5 @@
+#!/bin/sh
+echo Building muSE ...
+gcc -o muse -O3 -DNDEBUG -D__DARWIN_PPC__ -fasm-blocks ../../src/*.c
+echo ... done
+echo Output file - muse

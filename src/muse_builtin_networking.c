@@ -32,6 +32,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	include <unistd.h>
 #	include <signal.h>
 #	include <sys/socket.h>
+#	include <sys/filio.h>
 #	include <netinet/in.h>
 #	include <arpa/inet.h>
 #	define SOCKET int

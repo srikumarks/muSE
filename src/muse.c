@@ -1200,7 +1200,7 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 		jump to when entering the process and it'll be decremented
 		as more items gets pushed onto it. */
 		init_stack( &p->cstack, env->parameters[MUSE_STACK_SIZE] );
-		p->cstack.top = p->cstack.bottom + p->cstack.size - 1;
+		p->cstack.top = p->cstack.bottom + p->cstack.size - 4;
 	}
 	else
 	{

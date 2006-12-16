@@ -24,6 +24,18 @@
 
 typedef long long longlong_t;
 
+#ifdef __DARWIN_PPC__
+#	define SAVE_STACK_POINTER( var ) void *var = NULL; asm { stw r1, var; }
+
+#	define CHANGE_STACK_POINTER(sp_value) \
+        	                        do\
+                	                {\
+									void *new_sp = (void*)(sp_value);\
+									asm { lwz r1, new_sp; };\
+                                	}\
+                                	while(0)
+#endif
+
 #define MUSE_PLATFORM_POSIX 1
 
 #endif
