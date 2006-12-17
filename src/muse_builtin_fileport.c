@@ -117,7 +117,7 @@ static size_t fileport_read( void *buffer, size_t nbytes, void *port )
 
 	{
 		/* Read the requested number of bytes into the given target buffer. */
-		size_t bytes_read = read( p->desc, buffer, (unsigned int)nbytes );
+		size_t bytes_read = fread( buffer, 1, nbytes, p->file );
 
 		return bytes_read;
 	}
@@ -129,7 +129,7 @@ static size_t fileport_write( void *buffer, size_t nbytes, void *port )
 
 	muse_assert( p->file != NULL );
 	
-	return write( p->desc, buffer, (unsigned int)nbytes );
+	return fwrite( buffer, 1, nbytes, p->file );
 }
 
 static int fileport_flush( void *port )
@@ -332,6 +332,7 @@ muse_port_t muse_assign_port( FILE *f, int mode )
 	
 	if ( mode & MUSE_PORT_READ )
 	{
+		port->base.in.fpos = ftell(port->file);
 		discard_utf8_header(port);
 		check_for_ezscheme_file(port);
 	}
@@ -344,6 +345,7 @@ muse_port_t muse_assign_port( FILE *f, int mode )
 
 	if ( mode & MUSE_PORT_WRITE )
 	{
+		port->base.out.fpos = ftell(port->file);
 		write_utf8_header( port );
 	}
 
