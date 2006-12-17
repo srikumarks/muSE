@@ -244,6 +244,10 @@ static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
 	}
 }
 
+#if MUSE_PLATFORM_WINDOWS
+unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
+#endif
+
 /**
  * Usage:
  * A)	fullpath-to-muse/muse --exec execfile source1.scm source2.scm ...
@@ -271,23 +275,23 @@ int main( int argc, char **argv )
 {
 	muse_env *env = muse_init_env(NULL);
 	
+#if MUSE_PLATFORM_WINDOWS
+	const char execpath[1024];
+	{
+		/* Under Windows, GetModuleFileName always works and will 
+		always return the full executable path, whereas the argv[0] 
+		can be a truncated path. */
+		int len = (int)GetModuleFileNameA( NULL, execpath, 1024 );
+		muse_assert( len > 0 );
+		printf( "execpath ='%s'\n", execpath );
+	}
+#else
+	const char *execpath = argv[0];
+#endif
+
 	/* If we've been asked to create an executable, do so. */
 	if ( argc > 1 && strcmp( argv[1], k_args_exec_switch ) == 0 )
 	{
-		
-#if MUSE_PLATFORM_WINDOWS
-		const char execpath[1024];
-		{
-			/* Under Windows, GetModulePath is more reliable and will
-			always return the full executable path, whereas the argv[0]
-			can be a truncated path. */
-			int len = (int)GetModulePathA( NULL, execpath, 1024 );
-			muse_assert( len > 0 );
-		}
-#else
-		const char *execpath = argv[0];
-#endif
-		
 		/* When passing arguments, skip the exec path as well as the
 		   "--exec" switch. */
 		create_exec( execpath, argc-2, argv+2 );
@@ -295,7 +299,7 @@ int main( int argc, char **argv )
 	
 	/* Check if this is a muSE executable that has
 	source code at the end of the file. */
-	else if ( load_exec( argv[0] ) )
+	else if ( load_exec( execpath ) )
 	{
 		/* Evaluate the main function, creating a list
 		of strings out of the remaining arguments. */
