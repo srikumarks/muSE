@@ -248,6 +248,58 @@ static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
 unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
 #endif
 
+static void get_execpath( const char *suggestion, char *result, int size )
+{
+	strcpy( result, suggestion );
+	
+	#if MUSE_PLATFORM_WINDOWS
+	{
+		/* Under Windows, GetModuleFileName always works and will 
+		always return the full executable path, whereas the argv[0] 
+		can be a truncated path. */
+		int len = (int)GetModuleFileNameA( NULL, result, size );
+		muse_assert( len > 0 );
+	}
+	#else
+	{
+		FILE *e = fopen( suggestion, "rb" );
+		if ( e == NULL )
+		{
+			/* Get the full path name using the "which" command. */
+			char cmd[256];
+			sprintf( cmd, "which \"%s\"", suggestion );
+			FILE *p = popen( cmd, "r" );
+			if ( p != NULL )
+			{
+				if ( fgets( result, size, p ) )
+				{
+					/* Trim ending spaces, tabs and newlines. */
+					int len;
+					result[size-1] = '\0';
+					len = strlen(result);
+					while ( isspace( result[len-1] ) ) 
+						result[--len] = '\0';
+					
+					/* Check whether which returned a valid file path. */
+					FILE *wf = fopen( result, "rb" );
+					if ( wf == NULL )
+						strcpy( result, suggestion ); /* which gave us an invalid answer. */
+					else
+						fclose(wf);
+				}
+				
+				pclose(p);
+			}
+		}
+		else
+		{
+			/* Succeeded. The suggestion is valid. */
+			fclose(e);
+		}
+	}
+	#endif
+}
+
 /**
  * Usage:
  * A)	fullpath-to-muse/muse --exec execfile source1.scm source2.scm ...
@@ -273,21 +325,10 @@ unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
  */
 int main( int argc, char **argv )
 {
+	char execpath[1024];
 	muse_env *env = muse_init_env(NULL);
 	
-#if MUSE_PLATFORM_WINDOWS
-	const char execpath[1024];
-	{
-		/* Under Windows, GetModuleFileName always works and will 
-		always return the full executable path, whereas the argv[0] 
-		can be a truncated path. */
-		int len = (int)GetModuleFileNameA( NULL, execpath, 1024 );
-		muse_assert( len > 0 );
-		printf( "execpath ='%s'\n", execpath );
-	}
-#else
-	const char *execpath = argv[0];
-#endif
+	get_execpath( argv[0], execpath, 1024 );
 
 	/* If we've been asked to create an executable, do so. */
 	if ( argc > 1 && strcmp( argv[1], k_args_exec_switch ) == 0 )
