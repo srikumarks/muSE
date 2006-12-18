@@ -113,32 +113,31 @@ static size_t fileport_read( void *buffer, size_t nbytes, void *port )
 {
 	fileport_t *p = (fileport_t*)port;
 
-	muse_assert( p->file != NULL );
-
-	{
-		/* Read the requested number of bytes into the given target buffer. */
-		size_t bytes_read = fread( buffer, 1, nbytes, p->file );
-
-		return bytes_read;
-	}
+	/* Read the requested number of bytes into the given target buffer. */
+	if ( p->file )
+		return fread( buffer, 1, nbytes, p->file );
+	else 
+		return read( p->desc, buffer, nbytes );
 }
 
 static size_t fileport_write( void *buffer, size_t nbytes, void *port )
 {
 	fileport_t *p = (fileport_t*)port;
-
-	muse_assert( p->file != NULL );
 	
-	return fwrite( buffer, 1, nbytes, p->file );
+	if ( p->file )
+		return fwrite( buffer, 1, nbytes, p->file );
+	else
+		return write( p->desc, buffer, nbytes );
 }
 
 static int fileport_flush( void *port )
 {
 	fileport_t *p = (fileport_t*)port;
 
-	muse_assert( p->file != NULL);
-
-	return fflush( p->file );
+	if ( p->file )
+		return fflush( p->file );
+	else
+		return 0;
 }
 
 static fileport_type_t g_fileport_type =
@@ -280,10 +279,6 @@ void muse_define_builtin_fileport()
 	g_fileport_type.sym_write = 
 		g_port_type_stdout.sym_write = 
 		g_port_type_stdin.sym_write = muse_csymbol(L"for-writing");
-
-	g_muse_stdports[0].file	= stdin;
-	g_muse_stdports[1].file	= stdout;
-	g_muse_stdports[2].file	= stderr;
 
 	port_init( (muse_port_t)&g_muse_stdports[0] );
 	port_init( (muse_port_t)&g_muse_stdports[1] );
