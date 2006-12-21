@@ -1416,7 +1416,7 @@ muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
  * Used to send asynchronous messages to a process.
  * Also serves as its process ID.
  */
-static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
+muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 {
 	int sp = _spos();
 
@@ -1429,18 +1429,9 @@ static muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args 
 		the result to the message queue of our process. */
 		muse_cell msg = muse_cons( process_id(env->current_process), muse_eval_list(args) );
 
-		muse_cell msg_entry = muse_cons( msg, MUSE_NIL );
-
-		muse_set_tail( p->mailbox_end, msg_entry );
-		p->mailbox_end = msg_entry;
+		post_message( p, msg );
 
 		_unwind(sp);
-
-		if ( p->state_bits & MUSE_PROCESS_WAITING )
-		{
-			if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(env->current_process) )
-				p->state_bits = MUSE_PROCESS_RUNNING;
-		}
 
 		return muse_builtin_symbol( MUSE_T );
 	}
@@ -1487,4 +1478,24 @@ void enter_atomic()
 void leave_atomic()
 {
 	_env()->current_process->atomicity--;
+}
+
+/**
+ * Appends the given message (which, in general, should include the 
+ * sending process's pid at the head) to the mailbox of the given 
+ * process. 
+ */
+void post_message( muse_process_frame_t *p, muse_cell msg )
+{
+	muse_cell msg_entry = muse_cons( msg, MUSE_NIL );
+
+	_sett( p->mailbox_end, msg_entry );
+
+	p->mailbox_end = msg_entry;
+
+	if ( p->state_bits & MUSE_PROCESS_WAITING )
+	{
+		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(p) )
+			p->state_bits = MUSE_PROCESS_RUNNING;
+	}
 }

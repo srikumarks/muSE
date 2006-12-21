@@ -485,7 +485,8 @@ muse_boolean remove_process( muse_env *env, muse_process_frame_t *process );
 muse_cell process_id( muse_process_frame_t *process );
 muse_boolean is_main_process( muse_env *env );
 void mark_process( muse_process_frame_t *p );
-static muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
+muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
+void post_message( muse_process_frame_t *process, muse_cell msg );
 void enter_atomic();
 void leave_atomic();
 

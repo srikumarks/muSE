@@ -140,9 +140,11 @@ static const struct _builtins
 /************** Ports ***************/
 {		L"spawn",		fn_spawn			},
 {		L"this-process", fn_this_process	},
-{		L"atomic",		syntax_atomic			},
+{		L"atomic",		syntax_atomic		},
 {		L"receive",		fn_receive			},
 {		L"run",			fn_run				},
+{		L"post",		fn_post				},
+{		L"process?",	fn_process_p		},
 
 /************** Miscellaneous **************/
 {		L"format",					fn_format					},
@@ -885,4 +887,66 @@ muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
 
 	return MUSE_NIL;
+}
+
+/* Checks whether the given thing is a process id. */
+static muse_cell is_pid( muse_cell pid )
+{
+	if ( pid && _cellt(pid) == MUSE_NATIVEFN_CELL && _ptr(pid)->fn.fn == fn_pid )
+		return pid;
+	else
+		return MUSE_NIL;
+}
+
+/**
+ * (post msg [pid])
+ *
+ * Allows you to post an arbitrary sexpr as a message to the current process.
+ * The primary intended use for this function is to postpone the processing of
+ * a message in situations where how to process it cannot be determined at
+ * the time the message is received. If you supply an optional pid, a message can
+ * be diverted to another process without modification.
+ *
+ * Ex: Postponing the processing of a message -
+ * @code
+ * (case (receive)
+ *    (pattern-1 ....)
+ *    (pattern-2 ....)
+ *    ...
+ *    (any (post any)))
+ * @endcode
+ */
+muse_cell fn_post( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell msg = muse_evalnext(&args);
+
+	if ( args )
+	{
+		/* We've been given a pid to post to. */
+		muse_cell pid = muse_evalnext(&args);
+
+		MUSE_DIAGNOSTICS({
+			if ( !is_pid(pid) )
+				muse_message( L"(post msg >>[pid]<<)", L"Expected a process id as the second argument.\nGot\n\t%m\ninstead.", pid );
+		});
+
+		post_message( (muse_process_frame_t*)(_ptr(pid)->fn.context), msg );
+	}
+	else
+	{
+		/* Post to the current process. */
+		post_message( env->current_process, msg );
+	}
+
+	return MUSE_NIL;
+}
+
+/**
+ * (process? pid)
+ *
+ * Evaluates to pid if it is a valid process id. Evaluates to () if it isn't.
+ */
+muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
+{
+	return is_pid( muse_evalnext(&args) );
 }
