@@ -245,14 +245,8 @@ static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
 }
 
 #if MUSE_PLATFORM_WINDOWS
-unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
-#endif
-
-static void get_execpath( const char *suggestion, char *result, int size )
-{
-	strcpy( result, suggestion );
-	
-	#if MUSE_PLATFORM_WINDOWS
+	unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
+	static void get_execpath( const char *suggestion, char *result, int size )
 	{
 		/* Under Windows, GetModuleFileName always works and will 
 		always return the full executable path, whereas the argv[0] 
@@ -260,45 +254,49 @@ static void get_execpath( const char *suggestion, char *result, int size )
 		int len = (int)GetModuleFileNameA( NULL, result, size );
 		muse_assert( len > 0 );
 	}
-	#else
+#else
+	static void get_execpath( const char *suggestion, char *result, int size )
 	{
-		FILE *e = fopen( suggestion, "rb" );
-		if ( e == NULL )
+		strcpy( result, suggestion );
+		
 		{
-			/* Get the full path name using the "which" command. */
-			char cmd[256];
-			sprintf( cmd, "which \"%s\"", suggestion );
-			FILE *p = popen( cmd, "r" );
-			if ( p != NULL )
+			FILE *e = fopen( suggestion, "rb" );
+			if ( e == NULL )
 			{
-				if ( fgets( result, size, p ) )
+				/* Get the full path name using the "which" command. */
+				char cmd[256];
+				sprintf( cmd, "which \"%s\"", suggestion );
+				FILE *p = popen( cmd, "r" );
+				if ( p != NULL )
 				{
-					/* Trim ending spaces, tabs and newlines. */
-					int len;
-					result[size-1] = '\0';
-					len = strlen(result);
-					while ( isspace( result[len-1] ) ) 
-						result[--len] = '\0';
+					if ( fgets( result, size, p ) )
+					{
+						/* Trim ending spaces, tabs and newlines. */
+						int len;
+						result[size-1] = '\0';
+						len = strlen(result);
+						while ( isspace( result[len-1] ) ) 
+							result[--len] = '\0';
+						
+						/* Check whether which returned a valid file path. */
+						FILE *wf = fopen( result, "rb" );
+						if ( wf == NULL )
+							strcpy( result, suggestion ); /* which gave us an invalid answer. */
+						else
+							fclose(wf);
+					}
 					
-					/* Check whether which returned a valid file path. */
-					FILE *wf = fopen( result, "rb" );
-					if ( wf == NULL )
-						strcpy( result, suggestion ); /* which gave us an invalid answer. */
-					else
-						fclose(wf);
+					pclose(p);
 				}
-				
-				pclose(p);
+			}
+			else
+			{
+				/* Succeeded. The suggestion is valid. */
+				fclose(e);
 			}
 		}
-		else
-		{
-			/* Succeeded. The suggestion is valid. */
-			fclose(e);
-		}
 	}
-	#endif
-}
+#endif
 
 /**
  * Usage:
