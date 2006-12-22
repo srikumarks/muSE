@@ -590,61 +590,64 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 
 	trap_point_t *trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
 
-	muse_cell handlers = trap->handlers;
-
-	/* The trap point state must be redefined to the previous
-	one because if an exception is raised within a handler,
-	it must evaluate it w.r.t. the try block that encloses
-	the try block in which the first exception was raised. */
-	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
-
-	while ( handlers )
+	if ( trap )
 	{
-		/* Note that handlers are expected to be in-place values,
-		defined using macro braces. */
-		muse_cell h = _next(&handlers);
+		muse_cell handlers = trap->handlers;
 
-		if ( _cellt(h) == MUSE_LAMBDA_CELL )
+		/* The trap point state must be redefined to the previous
+		one because if an exception is raised within a handler,
+		it must evaluate it w.r.t. the try block that encloses
+		the try block in which the first exception was raised. */
+		_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+
+		while ( handlers )
 		{
-			/* A handler needs to be examined. */
-			muse_cell formals = _quq(_head(h));
-			int bsp = _bspos();
+			/* Note that handlers are expected to be in-place values,
+			defined using macro braces. */
+			muse_cell h = _next(&handlers);
 
-			if ( muse_bind_formals( formals, handler_args ) )
+			if ( _cellt(h) == MUSE_LAMBDA_CELL )
 			{
-				muse_cell result;
-				result = muse_do(_tail(h));
-				_unwind_bindings(bsp);
-				resume_invoke( env, &(trap->escape), result );
+				/* A handler needs to be examined. */
+				muse_cell formals = _quq(_head(h));
+				int bsp = _bspos();
+
+				if ( muse_bind_formals( formals, handler_args ) )
+				{
+					muse_cell result;
+					result = muse_do(_tail(h));
+					_unwind_bindings(bsp);
+					resume_invoke( env, &(trap->escape), result );
+				}
 			}
-		}
-		else
-		{
-			/* The "handler" itself is the result of the try block. */
-			resume_invoke( env, &(trap->escape), h );
-		}
-
-		/* Switch to handlers of shallower scopes if necessary. */
-		while ( !handlers )
-		{
-			trapval = trap->prev;
-			trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
-
-			if ( trap == NULL )
+			else
 			{
-				handlers = MUSE_NIL;
-				break;
+				/* The "handler" itself is the result of the try block. */
+				resume_invoke( env, &(trap->escape), h );
 			}
 
-			handlers = trap->handlers;
+			/* Switch to handlers of shallower scopes if necessary. */
+			while ( !handlers )
+			{
+				trapval = trap->prev;
+				trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
 
-			/* See note above on similar line. */
-			_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+				if ( trap == NULL )
+				{
+					handlers = MUSE_NIL;
+					break;
+				}
+
+				handlers = trap->handlers;
+
+				/* See note above on similar line. */
+				_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+			}
 		}
 	}
 
 	/* No handler succeeded in handling the exception. */
-	muse_message( L"Unhandled exception!", L"%m\nin process %m", _tail(handler_args), process_id(env->current_process) );
+	muse_message( L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
 	remove_process( env, env->current_process );
 }
 
