@@ -414,18 +414,32 @@ static muse_boolean hashtable_finder( void *self, void *what, muse_cell thing )
 }
 
 /**
- * (find object list) -> list.
+ * (find item collection) -> reference.
  *
- * Finds the list position whose head is an object that is
- * "equal" to the given one. If cannot be found, it returns ().
+ * \c find can be used to locate an object in a list, vector or hashtable.
+ * It uses muse_equal() to determine whether an object is present in the
+ * collection. 
+ *
+ * When used with a list as the collection, it evaluates to
+ * the sublist with the given object at the head - or \c () if
+ * the object is not present in the list.
+ *
+ * When used with a vector, it evaluates to the index of the object
+ * in the vector if it is present in the vector, or to \c () if it isn't.
+ *
+ * When used with a hashtable, it evaluates to the key for which the
+ * object is the value in the hashtable. If the object isn't there, it
+ * evaluates to \c ()/
  * 
- * For example -
+ * List example -
  * @code
- * (print (find 5 (list 1 2 3 4 5 6 7 8)))
+ * (print "Sub list = " (find 5 (list 1 2 3 4 5 6 7 8)))
+ * (print "Vector pos = " (find 5 (vector 1 2 3 4 5 6 7 8)))
  * @endcode
  * will print
  * @code
- * (5 6 7 8)
+ * Sub list = (5 6 7 8)
+ * Vector pos = 4
  * @endcode
  */
 muse_cell fn_find( muse_env *env, void *context, muse_cell args )
@@ -474,13 +488,17 @@ static muse_boolean ormapper( void *self, mapinfo_t *info, muse_cell thing )
 }
 
 /**
- * (andmap predicate list).
+ * (andmap predicate collection).
  *
- * Evaluates the predicate on each element of the list.
+ * Evaluates the predicate on each element of the collection.
+ * The collection can be a list, vector or a hashtable.
  * Returns T if everything satisfied the predicate and ()
  * if even one element didn't satisfy the predicate. If
  * an element didn't satisfy the predicate, \c andmap 
  * does not evaluate the predicate on subsequent elements.
+ *
+ * The predicate is a \c fn(x) for lists and vectors and should
+ * be a \c fn(key . value) for hashtables.
  */
 muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 {
@@ -499,12 +517,16 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (ormap predicate list).
+ * (ormap predicate collection).
  *
- * Evaluates the predicate on each element of the list.
+ * Evaluates the predicate on each element of the collection.
+ * The collection can be a list, vector or a hashtable.
  * Returns T if anything satisfied the predicate and () if nothing
  * did. If any one element satisfied the predicate, then \c ormap
  * does not evaluate the predicate on the other elements of the list.
+ *
+ * The predicate is a \c fn(x) for lists and vectors and should
+ * be a \c fn(key . value) for hashtables.
  */
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 {
@@ -524,11 +546,15 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (for-each fn list [result]).
+ * (for-each fn collection [result]).
  *
- * Same as fn_map(), but doesn't collect results into a list.
+ * Same as fn_map(), but doesn't collect results.
+ * The collection can be a list, vector or a hashtable.
  * You can optionally give a result expression which will be
  * used as the result of the \c for-each expression.
+ *
+ * The operation is a \c fn(x) for lists and vectors and should
+ * be a \c fn(key . value) for hashtables.
  */
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 {
