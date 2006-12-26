@@ -724,6 +724,8 @@ muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
 }
 
 /**
+ * (this-process)
+ *
  * Evaluates to the pid of the process in which it is evaluated.
  */
 muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
@@ -869,11 +871,12 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * - (run)
- * - (run duration-us)
+ * (run [duration-us])
  *
- * The first version never terminates and keeps running all processes.
- * The second version runs for the given duration (in microseconds).
+ * If the duration argument is omitted, the expression never terminates
+ * and the process becomes blocked. If a duration is given (in microseconds),
+ * the process yields time to other processes for at least that much
+ * time. There is no accuracy guarantee for the timing.
  */
 muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 {
@@ -889,7 +892,9 @@ muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
-/* Checks whether the given thing is a process id. */
+/**
+ * Checks whether the given thing is a process id. 
+ */
 static muse_cell is_pid( muse_cell pid )
 {
 	if ( pid && _cellt(pid) == MUSE_NATIVEFN_CELL && _ptr(pid)->fn.fn == fn_pid )
@@ -902,10 +907,18 @@ static muse_cell is_pid( muse_cell pid )
  * (post msg [pid])
  *
  * Allows you to post an arbitrary sexpr as a message to the current process.
- * The primary intended use for this function is to postpone the processing of
+ * The difference between using post and \ref fn_pid "pid" (as a function)
+ * is that when posting a message using \ref fn_pid "pid", the message consists
+ * of the argument list and the pid of the sending process is prepended to
+ * this list. If you use "post", the message is the first argument - as is.
+ * This means "post" is the only way to post, for example, a symbol or a number
+ * as the message itself.
+ *
+ * An important use for this function is to postpone the processing of
  * a message in situations where how to process it cannot be determined at
  * the time the message is received. If you supply an optional pid, a message can
- * be diverted to another process without modification.
+ * be diverted to another process without modification. In this case, the 
+ * message is not posted to the current process.
  *
  * Ex: Postponing the processing of a message -
  * @code
@@ -944,7 +957,7 @@ muse_cell fn_post( muse_env *env, void *context, muse_cell args )
 /**
  * (process? pid)
  *
- * Evaluates to pid if it is a valid process id. Evaluates to () if it isn't.
+ * Evaluates to \p pid if it is a valid process id and to <tt>()</tt> if it isn't.
  */
 muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
 {

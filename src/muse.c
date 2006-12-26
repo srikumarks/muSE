@@ -1171,6 +1171,46 @@ muse_functional_object_t *muse_functional_object_data( muse_cell fobj, int type_
 		return NULL;
 }
 
+/**
+ * @addtogroup Processes
+ */
+/*@{*/
+/**
+ * @defgroup Processes_impl Internals
+ *
+ * A muSE environment contains a circular list of processes called
+ * the "process ring" which it cycles through, spending a bit of
+ * attention on each process before switching to the next. Therefore
+ * a process that is not in the ring never gets run and one in the
+ * ring will always get a chance to run at some point as long as
+ * no process executes infinitely blocking code.
+ *
+ * A process's main task is to repeatedly evalaute a thunk until the thunk
+ * evaluates to a non-nil value, which is the thunk's way of saying "I'm done".
+ * This allows one to run server processes.
+ *
+ * Each process gets its own set of stacks (including a C-stack) and its own
+ * namespace so symbol definitions made within a process do not affect
+ * symbol definitions in other processes.
+ */
+/*@{*/
+
+/**
+ * Creates a new process and returns a pointer to the frame of the newly created process.
+ * The new process is initially in the "paused" state. It will not run initially because
+ * it is not yet part of the process ring - which is a circular list of processes
+ * that the evaluator cycles through in order. Call prime_process() to place a process
+ * in the ring.
+ *
+ * @param env The environment in which to create the new process.
+ * @param attention The number of reductions that this process can perform before
+ *					the evaluator switches to the next process.
+ * @param thunk The created process is setup to evaluate this thunk in a loop until
+ *				it evaluates to a non-nil value.
+ * @param sp You can optionally supply a C stack pointer that points to the base of
+ *			 the stack of the newly created process. When creating the main process
+ *			 structure, this pointer must be NULL.
+ */
 muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell thunk, void *sp )
 {
 	muse_process_frame_t *p = (muse_process_frame_t*)calloc( 1, sizeof(muse_process_frame_t) );
@@ -1218,6 +1258,11 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 	return p;
 }
 
+/**
+ * A process's mailbox is a linked list whose head gives the pid of the process.
+ * Messages are added to the mailbox at the tail of this linked list and popped
+ * off for processing at the head.
+ */
 muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
 {
 	/* Messages get appended at the end of the mailbox
@@ -1229,6 +1274,11 @@ muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
 	return p;
 }
 
+/**
+ * A function to wrap getting the process ID of a process from the
+ * process's frame structure. The process id is to be found at the
+ * head of the given process's mailbox.
+ */
 muse_cell process_id( muse_process_frame_t *p )
 {
 	return muse_head(p->mailbox);
@@ -1236,6 +1286,10 @@ muse_cell process_id( muse_process_frame_t *p )
 
 /**
  * Should be called after create_process to get it rolling.
+ * A newly created process (using create_process()) is not part of the 
+ * process ring until it is "primed" using this function. A "primed" process
+ * is initially in the "virgin" state. When the process is first switched to
+ * in switch_to_process(), it comes alive.
  */
 muse_boolean prime_process( muse_env *env, muse_process_frame_t *process )
 {
@@ -1261,6 +1315,12 @@ muse_boolean prime_process( muse_env *env, muse_process_frame_t *process )
 	return MUSE_TRUE;
 }
 
+/**
+ * Evaluates a process's thunk in a loop until the thunk 
+ * evaluates to a non-nil value. Once the thunk completes
+ * evaluation, the process dies and evaluation switches to
+ * the next process.
+ */
 muse_boolean run_process( muse_env *env )
 {
 	if ( env->current_process->cstack.size > 0 && env->current_process->thunk )
@@ -1282,6 +1342,18 @@ muse_boolean run_process( muse_env *env )
 		return MUSE_TRUE;
 }
 
+/**
+ * Immediately switches attention to the given process. If the given
+ * process is in the "virgin" state, run_process() is called on it.
+ * If the process is in the "paused" state, it checks whether the
+ * pause has timed out and if so switches to the process. If the process
+ * is still waiting, then it tries all processes in the process ring
+ * before giving the process another chance. 
+ *
+ * Note that switch_to_process() will always return \c MUSE_TRUE,
+ * - i.e. it will either block indefinitely or successfuly switch to the
+ * given process.
+ */
 muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 {
 	if ( env->current_process == process )
@@ -1350,6 +1422,10 @@ muse_boolean procrastinate( muse_env *env )
 		return MUSE_TRUE;
 }
 
+/**
+ * Used by muse_apply() to decrement the attention spent on the
+ * current process.
+ */
 void yield_process( int spent_attention )
 {
 	muse_process_frame_t *p = _env()->current_process;
@@ -1368,13 +1444,19 @@ void yield_process( int spent_attention )
 	}
 }
 
+/**
+ * Returns \c MUSE_TRUE if the current process is the main process
+ * and \c MUSE_FALSE otherwise.
+ */
 muse_boolean is_main_process( muse_env *env )
 {
 	return (env->current_process->cstack.size > 0) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
- *
+ * Removes the given process from the process ring and marks it
+ * as "dead". It then switches to the next process in the ring so that
+ * the ring can continue.
  */
 muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
 {
@@ -1413,8 +1495,36 @@ muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
 }
 
 /**
- * Used to send asynchronous messages to a process.
- * Also serves as its process ID.
+ * Used to send asynchronous messages to a process and serves
+ * as a process's identifier. Suppose the message sending
+ * expression has the form @code (p x1 x2 x3 .. xN) @endcode,
+ * where \c p is the id of the target process, the target process
+ * will receive the message in a similar form 
+ * @code (q x1 x2 x3 ... xN) @endcode where \c q is the id of the
+ * sending process. This way the received message has information 
+ * about the \b sending process and therefore the receiving process
+ * can reply to the sending process. Therefore, a process can
+ * receive and process message using pattern matching \ref syntax_case "case" 
+ * expression.
+ *
+ * @code
+ * (case (receive)
+ *    ((pid . msg-pattern-1) expr-1)
+ *    ((pid . msg-pattern-2) expr-2)
+ *    ...
+ *    )
+ * @endcode
+ *
+ * It is a useful convention to use a symbolic constant at the head of
+ * a message so that it can be explicitly pattern matched against for dispatch.
+ * For example -
+ * @code
+ * (case (receive)
+ *   ((pid 'MsgType1 . args) expr-1)
+ *   ((pid 'MsgType2 . args) expr-2)
+ *   ...
+ *   )
+ * @endcode
  */
 muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 {
@@ -1449,7 +1559,8 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 }
 
 /**
- * Marks all references held by the given process.
+ * Marks all references held by the given process. Called prior to
+ * garbage collection.
  */
 void mark_process( muse_process_frame_t *p )
 {
@@ -1463,6 +1574,7 @@ void mark_process( muse_process_frame_t *p )
 /**
  * Enters an atomic block that should be evaluated
  * without switching to another process.
+ * @see leave_atomic()
  */
 void enter_atomic()
 {
@@ -1474,6 +1586,7 @@ void enter_atomic()
  * without switching to another process. Atomic blocks can be
  * nested, but must always be matched. Use the syntax_atomic
  * muSE function to mark an atomic do block.
+ * @see enter_atomic()
  */
 void leave_atomic()
 {
@@ -1484,6 +1597,8 @@ void leave_atomic()
  * Appends the given message (which, in general, should include the 
  * sending process's pid at the head) to the mailbox of the given 
  * process. 
+ *
+ * @see fn_post
  */
 void post_message( muse_process_frame_t *p, muse_cell msg )
 {
@@ -1499,3 +1614,5 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }
+/*@}*/
+/*@}*/

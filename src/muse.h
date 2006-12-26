@@ -29,9 +29,10 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Supports symbols, integers, floats, strings and lists
  * 	- Main abstraction mechanism is the closure
  * 	- A simple object system for OOP
- * 	- Small code foot-print (45kB for full interpreter)
+ * 	- Small code foot-print
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
+ *	- A simple object system for adding new native object types.
  * 
  * Version 0.2cp adds support for Erlang style processes and
  * resumable exception handling.
@@ -78,7 +79,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_StructuringCode Structuring code
  *	- \ref fn_define "define", \ref syntax_let "let", \ref syntax_do "do"
  * 	- \ref syntax_lambda "fn", \ref syntax_block "fn:"
- *	- \ref syntax_do "do", \ref syntax_while "while", \ref syntax_for "for"
+ *	- \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
  *	- \ref syntax_try "try", \ref fn_raise "raise"
@@ -96,21 +97,26 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- Other functions
  *		- \ref fn_rand "rand"
  *
+ * @subsection ML_DataStructures Data structures
+ *	- \ref Vectors "vectors"
+ *	- \ref Hashtables "hashtables"
+ *
  * @subsection ML_ObjectSystem Object system
  * 	- \ref fn_class "class"
  * 	- \ref fn_new "new"
- * 	- \ref fn_send "<-"
- * 	- \ref fn_obj_pty "->"
+ * 	- \ref fn_send "<-" (send message to object)
+ * 	- \ref fn_obj_pty "->" (get object property)
  * 
  * @subsection ML_IO Input and output
- * 	- \ref fn_print "print"
- * 	- \ref fn_write "write"
- * 	- \ref fn_read "read"
+ *	- \ref PortIO Ports
  *	- \ref fn_open_file "open-file"
+ * 	- \ref fn_print "print", \ref fn_write "write"
+ * 	- \ref fn_read "read"
+ *	- \ref fn_close "close"
  *
  * @subsection ML_Processes Processes
- *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic"
- *	- \ref fn_run "run", \ref fn_this_process "this-process",
+ *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic", \ref fn_post "post"
+ *	- \ref fn_run "run", \ref fn_this_process "this-process", \ref fn_process_p "process?"
  */
  
 /**
