@@ -514,7 +514,7 @@ static muse_cell hashtable_iterator( hashtable_t *self, muse_iterator_callback_t
 		
 		while ( alist )
 		{
-			cont = callback( self, context, _head(alist) );
+			cont = callback( self, context, _tail(_head(alist)) );
 			_unwind(sp);
 			if ( !cont )
 				return _head(_head(alist)); /**< Return the key. */
