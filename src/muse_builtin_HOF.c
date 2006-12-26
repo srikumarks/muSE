@@ -408,11 +408,6 @@ static muse_boolean finder( void *self, void *what, muse_cell thing )
 	return muse_equal( (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
-static muse_boolean hashtable_finder( void *self, void *what, muse_cell thing )
-{
-	return muse_equal( (muse_cell)what, muse_tail(thing) ) ? MUSE_FALSE : MUSE_TRUE;
-}
-
 /**
  * (find item collection) -> reference.
  *
@@ -453,10 +448,7 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 	
 	if ( iter )
 	{
-		if ( collObj && (collObj != coll) && collObj->type_info->type_word == 'hash' )
-			result = iter( collObj, hashtable_finder, (void*)object );
-		else
-			result = iter( collObj, finder, (void*)object );
+		result = iter( collObj, finder, (void*)object );
 	}
 	
 	return result;
@@ -497,8 +489,8 @@ static muse_boolean ormapper( void *self, mapinfo_t *info, muse_cell thing )
  * an element didn't satisfy the predicate, \c andmap 
  * does not evaluate the predicate on subsequent elements.
  *
- * The predicate is a \c fn(x) for lists and vectors and should
- * be a \c fn(key . value) for hashtables.
+ * The predicate is a \c fn(x) and is given the value objects in 
+ * lists, vectors or hashtables.
  */
 muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 {
@@ -525,8 +517,8 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
  * did. If any one element satisfied the predicate, then \c ormap
  * does not evaluate the predicate on the other elements of the list.
  *
- * The predicate is a \c fn(x) for lists and vectors and should
- * be a \c fn(key . value) for hashtables.
+ * The predicate is a \c fn(x) and is given the value objects in 
+ * lists, vectors or hashtables.
  */
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 {
@@ -544,7 +536,7 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
-
+ 
 /**
  * (for-each fn collection [result]).
  *
@@ -553,8 +545,8 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
  * You can optionally give a result expression which will be
  * used as the result of the \c for-each expression.
  *
- * The operation is a \c fn(x) for lists and vectors and should
- * be a \c fn(key . value) for hashtables.
+ * The operation is a \c fn(x) and is given the value objects
+ * of lists, vectors or hashtables.
  */
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 {
