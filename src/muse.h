@@ -108,7 +108,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- \ref fn_obj_pty "->" (get object property)
  * 
  * @subsection ML_IO Input and output
- *	- \ref PortIO Ports
+ *	- \ref PortIO
  *	- \ref fn_open_file "open-file"
  * 	- \ref fn_print "print", \ref fn_write "write"
  * 	- \ref fn_read "read"
