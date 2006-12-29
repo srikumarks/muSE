@@ -174,6 +174,7 @@ void muse_load_builtin_fns()
 	muse_math_load_common_unary_functions();
 	muse_define_builtin_type_vector();
 	muse_define_builtin_type_hashtable();
+	muse_define_builtin_type_bytes(_env());
 	muse_define_builtin_fileport();
 	muse_define_builtin_networking();
 }

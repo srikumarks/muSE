@@ -218,6 +218,7 @@ void muse_load_builtin_fns();
 /*@{*/
 void muse_define_builtin_type_vector();
 void muse_define_builtin_type_hashtable();
+void muse_define_builtin_type_bytes( muse_env *env );
 /*@}*/
 
 void muse_define_builtin_networking();

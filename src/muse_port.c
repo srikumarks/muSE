@@ -243,8 +243,10 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
 		
 	}
 	
-	muse_assert( in->avail == 0 );
-	in->pos = 0;
+	if ( in->avail == 0 )
+	{
+		in->pos = 0;
+	}
 	
 	/* Read remaining data directly into the output buffer. */
 	if ( bytes_to_copy > 0 )
@@ -253,6 +255,9 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
 		
 		bytes_read	+= remaining_bytes_read;
 		in->fpos	+= remaining_bytes_read;
+
+		if ( remaining_bytes_read == 0 )
+			port->eof = EOF;
 	}
 
 	return bytes_read;
@@ -1082,6 +1087,52 @@ static muse_boolean is_macro_sexpr( muse_cell sexpr )
 	return MUSE_FALSE;
 }
 
+extern muse_cell mk_bytes( muse_int size );
+extern unsigned char *bytes_ptr( muse_cell b );
+extern void bytes_set_size( muse_cell b, muse_int size );
+
+/**
+ * A byte sequence has the format -
+ * @code #nnnnn[data] @endcode
+ * where \c nnnnn gives the size of the data in bytes (decimal number)
+ * and there are as many bytes between the square brackets. Note that
+ * since the number of bytes is specified explicitly, the data can include 
+ * square brackets.
+ */
+static muse_cell _read_bytes( muse_port_t f )
+{
+	muse_cell bytes = MUSE_NIL;
+	muse_int size = 0;
+	int c = '0';
+	int max_digits = 24;
+	while ( c >= '0' && c <= '9' && max_digits-- > 0 )
+	{
+		size = (size * 10) + (c - '0');
+		c = port_getc(f);
+	}
+
+	muse_assert( c == '[' );
+
+	{
+		bytes = mk_bytes(size);
+		bytes_set_size( bytes, (muse_int)port_read( bytes_ptr(bytes), (size_t)size, f ) );
+	}
+
+	c = port_getc(f);
+	muse_assert( c == ']' );
+
+	return bytes;
+}
+
+/**
+ * General function to handle special codes of the form @code #... @endcode.
+ */
+static muse_cell _read_special( muse_port_t f )
+{
+	/* Currently only byte data is supported. */
+	return _read_bytes(f);
+}
+
 /**
  * Reads the next symbolic expression at the current
  * stream position, ignoring white space and comment
@@ -1150,6 +1201,10 @@ muse_cell muse_pread( muse_port_t f )
 			else
 				return sexpr;
 		}
+	}
+	else if ( c == '#' )
+	{
+		return _read_special(f);
 	}
 	else 
 	{
