@@ -302,6 +302,28 @@ static muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
 }
 
 /**
+ * Force the entire buffer down the throat of the port.
+ */
+static size_t port_write_force( unsigned char *buffer, size_t size, muse_port_t p )
+{
+	size_t total = 0;
+
+	while ( p->error == 0 && !port_eof(p) && size > 0 )
+	{
+		size_t nwritten = port_write( buffer, size, p );
+
+		if ( nwritten == 0 )
+			return total;
+
+		size -= nwritten;
+		total += nwritten;
+		buffer += nwritten;
+	}
+
+	return total;
+}
+
+/**
  * (write-bytes [port] bytes [start-offset] [num-bytes])
  *
  * Write the raw byte sequence to the port.
@@ -343,7 +365,7 @@ static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 
 		if ( size > 0 )
 		{
-			size_t nbytes = port_write( b->bytes + (size_t)start_offset, (size_t)size, p );		
+			size_t nbytes = port_write_force( b->bytes + (size_t)start_offset, (size_t)size, p );		
 			return muse_mk_int(nbytes);
 		}
 		else
