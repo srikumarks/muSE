@@ -289,6 +289,20 @@ static muse_functional_object_type_t g_bytes_type =
 };
 
 /**
+ * (bytes? bytes)
+ *
+ * Evaluates to \p bytes if it is a valid byte data object and
+ * to () if it isn't one.
+ */
+static muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell b = muse_evalnext(&args);
+	bytes_t *data = bytes_data(b);
+
+	return (data == NULL) ? MUSE_NIL : b;
+}
+
+/**
  * (bytes-size bytes) -> int
  */
 static muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
@@ -535,12 +549,13 @@ void muse_define_builtin_type_bytes( muse_env *env )
 {
 	static const _defn_t k_defns[] =
 	{
-		{ fn_bytes, L"bytes" },
-		{ fn_bytes_size, L"bytes-size" },
-		{ fn_write_bytes, L"write-bytes" },
-		{ fn_read_bytes, L"read-bytes" },
-		{ fn_copy_bytes, L"copy-bytes" },
-		{ NULL, NULL }
+		{ fn_bytes,			L"bytes"		},
+		{ fn_bytes_p,		L"bytes?"		},
+		{ fn_bytes_size,	L"bytes-size"	},
+		{ fn_write_bytes,	L"write-bytes"	},
+		{ fn_read_bytes,	L"read-bytes"	},
+		{ fn_copy_bytes,	L"copy-bytes"	},
+		{ NULL,				NULL			}
 	};
 
 	{
