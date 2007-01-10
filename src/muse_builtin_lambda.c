@@ -408,7 +408,7 @@ static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
 		muse_cell sym = muse_evalnext(&kvpairs);
 
 		MUSE_DIAGNOSTICS({
-			muse_expect( L"(apply/keywords f ... >>sym<< val ...)", L"v?", sym, MUSE_SYMBOL_CELL );
+			muse_expect( L"(call/keywords f ... >>sym<< val ...)", L"v?", sym, MUSE_SYMBOL_CELL );
 		});
 
 		{
@@ -423,7 +423,7 @@ static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
 }
 
 /**
- * (apply/keywords f 'key1 val1 'key2 val2 ...)
+ * (call/keywords f 'key1 val1 'key2 val2 ...)
  *
  * \p f is a user defined function (non-native) that has a bunch of
  * named arguments. You can supply values to those named arguments
@@ -435,24 +435,24 @@ static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
  * defines the minimum function.
  * You can call this function as follows -
  * @code
- * (apply/keywords f 'y 15 'x 3)
+ * (call/keywords f 'y 15 'x 3)
  * @endcode
  * to get \c 3 as the answer.
  * Note that all arguments \b must be specified for the result to make sense.
  * That condition is not checked for. Note that the symbol positions are
-*
+ *
  *
  * Note that although it makes sense to specify all arguments without exception,
  * the behaviour is such that arguments which are unspecified take on
  * the value of the symbol at invocation time. This means you can introduce
  * "default" values using \ref fn_let "let" blocks. For example -
  * @code
- * (let ((x 15)) (apply/keywords f 'y 30))
+ * (let ((x 15)) (call/keywords f 'y 30))
  * @endcode
  * will produce \c 15 as the answer. In this sense, 
- * @code (apply/keywords f 'x 15 'y 30) @endcode
+ * @code (call/keywords f 'x 15 'y 30) @endcode
  * is equivalent to 
- * @code (let ((x 15) (y 30)) (apply/keywords f)) @endcode.
+ * @code (let ((x 15) (y 30)) (call/keywords f)) @endcode.
  * This gives you yet another kind of dynamic scoping behaviour.
  *
  * If you want to know the function's formal argument list at any time,
@@ -462,7 +462,7 @@ static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
  * unevaluated form - the expressions in place of values are used without
  * being first evaulated. Note that the symbol positions are always evaluated.
  */
-muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args )
+muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args )
 {
 	yield_process(1);
 
