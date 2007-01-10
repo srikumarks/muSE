@@ -29,6 +29,7 @@ static const struct _builtins
 {		L"fn:",			syntax_block		},
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
+{		L"apply/keywords",	fn_apply_w_keywords	},
 {		L"call/keywords",	fn_call_w_keywords	},
 {		L"call/cc",		fn_callcc			},
 {		L"try",			syntax_try				},

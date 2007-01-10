@@ -485,6 +485,59 @@ muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+static int bind_alist( muse_cell kvpairs )
+{
+	int bsp = _bspos();
+	int sp = _spos();
+
+	while ( kvpairs )
+	{
+		muse_cell pair = _next(&kvpairs);
+
+		MUSE_DIAGNOSTICS({
+			muse_expect( L"(apply/keywords f >>alist<<)", L"v?", _head(pair), MUSE_SYMBOL_CELL );
+		});
+
+		muse_pushdef( _head(pair), _tail(pair) );
+	}
+
+	_unwind(sp);
+	return bsp;
+}
+
+/**
+ * The counterpart of \ref fn_call_w_keywords "call/keywords" that applies a function
+ * to an a-list of key-value pairs.
+ * @code
+ * (define f (fn (x y) (if (< x y) x y)))
+ * (define args '((x . 15) (y . 30)))
+ * (apply/keywords f args)
+ * @endcode
+ * will evaluate to \c 15.
+ */
+muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args )
+{
+	yield_process(1);
+
+	{
+		muse_cell f = muse_evalnext(&args);
+
+		/* Only works with user defined functions. */
+		muse_assert( _cellt(f) == MUSE_LAMBDA_CELL );
+
+		/* Bind all the keyword arguments to their values. */
+		{
+			int bsp = bind_alist( muse_evalnext(&args) );
+
+			muse_cell result = muse_do(_tail(f));
+
+			_unwind_bindings(bsp);
+
+			return result;
+		}
+	}
+}
+
 /**
  * Runs through the bindings and returns MUSE_TRUE if everything bound successfully
  * and MUSE_FALSE if there was a failure. In case of failure, all bindings are reversed.
