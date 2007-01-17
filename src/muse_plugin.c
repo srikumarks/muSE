@@ -38,7 +38,7 @@
  * @see muse_plugin_entry_t
  */
 #ifdef MUSE_PLATFORM_WINDOWS
-muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist )
+muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
 {
 	HMODULE dll = LoadLibraryW(path);
 
@@ -53,11 +53,11 @@ muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist )
 			return MUSE_NIL; /* Could not get entry point. */
 		}
 
-		return entry( dll, _env(), arglist );
+		return entry( dll, env, arglist );
 	}
 }
 #else
-muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist )
+muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
 {
 	char buffer[4096];
 	void *dll = NULL;
@@ -76,7 +76,7 @@ muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist )
 			return MUSE_NIL; /* Entry point not found. */
 		}
 		
-		return entry( dll, _env(), arglist );
+		return entry( dll, env, arglist );
 	}
 }
 #endif

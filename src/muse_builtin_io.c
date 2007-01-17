@@ -20,9 +20,9 @@
  */
 muse_cell fn_port_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell p = muse_evalnext(&args);
+	muse_cell p = _evalnext(&args);
 	
-	return p && muse_port(p) ? p : MUSE_NIL;
+	return p && _port(p) ? p : MUSE_NIL;
 }
 
 /**
@@ -34,12 +34,12 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 {
 	muse_port_t port = NULL;
 	
-	muse_cell arg1 = muse_evalnext(&args);
+	muse_cell arg1 = _evalnext(&args);
 	
-	port = muse_port(arg1);
+	port = _port(arg1);
 	if ( !port )
 	{
-		port = muse_stdport(MUSE_STDOUT_PORT);
+		port = _stdport(MUSE_STDOUT_PORT);
 		writer( port, arg1 );
 		if ( args )
 			port_putc( ' ', port );
@@ -47,7 +47,7 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 	
 	while ( args )
 	{
-		writer( port, muse_evalnext(&args) );
+		writer( port, _evalnext(&args) );
 		if ( args )
 			port_putc( ' ', port );
 	}
@@ -105,11 +105,11 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args )
 	
 	if ( args )
 	{
-		port = muse_port( muse_evalnext(&args) );
+		port = _port( _evalnext(&args) );
 		muse_assert( port != NULL && "Read can only take a port argument.");
 	}
 	else
-		port = muse_stdport( MUSE_STDIN_PORT );
+		port = _stdport( MUSE_STDIN_PORT );
 	
 	{
 		muse_cell result = muse_pread( port );
@@ -123,12 +123,12 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_close( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell port = muse_evalnext(&args);
-	muse_port_t p = muse_port(port);
+	muse_cell port = _evalnext(&args);
+	muse_port_t p = _port(port);
 	
 	muse_assert( p && "argument must be a port." );
 
-	port_close(p);
+	port_close( p);
 
 	return MUSE_NIL;
 }
@@ -140,8 +140,8 @@ muse_cell fn_close( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_eof_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell port = muse_evalnext(&args);
-	muse_port_t p = muse_port(port);
+	muse_cell port = _evalnext(&args);
+	muse_port_t p = _port(port);
 	
 	muse_assert( p && "close's argument must be a port." );
 
@@ -155,8 +155,8 @@ muse_cell fn_eof_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_flush( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell portcell = muse_evalnext(&args);
-	muse_port_t port = portcell ? muse_port(portcell) : muse_stdport( MUSE_STDOUT_PORT );
+	muse_cell portcell = _evalnext(&args);
+	muse_port_t port = portcell ? _port(portcell) : _stdport( MUSE_STDOUT_PORT );
 	
 	muse_assert( port != NULL );
 	
@@ -174,18 +174,18 @@ muse_cell fn_flush( muse_env *env, void *context, muse_cell args )
 muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 {
 	int sp				= _spos();
-	muse_cell filename	= muse_evalnext(&args);
+	muse_cell filename	= _evalnext(&args);
 	FILE *f				= NULL;
 	
 	MUSE_DIAGNOSTICS({
-		muse_expect( L"(load >>file<<)", L"v?", filename, MUSE_TEXT_CELL );
+		muse_expect( env, L"(load >>file<<)", L"v?", filename, MUSE_TEXT_CELL );
 	});
 
-	f = muse_fopen( muse_text_contents(filename,NULL), L"rb" );
+	f = muse_fopen( _text_contents(filename,NULL), L"rb" );
 
 	if ( f )
 	{
-		muse_cell result = muse_load( f );
+		muse_cell result = muse_load( env, f );
 		fclose(f);
 		_unwind(sp);
 		return _spush(result);
@@ -195,7 +195,7 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 		_unwind(sp);
 
 		MUSE_DIAGNOSTICS({
-			muse_message( L"(load >>file<<)", L"The file [%m] doesn't exist!", filename );
+			muse_message( env,L"(load >>file<<)", L"The file [%m] doesn't exist!", filename );
 		});
 
 		return MUSE_NIL;

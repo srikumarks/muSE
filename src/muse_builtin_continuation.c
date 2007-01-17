@@ -36,30 +36,30 @@ typedef struct _continuation_t
 	muse_cell	invoke_result;
 } continuation_t;
 
-static void continuation_init( void *p, muse_cell args )
+static void continuation_init( muse_env *env, void *p, muse_cell args )
 {
 }
 
-static void mark_array( muse_cell *begin, muse_cell *end )
+static void mark_array( muse_env *env, muse_cell *begin, muse_cell *end )
 {
 	while ( begin < end )
 	{
-		muse_mark( *begin++ );
+		muse_mark( env, *begin++ );
 	}
 }
 
-static void continuation_mark( void *p )
+static void continuation_mark( muse_env *env, void *p )
 {
 	continuation_t *c = (continuation_t*)p;
 	
 	muse_assert( c->process->state_bits != MUSE_PROCESS_DEAD );
 
-	mark_array( c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
-	mark_array( c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
-	mark_array( c->bindings_copy, c->bindings_copy + c->bindings_size );
+	mark_array( env, c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
+	mark_array( env, c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
+	mark_array( env, c->bindings_copy, c->bindings_copy + c->bindings_size );
 }
 
-static void continuation_destroy( void *p )
+static void continuation_destroy( muse_env *env, void *p )
 {
 	continuation_t *c = (continuation_t*)p;
 
@@ -75,13 +75,13 @@ static void continuation_destroy( void *p )
 	}
 }
 
-static muse_cell *copy_current_bindings( int *size )
+static muse_cell *copy_current_bindings( muse_env *env, int *size )
 {
-	muse_stack *s = &(_env()->current_process->locals);
+	muse_stack *s = &(env->current_process->locals);
 	muse_cell *copy = NULL;
 	int i = 0;
 
-	(*size) = _env()->num_symbols;
+	(*size) = env->num_symbols;
 	copy = (muse_cell*)malloc( sizeof(muse_cell) * (*size) );
 	memcpy( copy, s->bottom, sizeof(muse_cell) * (*size) );
 
@@ -89,13 +89,13 @@ static muse_cell *copy_current_bindings( int *size )
 }
 
 
-static void restore_bindings( muse_cell *bindings, int size )
+static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
 {
 	muse_cell *end = bindings + size;
 	
 	muse_assert( size >= 0 );
 
-	memcpy( _env()->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
+	memcpy( env->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
 }
 
 static void *min3( void *p1, void *p2, void *p3 )
@@ -120,7 +120,7 @@ static void *max3( void *p1, void *p2, void *p3 )
 
 static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 {
-	continuation_t *c = (continuation_t*)muse_functional_object_data(cont,'cont');
+	continuation_t *c = (continuation_t*)_functional_object_data(cont,'cont');
 
 	muse_cell result = setjmp( c->state );
 	
@@ -151,7 +151,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 			/* Save system state up to the result variable. Note that result's address is 
 			greater than c's, therefore c will also get saved. */
 			c->system_stack_from = env->current_process->cstack.top;
-			c->system_stack_size = (char*)max3(&c, &result, &stack_grows_down) - (char*)_env()->stack_base;
+			c->system_stack_size = (char*)max3(&c, &result, &stack_grows_down) - (char*)env->stack_base;
 			c->system_stack_copy = malloc( c->system_stack_size );
 			memcpy( c->system_stack_copy, c->system_stack_from, c->system_stack_size );
 		}
@@ -169,7 +169,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		memcpy( c->bindings_stack_copy, env->current_process->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
 
 		/* Save all bindings. */
-		c->bindings_copy = copy_current_bindings( &c->bindings_size );
+		c->bindings_copy = copy_current_bindings( env, &c->bindings_size );
 
 		/* Save a pointer to the current process. */
 		c->process = env->current_process;
@@ -184,14 +184,15 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 	{
 		/* result-1 is the continuation object that was invoked, with
 		the invoke_result field set to the argument supplied to the invocation. */
-		c = (continuation_t*)muse_functional_object_data(result-1,'cont');
+		/* BUG: env cannot be used here. */
+		c = (continuation_t*)_functional_object_data(result-1,'cont');
 		muse_assert( c && c->base.type_info->type_word == 'cont' );
 		
 		/* Restore the process atomicity that was at capture time. 
 		Also, continuation invocations cannot cross process boundaries, so
 		the current process must be the one in which the continuation
 		was captured. */
-		muse_assert( _env()->current_process == c->process );
+		muse_assert( env->current_process == c->process );
 		c->process->atomicity = c->process_atomicity;
 
 		/* Restore the evaluation stack. */
@@ -203,7 +204,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		c->process->bindings_stack.top = c->process->bindings_stack.bottom + c->bindings_stack_from + c->bindings_stack_size;
 
 		/* Restore the saved symbol values. */
-		restore_bindings( c->bindings_copy, c->bindings_size );
+		restore_bindings( env, c->bindings_copy, c->bindings_size );
 
 		/* Restore the system stack. */
 		memcpy( c->system_stack_from, c->system_stack_copy, c->system_stack_size );
@@ -224,7 +225,7 @@ static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell ar
 	/* Continuation invocation cannot cross process boundaries. */
 	muse_assert( c->process == env->current_process );
 
-	c->invoke_result = muse_evalnext(&args);
+	c->invoke_result = _evalnext(&args);
 	
 	longjmp( c->state, c->this_cont+1 );
 
@@ -325,9 +326,9 @@ static muse_functional_object_type_t g_continuation_type =
  */
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell proc = muse_evalnext(&args);
+	muse_cell proc = _evalnext(&args);
 	
-	muse_cell cont = muse_mk_functional_object( &g_continuation_type, MUSE_NIL );
+	muse_cell cont = _mk_functional_object( &g_continuation_type, MUSE_NIL );
 	
 	muse_cell result = capture_continuation(env,cont);
 	
@@ -336,7 +337,7 @@ muse_cell fn_callcc( muse_env *env, void *context, muse_cell args )
 		/* We just captured the continuation. Invoke the proc with the 
 		continuation as the argument. */
 		
-		return muse_apply( proc, muse_cons( cont, MUSE_NIL ), MUSE_TRUE );
+		return _apply( proc, _cons( cont, MUSE_NIL ), MUSE_TRUE );
 	}
 	else
 	{
@@ -402,7 +403,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		rp->spos = _spos();
 		rp->bspos = _bspos();
 		rp->atomicity = env->current_process->atomicity;
-		rp->trapval = _symval( muse_builtin_symbol( MUSE_TRAP_POINT ) );
+		rp->trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
 		rp->result = 0;
 	}
 	else
@@ -410,7 +411,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		env->current_process->atomicity = rp->atomicity;
 		_unwind( rp->spos );
 		_unwind_bindings( rp->bspos );
-		_def( muse_builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
+		_define( _builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
 		rp->result = setjmp_result-1;
 	}
 
@@ -437,7 +438,7 @@ static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
 {
 	resume_point_t *rp = (resume_point_t*)context;
 
-	resume_invoke( env, rp, muse_evalnext(&args) );
+	resume_invoke( env, rp, _evalnext(&args) );
 
 	return MUSE_NIL;
 }
@@ -459,7 +460,7 @@ typedef struct _trap_point_t
 } trap_point_t;
 
 
-static void trap_point_init( void *p, muse_cell args )
+static void trap_point_init( muse_env *env, void *p, muse_cell args )
 {
 	trap_point_t *trap = (trap_point_t*)p;
 
@@ -468,16 +469,16 @@ static void trap_point_init( void *p, muse_cell args )
 	this overhead or accept the overhead of capturing a full 
 	continuation at the point at which the exception is raised
 	in order to get resumable exceptions. */
-	trap->handlers = muse_eval_list(args);
+	trap->handlers = muse_eval_list(env, args);
 
-	trap->prev = muse_symbol_value( muse_builtin_symbol( MUSE_TRAP_POINT ) );
+	trap->prev = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
 }
 
-static void trap_point_mark( void *p )
+static void trap_point_mark( muse_env *env, void *p )
 {
 	trap_point_t *trap = (trap_point_t*)p;
-	muse_mark(trap->handlers);
-	muse_mark(trap->prev);
+	muse_mark(env,trap->handlers);
+	muse_mark(env,trap->prev);
 }
 
 static muse_cell fn_trap_point( muse_env *env, void *trap_point, muse_cell args )
@@ -507,11 +508,11 @@ static muse_functional_object_type_t g_trap_point_type =
  */
 static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 {
-	muse_cell sym_trap_point = muse_builtin_symbol( MUSE_TRAP_POINT );
+	muse_cell sym_trap_point = _builtin_symbol( MUSE_TRAP_POINT );
 
-	muse_cell trapval = muse_symbol_value( sym_trap_point );
+	muse_cell trapval = _symval( sym_trap_point );
 
-	trap_point_t *trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+	trap_point_t *trap = (trap_point_t*)_functional_object_data( trapval, 'trap' );
 
 	if ( trap )
 	{
@@ -521,7 +522,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 		one because if an exception is raised within a handler,
 		it must evaluate it w.r.t. the try block that encloses
 		the try block in which the first exception was raised. */
-		_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+		_define( _builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 
 		while ( handlers )
 		{
@@ -535,10 +536,10 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 				muse_cell formals = _quq(_head(h));
 				int bsp = _bspos();
 
-				if ( muse_bind_formals( formals, handler_args ) )
+				if ( muse_bind_formals( env, formals, handler_args ) )
 				{
 					muse_cell result;
-					result = muse_do(_tail(h));
+					result = _do(_tail(h));
 					_unwind_bindings(bsp);
 					resume_invoke( env, &(trap->escape), result );
 				}
@@ -553,7 +554,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 			while ( !handlers )
 			{
 				trapval = trap->prev;
-				trap = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+				trap = (trap_point_t*)_functional_object_data( trapval, 'trap' );
 
 				if ( trap == NULL )
 				{
@@ -564,13 +565,13 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 				handlers = trap->handlers;
 
 				/* See note above on similar line. */
-				_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
+				_define( _builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 			}
 		}
 	}
 
 	/* No handler succeeded in handling the exception. */
-	muse_message( L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
+	muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), _processid(env->current_process) );
 	remove_process( env, env->current_process );
 }
 /*@}*/
@@ -648,18 +649,18 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
  */
 muse_cell syntax_try( muse_env *env, void *context, muse_cell args ) 
 {
-	muse_cell trapval = muse_mk_functional_object( &g_trap_point_type, _tail(args) );
+	muse_cell trapval = _mk_functional_object( &g_trap_point_type, _tail(args) );
 
-	trap_point_t *tp = (trap_point_t*)muse_functional_object_data( trapval, 'trap' );
+	trap_point_t *tp = (trap_point_t*)_functional_object_data( trapval, 'trap' );
 
 	muse_cell result = MUSE_NIL;
 
-	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), trapval );
+	_define( _builtin_symbol( MUSE_TRAP_POINT ), trapval );
 
 	if ( resume_capture( env, &(tp->escape), setjmp(tp->escape.state) ) == 0 )
 	{
 		/* Evaluate the body of the try block. */
-		result = muse_evalnext(&args);
+		result = _evalnext(&args);
 	}
 	else
 	{
@@ -669,7 +670,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 		result = tp->escape.result;
 	}
 
-	_def( muse_builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
+	_define( _builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
 	return result;
 }
 
@@ -693,8 +694,8 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 muse_cell fn_raise( muse_env *env, void *context, muse_cell args ) 
 {
 	resume_point_t *rp = (resume_point_t*)calloc( 1, sizeof(resume_point_t) );
-	muse_cell resume_pt = muse_mk_destructor( fn_resume, rp );
-	muse_cell handler_args = muse_cons( resume_pt, muse_eval_list(args) );
+	muse_cell resume_pt = _mk_destructor( fn_resume, rp );
+	muse_cell handler_args = _cons( resume_pt, muse_eval_list(env,args) );
 
 	if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
 	{

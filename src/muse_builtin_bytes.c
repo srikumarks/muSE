@@ -53,15 +53,17 @@ static void bytes_free( bytes_t *b )
 	free(b->bytes);
 }
 
-static bytes_t *bytes_data( muse_cell b )
+#define _bytes_data(b) bytes_data(env,b)
+static bytes_t *bytes_data( muse_env *env, muse_cell b )
 {
-	return (bytes_t*)muse_functional_object_data( b, 'barr' );
+	return (bytes_t*)muse_functional_object_data( env, b, 'barr' );
 }
 
-muse_cell mk_bytes( muse_int size )
+#define _mk_bytes(size) mk_bytes(env,size)
+muse_cell mk_bytes( muse_env *env, muse_int size )
 {
-	muse_cell bytes = muse_mk_functional_object( &g_bytes_type, MUSE_NIL );
-	bytes_t *b = bytes_data(bytes);
+	muse_cell bytes = _mk_functional_object( &g_bytes_type, MUSE_NIL );
+	bytes_t *b = _bytes_data(bytes);
 	b->ref = bytes;
 	b->size = size;
 	if ( size > 0 )
@@ -69,25 +71,28 @@ muse_cell mk_bytes( muse_int size )
 	return bytes;
 }
 
-unsigned char *bytes_ptr( muse_cell b )
+#define _bytes_ptr(b) bytes_ptr(env,b)
+unsigned char *bytes_ptr( muse_env *env, muse_cell b )
 {
-	return bytes_data(b)->bytes;
+	return _bytes_data(b)->bytes;
 }
 
-void bytes_set_size( muse_cell b, muse_int size )
+
+void bytes_set_size( muse_env *env, muse_cell b, muse_int size )
 {
-	bytes_data(b)->size = size;
+	_bytes_data(b)->size = size;
 }
 
-static muse_cell mk_slice( muse_cell b, muse_int offset, muse_int size )
+#define _mk_slice(b,offset,size) mk_slice(env,b,offset,size)
+static muse_cell mk_slice( muse_env *env, muse_cell b, muse_int offset, muse_int size )
 {
-	bytes_t *bdata = bytes_data(b);
+	bytes_t *bdata = _bytes_data(b);
 	muse_assert( offset >= 0 && offset <= bdata->size );
 	muse_assert( size >= 0 && offset + size <= bdata->size );
 
 	{
-		muse_cell slice = muse_mk_functional_object( &g_bytes_type, MUSE_NIL );
-		bytes_t *sliceData = bytes_data(slice);
+		muse_cell slice = _mk_functional_object( &g_bytes_type, MUSE_NIL );
+		bytes_t *sliceData = _bytes_data(slice);
 
 		muse_assert( sliceData != NULL );
 
@@ -104,11 +109,11 @@ static muse_cell mk_slice( muse_cell b, muse_int offset, muse_int size )
  * (bytes size)
  * Creates an uninitialized bytes-array of the given size.
  */
-static void bytes_init( void *ptr, muse_cell args )
+static void bytes_init( muse_env *env, void *ptr, muse_cell args )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
-	b->size = args ? muse_int_value(muse_evalnext(&args)) : (muse_int)0;
+	b->size = args ? _intvalue(_evalnext(&args)) : (muse_int)0;
 
 	if ( b->size > 0 )
 		b->bytes = (unsigned char *)malloc( (size_t)b->size );
@@ -116,16 +121,16 @@ static void bytes_init( void *ptr, muse_cell args )
 		b->size = 0;
 }
 
-static void bytes_mark( void *ptr )
+static void bytes_mark( muse_env *env, void *ptr )
 {
-	muse_mark( ((bytes_t*)ptr)->ref );
+	muse_mark( env, ((bytes_t*)ptr)->ref );
 }
 
-static void bytes_destroy( void *ptr )
+static void bytes_destroy( muse_env *env, void *ptr )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
-	if ( bytes_data(b->ref) == b && b->bytes != NULL )
+	if ( _bytes_data(b->ref) == b && b->bytes != NULL )
 	{
 		free(b->bytes);
 		b->size = 0;
@@ -138,7 +143,7 @@ static void bytes_destroy( void *ptr )
  * @code #nnn[data] @endcode which is
  * read back correctly as a byte array by the reader.
  */
-static void bytes_write( void *ptr, void *port )
+static void bytes_write( muse_env *env, void *ptr, void *port )
 {
 	bytes_t *b = (bytes_t*)ptr;
 	muse_port_t p = (muse_port_t)port;
@@ -178,12 +183,12 @@ static void bytes_write( void *ptr, void *port )
  */
 static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 {
-	muse_int offset = muse_int_value( muse_evalnext(&args) );
+	muse_int offset = _intvalue( _evalnext(&args) );
 	muse_cell field_type = MUSE_NIL;
 
 	if ( args == MUSE_NIL )
 	{
-		bytes_t *refBytes = bytes_data(b->ref);
+		bytes_t *refBytes = _bytes_data(b->ref);
 		muse_int size = b->size - offset;
 		muse_assert( offset >= 0 );
 		if ( size < 0 )
@@ -192,25 +197,25 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 			offset = b->size;
 		}
 
-		return mk_slice( b->ref, (b->bytes - refBytes->bytes) + offset, size );
+		return _mk_slice( b->ref, (b->bytes - refBytes->bytes) + offset, size );
 	}
 
-	field_type = muse_evalnext(&args);
+	field_type = _evalnext(&args);
 
 	switch ( muse_cell_type(field_type) )
 	{
 	case MUSE_INT_CELL :
 		{
-			muse_int size = muse_int_value(field_type);
-			bytes_t *refBytes = bytes_data(b->ref);
+			muse_int size = _intvalue(field_type);
+			bytes_t *refBytes = _bytes_data(b->ref);
 
-			return mk_slice( b->ref, (b->bytes - refBytes->bytes) + offset, size );
+			return _mk_slice( b->ref, (b->bytes - refBytes->bytes) + offset, size );
 		}
 		break;
 	case MUSE_SYMBOL_CELL :
 		{
-			muse_cell value = args ? muse_evalnext(&args) : MUSE_NIL;
-			const muse_char *name = muse_symbol_name(field_type);
+			muse_cell value = args ? _evalnext(&args) : MUSE_NIL;
+			const muse_char *name = muse_symbol_name(env,field_type);
 
 			muse_assert( (wcscmp(name,L"byte") == 0 && offset+1 <= b->size)
 						|| (wcscmp(name,L"short") == 0 && offset+2 <= b->size)
@@ -222,7 +227,7 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 
 			if ( value )
 			{
-				muse_int i = muse_int_value(value);
+				muse_int i = _intvalue(value);
 
 				switch ( name[0] )
 				{
@@ -247,11 +252,11 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 					return value;
 
 				case 'f':
-					*(float*)(b->bytes + (size_t)offset) = (float)muse_float_value(value);
+					*(float*)(b->bytes + (size_t)offset) = (float)_floatvalue(value);
 					return value;
 
 				case 'd':
-					*(double*)(b->bytes + (size_t)offset) = (double)muse_float_value(value);
+					*(double*)(b->bytes + (size_t)offset) = (double)_floatvalue(value);
 					return value;
 				}
 			}
@@ -259,12 +264,12 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 			{
 				switch ( name[0] )
 				{
-				case 'b': return muse_mk_int( (char)b->bytes[(size_t)offset] );
-				case 's': return muse_mk_int( ((short*)(b->bytes + (size_t)offset))[0] );
-				case 'i': return muse_mk_int( ((int*)(b->bytes + (size_t)offset))[0] );
-				case 'l': return muse_mk_int( ((muse_int*)(b->bytes + (size_t)offset))[0] );
-				case 'f': return muse_mk_float( ((float*)(b->bytes + (size_t)offset))[0] );
-				case 'd': return muse_mk_float( ((double*)(b->bytes + (size_t)offset))[0] );
+				case 'b': return _mk_int( (char)b->bytes[(size_t)offset] );
+				case 's': return _mk_int( ((short*)(b->bytes + (size_t)offset))[0] );
+				case 'i': return _mk_int( ((int*)(b->bytes + (size_t)offset))[0] );
+				case 'l': return _mk_int( ((muse_int*)(b->bytes + (size_t)offset))[0] );
+				case 'f': return _mk_float( ((float*)(b->bytes + (size_t)offset))[0] );
+				case 'd': return _mk_float( ((double*)(b->bytes + (size_t)offset))[0] );
 				}
 			}
 		}
@@ -296,8 +301,8 @@ static muse_functional_object_type_t g_bytes_type =
  */
 static muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell b = muse_evalnext(&args);
-	bytes_t *data = bytes_data(b);
+	muse_cell b = _evalnext(&args);
+	bytes_t *data = _bytes_data(b);
 
 	return (data == NULL) ? MUSE_NIL : b;
 }
@@ -307,18 +312,18 @@ static muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
  */
 static muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell b = muse_evalnext(&args);
-	bytes_t *bdata = bytes_data(b);
+	muse_cell b = _evalnext(&args);
+	bytes_t *bdata = _bytes_data(b);
 
 	muse_assert( bdata != NULL );
 
-	return muse_mk_int(bdata->size);
+	return _mk_int(bdata->size);
 }
 
 /**
  * Force the entire buffer down the throat of the port.
  */
-static size_t port_write_force( unsigned char *buffer, size_t size, muse_port_t p )
+static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
 {
 	size_t total = 0;
 
@@ -344,24 +349,24 @@ static size_t port_write_force( unsigned char *buffer, size_t size, muse_port_t 
  */
 static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg1 = muse_evalnext(&args);
+	muse_cell arg1 = _evalnext(&args);
 
-	muse_port_t p = muse_port(arg1);
+	muse_port_t p = _port(arg1);
 
 	if ( p )
-		arg1 = muse_evalnext(&args);
+		arg1 = _evalnext(&args);
 	else
-		p = muse_stdport( MUSE_STDOUT_PORT );
+		p = _stdport( MUSE_STDOUT_PORT );
 
 	{
-		bytes_t *b = bytes_data(arg1);
+		bytes_t *b = _bytes_data(arg1);
 		muse_int start_offset = 0, size = b->size;
 
 		muse_assert( b != NULL );
 
 		if ( args )
 		{
-			start_offset = muse_int_value(muse_evalnext(&args));
+			start_offset = _intvalue(_evalnext(&args));
 			size = b->size - start_offset;
 		}
 
@@ -369,7 +374,7 @@ static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 
 		if ( args )
 		{
-			size = muse_int_value(muse_evalnext(&args));
+			size = _intvalue(_evalnext(&args));
 
 			if ( start_offset + size > b->size )
 				size = b->size - start_offset;
@@ -379,15 +384,15 @@ static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 
 		if ( size > 0 )
 		{
-			size_t nbytes = port_write_force( b->bytes + (size_t)start_offset, (size_t)size, p );		
-			return muse_mk_int(nbytes);
+			size_t nbytes = port_write_force( env, b->bytes + (size_t)start_offset, (size_t)size, p );		
+			return _mk_int(nbytes);
 		}
 		else
 			return MUSE_NIL;
 	}
 }
 
-static size_t port_read_force( unsigned char *buffer, size_t size, muse_port_t p )
+static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
 {
 	size_t nread = 0;
 
@@ -417,15 +422,15 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 	bytes_t *result = NULL;
 	muse_int max_bytes = (muse_int)-1;
 
-	port_arg	= muse_evalnext(&args);
-	bytes_arg	= muse_evalnext(&args);
+	port_arg	= _evalnext(&args);
+	bytes_arg	= _evalnext(&args);
 
 	if ( port_arg )
 	{
-		p = muse_port(port_arg);
+		p = _port(port_arg);
 		if ( !p )
 		{
-			p = muse_stdport( MUSE_STDIN_PORT );
+			p = _stdport( MUSE_STDIN_PORT );
 			bytes_arg = port_arg;
 			port_arg = MUSE_NIL;
 		}
@@ -433,7 +438,7 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 
 	if ( bytes_arg )
 	{
-		result = bytes_data(bytes_arg);
+		result = _bytes_data(bytes_arg);
 	}
 
 	if ( result )
@@ -464,7 +469,7 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 			bytes_alloc( chunks_iter, (max_bytes == -1) ? chunkSize : max_bytes );
 
 			{
-				size_t n = port_read_force( chunks_iter->bytes, (size_t)chunks_iter->size, p );
+				size_t n = port_read_force( env, chunks_iter->bytes, (size_t)chunks_iter->size, p );
 				if ( max_bytes >= 0 )
 					max_bytes -= n;
 				total_size += n;
@@ -479,11 +484,11 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 
 		if ( total_size > 0 )
 		{
-			result = mk_bytes(total_size);
+			result = _mk_bytes(total_size);
 
 			{
 				bytes_t *c = chunks;
-				unsigned char *b = bytes_ptr(result);
+				unsigned char *b = _bytes_ptr(result);
 				size_t offset = 0;
 				while ( c < chunks_iter )
 				{
@@ -505,12 +510,12 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
  */
 static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell b = muse_mk_functional_object( &g_bytes_type, args );
+	muse_cell b = _mk_functional_object( &g_bytes_type, args );
 
 	/* We make the reference of a new object point to itself.
 	This lets us use the byte object directly to create a slice
 	of itself. */
-	bytes_data(b)->ref = b;
+	_bytes_data(b)->ref = b;
 
 	return b;
 }
@@ -520,11 +525,11 @@ static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
  */
 static muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
 {
-	muse_int size		= muse_int_value( muse_evalnext(&args) );
-	bytes_t *src		= bytes_data( muse_evalnext(&args) );
-	muse_int srcOffset	= muse_int_value( muse_evalnext(&args) );
-	bytes_t *dest		= bytes_data( muse_evalnext(&args) );
-	muse_int destOffset = muse_int_value( muse_evalnext(&args) );
+	muse_int size		= _intvalue( _evalnext(&args) );
+	bytes_t *src		= _bytes_data( _evalnext(&args) );
+	muse_int srcOffset	= _intvalue( _evalnext(&args) );
+	bytes_t *dest		= _bytes_data( _evalnext(&args) );
+	muse_int destOffset = _intvalue( _evalnext(&args) );
 
 	if ( size <= 0 )
 		return MUSE_NIL;
@@ -563,7 +568,7 @@ void muse_define_builtin_type_bytes( muse_env *env )
 		const _defn_t *d = k_defns;
 		while ( d->name )
 		{
-			muse_define( muse_csymbol(d->name), muse_mk_nativefn(d->fn, NULL) );
+			_define( _csymbol(d->name), _mk_nativefn(d->fn, NULL) );
 			_unwind(sp);
 			++d;
 		}

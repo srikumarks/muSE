@@ -65,19 +65,19 @@ typedef struct
 									simply an assoc list. */
 } hashtable_t;
 
-static void hashtable_init( void *p, muse_cell args )
+static void hashtable_init( muse_env *env, void *p, muse_cell args )
 {
 	hashtable_t *h = (hashtable_t*)p;
 
 	if ( args )
-		h->bucket_count = (int)muse_int_value( muse_evalnext(&args) );
+		h->bucket_count = (int)_intvalue( _evalnext(&args) );
 	else
 		h->bucket_count = 7;
 	
 	h->buckets = (muse_cell*)calloc( h->bucket_count, sizeof(muse_cell) );	
 }
 
-static void hashtable_mark( void *p )
+static void hashtable_mark( muse_env *env, void *p )
 {
 	hashtable_t *h = (hashtable_t*)p;
 	
@@ -88,12 +88,12 @@ static void hashtable_mark( void *p )
 	
 		while ( buckets < buckets_end )
 		{
-			muse_mark( *buckets++ );
+			muse_mark( env, *buckets++ );
 		}
 	}
 }
 
-static void hashtable_destroy( void *p )
+static void hashtable_destroy( muse_env *env, void *p )
 {
 	hashtable_t *h = (hashtable_t*)p;
 	
@@ -112,7 +112,7 @@ static void hashtable_destroy( void *p )
  * automatically give the hashtable object in the position that
  * this expression is inserted.
  */
-static void hashtable_write( void *ptr, void *port )
+static void hashtable_write( muse_env *env, void *ptr, void *port )
 {
 	hashtable_t *h = (hashtable_t*)ptr;
 	muse_port_t p = (muse_port_t)port;
@@ -148,7 +148,7 @@ static int bucket_for_hash( muse_int hash, int modulus )
 	return (int)(((hash % modulus) + modulus) % modulus);
 }
 
-static void hashtable_rehash( hashtable_t *h, int new_bucket_count )
+static void hashtable_rehash( muse_env *env, hashtable_t *h, int new_bucket_count )
 {
 	muse_cell *new_buckets;
 	
@@ -165,11 +165,11 @@ static void hashtable_rehash( hashtable_t *h, int new_bucket_count )
 						
 			while ( alist )
 			{
-				muse_int hash_i = muse_hash( muse_head( muse_head( alist ) ) );
+				muse_int hash_i = muse_hash( env, _head( _head( alist ) ) );
 				int new_b		= bucket_for_hash( hash_i, new_bucket_count );
-				muse_cell next	= muse_tail(alist);
+				muse_cell next	= _tail(alist);
 							
-				muse_set_tail( alist, new_buckets[new_b] );
+				_sett( alist, new_buckets[new_b] );
 				new_buckets[new_b] = alist;
 				alist = next;
 			}
@@ -185,8 +185,8 @@ static void hashtable_rehash( hashtable_t *h, int new_bucket_count )
 #ifndef NDEBUG
 muse_cell fn_hashtable_stats( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell ht = muse_evalnext(&args);
-	hashtable_t *h = (hashtable_t*)muse_functional_object_data(ht,'hash');
+	muse_cell ht = _evalnext(&args);
+	hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 
 	if ( h )
 	{
@@ -196,32 +196,32 @@ muse_cell fn_hashtable_stats( muse_env *env, void *context, muse_cell args )
 		
 		for ( ; b < h->bucket_count; ++b )
 		{
-			int bucket_size = muse_list_length( h->buckets[b] );
+			int bucket_size = _list_length( h->buckets[b] );
 			if ( bucket_size == 0 )
 				++unused_buckets;
 			else 
 				collision_count += (bucket_size - 1);
 		}
 		
-		return muse_list( "cccc",
-						  muse_list( "si", "element-count", h->count ),
-						  muse_list( "si", "bucket-count", h->bucket_count ),
-						  muse_list( "si", "unused-buckets", unused_buckets ),
-						  muse_list( "si", "collisions", collision_count ) );
+		return muse_list( env, "cccc",
+						  muse_list( env, "si", "element-count", h->count ),
+						  muse_list( env, "si", "bucket-count", h->bucket_count ),
+						  muse_list( env, "si", "unused-buckets", unused_buckets ),
+						  muse_list( env, "si", "collisions", collision_count ) );
 	}
 	
 	return MUSE_NIL;
 }
 #endif
 
-static muse_cell *hashtable_add( hashtable_t *h, muse_cell key, muse_cell value, muse_int *hash_opt )
+static muse_cell *hashtable_add( muse_env *env, hashtable_t *h, muse_cell key, muse_cell value, muse_int *hash_opt )
 {
 	muse_int hash;
 	
 	if ( hash_opt )
 		hash = *hash_opt;
 	else
-		hash = muse_hash( key );
+		hash = muse_hash( env, key );
 	
 	{
 		int bucket = bucket_for_hash( hash, h->bucket_count );
@@ -229,29 +229,29 @@ static muse_cell *hashtable_add( hashtable_t *h, muse_cell key, muse_cell value,
 		if ( h->count + 1 >= 2 * h->bucket_count )
 		{
 			/* Need to rehash and determine new bucket. */
-			hashtable_rehash( h, h->bucket_count * 2 );
+			hashtable_rehash( env, h, h->bucket_count * 2 );
 			
 			bucket = bucket_for_hash( hash, h->bucket_count );
 		}
 
 		/* Add the kvpair to the determined bucket. */
 		muse_assert( value != MUSE_NIL );
-		h->buckets[bucket] = muse_cons( muse_cons( key, value ), h->buckets[bucket] );
+		h->buckets[bucket] = _cons( _cons( key, value ), h->buckets[bucket] );
 		++(h->count);
 		
 		return h->buckets + bucket;
 	}
 }
 
-static muse_cell *hashtable_get( hashtable_t *h, muse_cell key, muse_int *hash_out )
+static muse_cell *hashtable_get( muse_env *env, hashtable_t *h, muse_cell key, muse_int *hash_out )
 {
-	muse_int hash = muse_hash(key);
+	muse_int hash = muse_hash(env,key);
 	int bucket = bucket_for_hash( hash, h->bucket_count );
 
 	if ( hash_out ) 
 		(*hash_out) = hash;
 	
-	return muse_assoc_iter( h->buckets + bucket, key );
+	return muse_assoc_iter( env, h->buckets + bucket, key );
 }
 
 muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
@@ -259,16 +259,16 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 	muse_assert( h != NULL && "Context 'h' must be a hashtable object!" );
 
 	{
-		muse_cell key = muse_evalnext(&args);
+		muse_cell key = _evalnext(&args);
 		muse_int hash = 0;
 
 		/* Find the kvpair if it exists in the hash table. */
-		muse_cell *kvpair = hashtable_get( h, key, &hash );
+		muse_cell *kvpair = hashtable_get( env, h, key, &hash );
 				
 		if ( args )
 		{
 			/* We've been asked to set a property. */
-			muse_cell value = muse_evalnext(&args);
+			muse_cell value = _evalnext(&args);
 
 			/* First see if the key is already in the hash table. */
 			if ( kvpair )
@@ -276,14 +276,14 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 				if ( value )
 				{
 					/* It already exists. Simply change the value to the new one. */
-					muse_set_tail( muse_head(*kvpair), value );
+					_sett( _head(*kvpair), value );
 					return value;
 				} 
 				else
 				{
 					/* The value is MUSE_NIL. Which means we have to remove
 					the kvpair from the hashtable. */
-					(*kvpair) = muse_tail( *kvpair );
+					(*kvpair) = _tail( *kvpair );
 					--(h->count);
 					return MUSE_NIL;
 				}
@@ -296,7 +296,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 					Check to see if we need to rehash the table. 
 					We rehash if we have to do more than 2 linear
 					searches on the average for each access. */
-					hashtable_add( h, key, value, &hash );
+					hashtable_add( env, h, key, value, &hash );
 					
 					return value;
 				}
@@ -311,22 +311,22 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 		
 		/* We've been asked to get a property. */
 		if ( kvpair )
-			return muse_tail( muse_head( *kvpair ) );
+			return _tail( _head( *kvpair ) );
 		else
 			return MUSE_NIL;
 	}
 }
 
-static muse_cell hashtable_size( void *self )
+static muse_cell hashtable_size( muse_env *env, void *self )
 {
-	return muse_mk_int( ((hashtable_t*)self)->count );
+	return _mk_int( ((hashtable_t*)self)->count );
 }
 
-static void hashtable_merge_one( hashtable_t *h1, muse_cell key, muse_cell new_value, muse_cell reduction_fn )
+static void hashtable_merge_one( muse_env *env, hashtable_t *h1, muse_cell key, muse_cell new_value, muse_cell reduction_fn )
 {
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	muse_int hash = 0;
-	muse_cell *new_kv = hashtable_get( h1, key, &hash );
+	muse_cell *new_kv = hashtable_get( env, h1, key, &hash );
 	
 	if ( new_kv )
 	{
@@ -334,38 +334,38 @@ static void hashtable_merge_one( hashtable_t *h1, muse_cell key, muse_cell new_v
 		if ( reduction_fn )
 		{
 			/* Set the value to reduction_fn( current_value, new_value ). */
-			muse_set_tail( muse_head( *new_kv ), 
-						   muse_apply( reduction_fn,
-									   muse_cons( muse_tail( muse_head( *new_kv ) ),
-												  muse_cons( new_value,
+			_sett( _head( *new_kv ), 
+						   _apply( reduction_fn,
+									   _cons( _tail( _head( *new_kv ) ),
+												  _cons( new_value,
 															 MUSE_NIL ) ),
 									   MUSE_TRUE ) );					
 		}
 		else
 		{
 			/* No reduction function. Simply replace the old value with the new one. */
-			muse_set_tail( muse_head( *new_kv ), new_value );
+			_sett( _head( *new_kv ), new_value );
 		}
 	}
 	else
 	{
 		/* Key doesn't exist. Need to add new. */
-		hashtable_add( h1, key, new_value, &hash );
+		hashtable_add( env, h1, key, new_value, &hash );
 	}
 	
-	muse_stack_unwind(sp);
+	_unwind(sp);
 }
 
-static muse_cell hashtable_map( void *self, muse_cell fn )
+static muse_cell hashtable_map( muse_env *env, void *self, muse_cell fn )
 {
 	hashtable_t *h = (hashtable_t*)self;
 	
-	muse_cell result = muse_mk_hashtable( h->count );
-	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	muse_cell result = muse_mk_hashtable( env, h->count );
+	hashtable_t *result_ptr = (hashtable_t*)_functional_object_data( result, 'hash' );
 	
-	muse_cell args = muse_cons( MUSE_NIL, MUSE_NIL );
+	muse_cell args = _cons( MUSE_NIL, MUSE_NIL );
 	
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	int b;
 	for ( b = 0; b < h->bucket_count; ++b )
 	{
@@ -373,15 +373,15 @@ static muse_cell hashtable_map( void *self, muse_cell fn )
 		
 		while ( alist )
 		{
-			muse_cell kv = muse_head(alist);
+			muse_cell kv = _head(alist);
 			
-			muse_set_head( args, muse_tail( kv ) );
+			_seth( args, _tail( kv ) );
 			
-			hashtable_add( result_ptr, muse_head( kv ), muse_apply( fn, args, MUSE_TRUE ), NULL );
+			hashtable_add( env, result_ptr, _head( kv ), _apply( fn, args, MUSE_TRUE ), NULL );
 						
-			alist = muse_tail(alist);
+			alist = _tail(alist);
 			
-			muse_stack_unwind(sp);
+			_unwind(sp);
 		}
 	}
 	
@@ -389,10 +389,10 @@ static muse_cell hashtable_map( void *self, muse_cell fn )
 }
 
 
-static void hashtable_merge( hashtable_t *h1, hashtable_t *h2, muse_cell reduction_fn )
+static void hashtable_merge( muse_env *env, hashtable_t *h1, hashtable_t *h2, muse_cell reduction_fn )
 {
 	int b = 0;
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	
 	for ( b = 0; b < h2->bucket_count; ++b )
 	{
@@ -400,49 +400,49 @@ static void hashtable_merge( hashtable_t *h1, hashtable_t *h2, muse_cell reducti
 		
 		while ( alist )
 		{
-			muse_cell kv = muse_head(alist);
-			muse_cell key = muse_head(kv);
-			muse_cell value = muse_tail(kv);
+			muse_cell kv = _head(alist);
+			muse_cell key = _head(kv);
+			muse_cell value = _tail(kv);
 			
-			hashtable_merge_one( h1, key, value, reduction_fn );
+			hashtable_merge_one( env, h1, key, value, reduction_fn );
 			
-			muse_stack_unwind(sp);
-			alist = muse_tail(alist);
+			_unwind(sp);
+			alist = _tail(alist);
 		}
 	}
 }
 
-static muse_cell hashtable_join( void *self, muse_cell objlist, muse_cell reduction_fn )
+static muse_cell hashtable_join( muse_env *env, void *self, muse_cell objlist, muse_cell reduction_fn )
 {
 	hashtable_t *h1 = (hashtable_t*)self;
 	
-	muse_cell result = muse_mk_hashtable( h1->count );
-	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	muse_cell result = muse_mk_hashtable( env, h1->count );
+	hashtable_t *result_ptr = (hashtable_t*)_functional_object_data( result, 'hash' );
 	
 	/* First add all the elements of h1. */
-	hashtable_merge( result_ptr, h1, MUSE_NIL );
+	hashtable_merge( env, result_ptr, h1, MUSE_NIL );
 	
 	/* Next add all elements of h2 to the result. */
 	while ( objlist )
 	{
 		muse_cell obj = _next(&objlist);
-		hashtable_t *h2 = (hashtable_t*)muse_functional_object_data( obj, 'hash' );
-		hashtable_merge( result_ptr, h2, reduction_fn );
+		hashtable_t *h2 = (hashtable_t*)_functional_object_data( obj, 'hash' );
+		hashtable_merge( env, result_ptr, h2, reduction_fn );
 	}
 	
 	return result;
 }
 
-static muse_cell hashtable_collect( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
+static muse_cell hashtable_collect( muse_env *env, void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
 {
 	hashtable_t *h = (hashtable_t*)self;
 	
-	muse_cell result = muse_mk_hashtable( h->count );
-	hashtable_t *result_ptr = (hashtable_t*)muse_functional_object_data( result, 'hash' );
+	muse_cell result = muse_mk_hashtable( env, h->count );
+	hashtable_t *result_ptr = (hashtable_t*)_functional_object_data( result, 'hash' );
 	
 	/* Step through self's contents and add all the key-value pairs that satisfy the predicate. */
 	{
-		int sp = muse_stack_pos();
+		int sp = _spos();
 		int b = 0;
 		for ( b = 0; b < h->bucket_count; ++b )
 		{
@@ -450,19 +450,19 @@ static muse_cell hashtable_collect( void *self, muse_cell predicate, muse_cell m
 			
 			while ( alist )
 			{
-				muse_cell kv = muse_head( alist );
+				muse_cell kv = _head( alist );
 				
-				if ( !predicate || muse_apply( predicate, kv, MUSE_TRUE ) )
+				if ( !predicate || _apply( predicate, kv, MUSE_TRUE ) )
 				{
 					/* Key-value pair satisfied the predicate. */
 					if ( mapper )
-						kv = muse_apply( mapper, kv, MUSE_TRUE );
+						kv = _apply( mapper, kv, MUSE_TRUE );
 					
-					hashtable_merge_one( result_ptr, muse_head(kv), muse_tail(kv), reduction_fn );
+					hashtable_merge_one( env, result_ptr, _head(kv), _tail(kv), reduction_fn );
 				}
 				
-				muse_stack_unwind(sp);
-				alist = muse_tail(alist);
+				_unwind(sp);
+				alist = _tail(alist);
 			}
 		}
 	}
@@ -470,16 +470,16 @@ static muse_cell hashtable_collect( void *self, muse_cell predicate, muse_cell m
 	return result;
 }
 
-static muse_cell hashtable_reduce( void *self, muse_cell reduction_fn, muse_cell initial )
+static muse_cell hashtable_reduce( muse_env *env, void *self, muse_cell reduction_fn, muse_cell initial )
 {
 	hashtable_t *h = (hashtable_t*)self;
 	
 	muse_cell result = initial;
-	muse_cell args = muse_cons( result, muse_cons( MUSE_NIL, MUSE_NIL ) );
+	muse_cell args = _cons( result, _cons( MUSE_NIL, MUSE_NIL ) );
 	muse_cell *arg1 = &(_ptr(args)->cons.head);
 	muse_cell *arg2 = &(_ptr(_tail(args))->cons.head);
 	
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	int b = 0;
 	for ( b = 0; b < h->bucket_count; ++b )
 	{
@@ -488,21 +488,21 @@ static muse_cell hashtable_reduce( void *self, muse_cell reduction_fn, muse_cell
 		while ( alist )
 		{
 			(*arg1) = result;
-			(*arg2) = muse_tail( muse_head( alist ) );
+			(*arg2) = _tail( _head( alist ) );
 			
-			result = muse_apply( reduction_fn, args, MUSE_TRUE );
+			result = _apply( reduction_fn, args, MUSE_TRUE );
 			
-			muse_stack_unwind(sp);
-			muse_stack_push(result);
+			_unwind(sp);
+			_spush(result);
 			
-			alist = muse_tail(alist);
+			alist = _tail(alist);
 		}
 	}
 	
 	return result;
 }
 
-static muse_cell hashtable_iterator( hashtable_t *self, muse_iterator_callback_t callback, void *context )
+static muse_cell hashtable_iterator( muse_env *env, hashtable_t *self, muse_iterator_callback_t callback, void *context )
 {
 	int sp = _spos();
 	int b;
@@ -514,7 +514,7 @@ static muse_cell hashtable_iterator( hashtable_t *self, muse_iterator_callback_t
 		
 		while ( alist )
 		{
-			cont = callback( self, context, _tail(_head(alist)) );
+			cont = callback( env, self, context, _tail(_head(alist)) );
 			_unwind(sp);
 			if ( !cont )
 				return _head(_head(alist)); /**< Return the key. */
@@ -535,7 +535,7 @@ static muse_monad_view_t g_hashtable_monad_view =
 	hashtable_reduce
 };
 
-static void *hashtable_view( int id )
+static void *hashtable_view( muse_env *env, int id )
 {
 	switch ( id )
 	{
@@ -565,7 +565,7 @@ static muse_functional_object_type_t g_hashtable_type =
  */
 muse_cell fn_mk_hashtable( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_functional_object( &g_hashtable_type, args );
+	return _mk_functional_object( &g_hashtable_type, args );
 }
 
 /**
@@ -574,8 +574,8 @@ muse_cell fn_mk_hashtable( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_hashtable_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell ht = muse_evalnext(&args);
-	hashtable_t *h = (hashtable_t*)muse_functional_object_data(ht,'hash');
+	muse_cell ht = _evalnext(&args);
+	hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 	
 	if ( h )
 		return ht;
@@ -589,12 +589,12 @@ muse_cell fn_hashtable_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_hashtable_size( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell ht = muse_evalnext(&args);
-	hashtable_t *h = (hashtable_t*)muse_functional_object_data(ht,'hash');
+	muse_cell ht = _evalnext(&args);
+	hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 	
 	muse_assert( h && h->base.type_info->type_word == 'hash' );
 	
-	return muse_mk_int( h->count );
+	return _mk_int( h->count );
 }
 
 
@@ -606,17 +606,17 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell ht = fn_mk_hashtable( env, NULL, MUSE_NIL );
 	
-	muse_cell alist = muse_evalnext(&args);
+	muse_cell alist = _evalnext(&args);
 	int count = 0;
-	muse_cell *alistarr = muse_list_to_array( alist, &count );
-	muse_cell alist_copy = muse_array_to_list( count, alistarr, 1 );
+	muse_cell *alistarr = muse_list_to_array( env, alist, &count );
+	muse_cell alist_copy = muse_array_to_list( env, count, alistarr, 1 );
 	free(alistarr);
 
 	{
-		hashtable_t *h = (hashtable_t*)muse_functional_object_data(ht,'hash');
+		hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 		h->count = count;
 		h->buckets[0] = alist_copy;
-		hashtable_rehash( h, count );
+		hashtable_rehash( env, h, count );
 	}
 	
 	return ht;
@@ -630,8 +630,8 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell result = MUSE_NIL;
-	muse_cell ht = muse_evalnext(&args);
-	hashtable_t *h = (hashtable_t*)muse_functional_object_data(ht,'hash');
+	muse_cell ht = _evalnext(&args);
+	hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 	
 	muse_assert( h && h->base.type_info->type_word == 'hash' );
 	
@@ -649,9 +649,9 @@ muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args )
 			
 			if ( alist )
 			{
-				int bucket_size = muse_list_length(alist);
+				int bucket_size = _list_length(alist);
 				
-				muse_list_extract( bucket_size, alist, 1, kvpairs_iter, 1 );
+				muse_list_extract( env, bucket_size, alist, 1, kvpairs_iter, 1 );
 				
 				kvpairs_iter += bucket_size;
 			}
@@ -659,7 +659,7 @@ muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args )
 		
 		muse_assert( kvpairs_iter == kvpairs + h->count );
 		
-		result = muse_array_to_list( h->count, kvpairs, 1 );
+		result = muse_array_to_list( env, h->count, kvpairs, 1 );
 		free(kvpairs);
 	}
 	
@@ -683,15 +683,15 @@ static const struct _defs
 	{	NULL,					NULL					}
 };
 
-void muse_define_builtin_type_hashtable()
+void muse_define_builtin_type_hashtable(muse_env *env)
 {
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	const struct _defs *defs = k_hashtable_funs;
 	
 	for ( ; defs->name; ++defs )
 	{
-		muse_define( muse_csymbol(defs->name), muse_mk_nativefn( defs->fn, NULL ) );
-		muse_stack_unwind(sp);
+		_define( _csymbol(defs->name), _mk_nativefn( defs->fn, NULL ) );
+		_unwind(sp);
 	}
 }
 
@@ -702,10 +702,10 @@ void muse_define_builtin_type_hashtable()
  * get you 0. The "length" of the hashtable is the number of 
  * key-value pairs put into it.
  */
-muse_cell muse_mk_hashtable( int length )
+muse_cell muse_mk_hashtable( muse_env *env, int length )
 {
 	int sp = _spos();
-	muse_cell ht = fn_mk_hashtable( _env(), NULL, muse_cons( muse_mk_int(length), MUSE_NIL ) );
+	muse_cell ht = fn_mk_hashtable( env, NULL, _cons( _mk_int(length), MUSE_NIL ) );
 	_unwind(sp);
 	_spush(ht);
 	return ht;
@@ -714,9 +714,9 @@ muse_cell muse_mk_hashtable( int length )
 /** 
  * Returns the number of key-value pairs put into the hash table.
  */
-int muse_hashtable_length( muse_cell ht )
+int muse_hashtable_length( muse_env *env, muse_cell ht )
 {
-	hashtable_t *h = (hashtable_t*)muse_functional_object_data( ht, 'hash' );
+	hashtable_t *h = (hashtable_t*)_functional_object_data( ht, 'hash' );
 	muse_assert( h != NULL && "Argument must be a hashtable object!" );
 	return h ? h->count : 0;
 }
@@ -727,11 +727,11 @@ int muse_hashtable_length( muse_cell ht )
  * The value associated with the key will be in the tail of the returned
  * pair.
  */
-muse_cell muse_hashtable_get( muse_cell ht, muse_cell key )
+muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
 {
-	return fn_hashtable( _env(), 
-						(hashtable_t*)muse_functional_object_data( ht, 'hash' ), 
-						muse_cons( key, MUSE_NIL ) );
+	return fn_hashtable( env, 
+						(hashtable_t*)_functional_object_data( ht, 'hash' ), 
+						_cons( key, MUSE_NIL ) );
 }
 
 /**
@@ -739,13 +739,13 @@ muse_cell muse_hashtable_get( muse_cell ht, muse_cell key )
  * The given value replaces any previous value that might have been
  * associated with the key.
  */
-muse_cell muse_hashtable_put( muse_cell ht, muse_cell key, muse_cell value )
+muse_cell muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value )
 {
 	int sp = _spos();
 	muse_cell result =
-		fn_hashtable( _env(), 
-						(hashtable_t*)muse_functional_object_data( ht, 'hash' ), 
-						muse_cons( key, muse_cons( value, MUSE_NIL ) ) );
+		fn_hashtable( env, 
+						(hashtable_t*)_functional_object_data( ht, 'hash' ), 
+						_cons( key, _cons( value, MUSE_NIL ) ) );
 	_unwind(sp);
 	return result;
 }

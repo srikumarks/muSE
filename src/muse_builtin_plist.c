@@ -20,9 +20,9 @@
  */
 muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 {
-	muse_cell sym	= muse_evalnext(&args);
-	muse_cell prop	= muse_evalnext(&args);
-	return muse_get_prop( sym, prop );
+	muse_cell sym	= _evalnext(&args);
+	muse_cell prop	= _evalnext(&args);
+	return _get_prop( sym, prop );
 }
 
 /**
@@ -33,10 +33,10 @@ muse_cell fn_get( muse_env *env, void *context, muse_cell args)
  */
 muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 {
-	muse_cell sym	= muse_evalnext(&args);
-	muse_cell prop	= muse_evalnext(&args);
-	muse_cell value = muse_evalnext(&args);
-	return muse_put_prop( sym, prop, value );
+	muse_cell sym	= _evalnext(&args);
+	muse_cell prop	= _evalnext(&args);
+	muse_cell value = _evalnext(&args);
+	return _put_prop( sym, prop, value );
 }
 
 /**
@@ -45,9 +45,9 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
  */
 muse_cell fn_assoc( muse_env *env, void *context, muse_cell args)
 {
-	muse_cell alist = muse_evalnext(&args);
-	muse_cell prop = muse_evalnext(&args);
-	return muse_assoc(alist,prop);
+	muse_cell alist = _evalnext(&args);
+	muse_cell prop = _evalnext(&args);
+	return muse_assoc(env,alist,prop);
 }
 
 /**
@@ -56,7 +56,7 @@ muse_cell fn_assoc( muse_env *env, void *context, muse_cell args)
  */ 
 muse_cell fn_plist( muse_env *env, void *context, muse_cell args)
 {
-	return muse_symbol_plist( muse_evalnext(&args) );
+	return muse_symbol_plist( env, _evalnext(&args) );
 }
 
 /**
@@ -66,10 +66,10 @@ muse_cell fn_plist( muse_env *env, void *context, muse_cell args)
  */
 muse_cell fn_symbol( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell name = muse_evalnext(&args);
+	muse_cell name = _evalnext(&args);
 	int length = 0;
-	const muse_char *text = muse_text_contents( name, &length );
-	return muse_symbol( text, text + length );
+	const muse_char *text = _text_contents( name, &length );
+	return muse_symbol( env, text, text + length );
 }
 
 /**
@@ -79,7 +79,7 @@ muse_cell fn_symbol( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_name( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell sym = muse_evalnext(&args);
+	muse_cell sym = _evalnext(&args);
 	if ( sym && _cellt(sym) == MUSE_SYMBOL_CELL )
 	{
 		return _tail(_head(_tail(sym)));
@@ -103,6 +103,6 @@ muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash );
  */
 muse_cell fn_gensym( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell sym = muse_mk_anon_symbol();
+	muse_cell sym = _mk_anon_symbol();
 	return muse_intern_symbol( sym, _newlocal(), sym );
 }

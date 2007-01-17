@@ -59,7 +59,6 @@ muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_first( muse_env *env, void *context, muse_cell args );
 muse_cell fn_rest( muse_env *env, void *context, muse_cell args );
-muse_cell fn_next( muse_env *env, void *context, muse_cell args );
 muse_cell fn_nth( muse_env *env, void *context, muse_cell args );
 muse_cell fn_take( muse_env *env, void *context, muse_cell args );
 muse_cell fn_drop( muse_env *env, void *context, muse_cell args );
@@ -200,7 +199,7 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args );
 muse_cell fn_list_files( muse_env *env, void *context, muse_cell args );
 muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args );
-void muse_load_builtin_fns();
+void muse_load_builtin_fns( muse_env *env );
 /*@}*/
 
 /** 
@@ -218,11 +217,11 @@ void muse_load_builtin_fns();
  * through the generic "read", "write" and such functions.
  */
 /*@{*/
-void muse_define_builtin_type_vector();
-void muse_define_builtin_type_hashtable();
+void muse_define_builtin_type_vector(muse_env *env);
+void muse_define_builtin_type_hashtable(muse_env *env);
 void muse_define_builtin_type_bytes( muse_env *env );
 /*@}*/
 
-void muse_define_builtin_networking();
+void muse_define_builtin_networking(muse_env *env);
 
 #endif /* __MUSE_BUILTINS_H__ */

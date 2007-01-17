@@ -110,7 +110,7 @@ static muse_boolean ensure_stack( muse_stack *s, int items )
 		return MUSE_FALSE;
 }
 
-static void init_heap( muse_heap *heap, int heap_size )
+static void init_heap( muse_env *env, muse_heap *heap, int heap_size )
 {
 	heap_size				= (heap_size + 7) & ~7;
 	heap->size_cells		= heap_size;
@@ -213,7 +213,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ -1,						NULL		},
 };
 
-static void init_builtin_symbols( muse_cell *s )
+static void init_builtin_symbols( muse_env *env, muse_cell *s )
 {
 	const struct _bs *bs = k_builtin_symbol_table;
 	while ( bs->builtin >= 0 )
@@ -221,7 +221,7 @@ static void init_builtin_symbols( muse_cell *s )
 		if ( bs->symbol == NULL )
 			s[bs->builtin]	= bs->builtin;
 		else
-			s[bs->builtin] = muse_csymbol( bs->symbol );
+			s[bs->builtin] = _csymbol( bs->symbol );
 		
 		++bs;
 	}
@@ -277,12 +277,11 @@ static void init_parameters( muse_env *env, const int *parameters )
 muse_env *muse_init_env( const int *parameters )
 {
 	muse_env *env = (muse_env*)calloc( 1, sizeof(muse_env) );
-	muse_set_current_env(env);
 	
 	env->stack_base = (void*)&parameters;
 	init_parameters( env, parameters );
 	
-	init_heap( &env->heap, env->parameters[MUSE_HEAP_SIZE] );
+	init_heap( env, &env->heap, env->parameters[MUSE_HEAP_SIZE] );
 	init_stack( &env->symbol_stack, env->parameters[MUSE_MAX_SYMBOLS] );
 	
 	/* The symbol stack is not really a stack. Its an array of buckets 
@@ -300,7 +299,7 @@ muse_env *muse_init_env( const int *parameters )
 		{
 			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );
 			env->current_process = p;
-			init_process_mailbox(p);
+			init_process_mailbox(env, p);
 			prime_process( env, p );
 
 			/* Immediately switch to running state. */
@@ -312,16 +311,16 @@ muse_env *muse_init_env( const int *parameters )
 	{
 		int sp = _spos();
 		env->builtin_symbols = (muse_cell*)calloc( MUSE_NUM_BUILTIN_SYMBOLS, sizeof(muse_cell) );
-		init_builtin_symbols( env->builtin_symbols );
+		init_builtin_symbols( env, env->builtin_symbols );
 		
-		muse_load_builtin_fns();
+		muse_load_builtin_fns(env);
 		_unwind(sp);
 	}
 
 	return env;
 }
 
-void muse_network_shutdown();
+void muse_network_shutdown( muse_env *env );
 
 /**
  * Destroys the given environment. If the given
@@ -343,8 +342,8 @@ void muse_destroy_env( muse_env *env )
 		while ( p != cp );
 	}
 
-	muse_gc(0);
-	muse_network_shutdown();
+	muse_gc(env, 0);
+	muse_network_shutdown(env);
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
@@ -354,31 +353,9 @@ void muse_destroy_env( muse_env *env )
 	destroy_heap( &env->heap );
 	free( env->parameters );
 	
-	if ( env == _env() )
-		muse_set_current_env(NULL);
-		
 	free( env );
 }
 
-/**
- * Returns the current muse environment or NULL
- * if none is set.
- */
-muse_env *muse_get_current_env()
-{
-	return _env();
-}
-
-/**
- * Changes the current muse environment to the
- * given one.
- */
-muse_env *muse_set_current_env( muse_env *env )
-{
-	muse_env *prev = g_muse_env;
-	g_muse_env = env;
-	return prev;
-}
 
 /**
  * Allocates a new cons cell with the given head 
@@ -393,15 +370,13 @@ muse_env *muse_set_current_env( muse_env *env )
  * to the cons. The newly allocated cell is placed on
  * the stack so that it won't be inadvertently garbage
  * collected. This way, you can safely write expressions
- * of the form @code muse_cons( muse_cons(a,b), muse_cons(c,d) ) @endcode 
+ * of the form @code _cons( _cons(a,b), _cons(c,d) ) @endcode 
  * 
  * The cons operation does not fail unless there is
  * absolutely no system memory available for the new cell.
  */
-muse_cell muse_cons( muse_cell head, muse_cell tail )
+muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
 {
-	muse_env *env = _env();
-	
 	if ( env->heap.free_cells == MUSE_NIL )
 	{
 		/* Make sure that the given head and tail
@@ -411,7 +386,7 @@ muse_cell muse_cons( muse_cell head, muse_cell tail )
 		int sp = _spos();
 		_spush(head);
 		_spush(tail);
-		muse_gc(1);
+		muse_gc(env,1);
 		_unwind(sp);
 		
 		if ( env->heap.free_cells == MUSE_NIL )
@@ -433,9 +408,9 @@ muse_cell muse_cons( muse_cell head, muse_cell tail )
  * Allocates a new integer cell to hold the given integer. 
  * The newly allocated cell is placed on the stack.
  */
-muse_cell muse_mk_int( muse_int i )
+muse_cell muse_mk_int( muse_env *env, muse_int i )
 {
-	muse_cell c = _setcellt( muse_cons( 0, 0 ), MUSE_INT_CELL );
+	muse_cell c = _setcellt( _cons( 0, 0 ), MUSE_INT_CELL );
 	_ptr(c)->i = i;
 	return c;
 }
@@ -444,9 +419,9 @@ muse_cell muse_mk_int( muse_int i )
  * Allocates a new float cell to hold the given integer.
  * The newly allocated cell is placed on the stack.
  */
-muse_cell muse_mk_float( muse_float f )
+muse_cell muse_mk_float( muse_env *env, muse_float f )
 {
-	muse_cell c = _setcellt( muse_cons( 0, 0 ), MUSE_FLOAT_CELL );
+	muse_cell c = _setcellt( _cons( 0, 0 ), MUSE_FLOAT_CELL );
 	_ptr(c)->f = f;
 	return c;
 }
@@ -459,15 +434,15 @@ muse_cell muse_mk_float( muse_float f )
  * 
  * A muse enviroment maintains a stack of cell references
  * which will not be garbage collected the next time the gc
- * is invoked. Every API function that uses \ref muse_cons
+ * is invoked. Every API function that uses \ref _cons
  * takes at least one new cell from the free list and
- * places it on the stack. Such functions include \ref muse_mk_int,
- * \ref muse_mk_float and family, the \ref muse_list and
+ * places it on the stack. Such functions include \ref _mk_int,
+ * \ref _mk_float and family, the \ref muse_list and
  * related functions and so on - anything that will need to
  * allocate a new cell.
  * 
  * Once a reference to a cell is placed into another cell,
- * either by using \ref muse_define on a named symbol, or
+ * either by using \ref _define on a named symbol, or
  * by placing it in the property list of a named symbol or
  * by adding it to a list that is itself protected by being
  * on the stack, the stack space occupied by the cell can be
@@ -503,7 +478,7 @@ muse_cell muse_mk_float( muse_float f )
  * 
  * @see muse_stack_unwind, muse_stack_push
  */
-int	muse_stack_pos()
+int	muse_stack_pos(muse_env *env)
 {
 	return _spos();
 }
@@ -518,7 +493,7 @@ int	muse_stack_pos()
  * 
  * @see muse_stack_pos
  */
-void muse_stack_unwind( int stack_pos )
+void muse_stack_unwind( muse_env *env, int stack_pos )
 {
 	_unwind(stack_pos);
 }
@@ -530,15 +505,15 @@ void muse_stack_unwind( int stack_pos )
  * 
  * @see muse_stack_pos
  */
-muse_cell muse_stack_push( muse_cell obj )
+muse_cell muse_stack_push( muse_env *env, muse_cell obj )
 {
 	_spush(obj);
 	return obj;
 }
 
-static void add_special( muse_cell special )
+static void add_special( muse_env *env, muse_cell special )
 {
-	_lpush( muse_cons( special, 0 ), &_env()->specials );
+	_lpush( _cons( special, 0 ), &env->specials );
 }
 
 /**
@@ -554,9 +529,9 @@ static void add_special( muse_cell special )
  * destroyed when the text cell is no longer needed and is
  * garbage collected.
  */ 
-muse_cell muse_mk_text( const muse_char *start, const muse_char *end )
+muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *end )
 {
-	muse_cell c			= _setcellt( muse_cons( 0, 0 ), MUSE_TEXT_CELL );
+	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_cell_data *d	= _ptr(c);
 	
 	d->text.start		= (muse_char *)malloc( (end - start + 1) * sizeof(muse_char) );
@@ -570,7 +545,7 @@ muse_cell muse_mk_text( const muse_char *start, const muse_char *end )
 		memcpy( d->text.start, start, sizeof(muse_char) * (end - start) );
 	}
 
-	add_special(c);
+	add_special(env,c);
 		
 	return c;
 }
@@ -579,16 +554,16 @@ muse_cell muse_mk_text( const muse_char *start, const muse_char *end )
  * Same as \c muse_mk_text() except that it takes a UTF8 string
  * and converts it into a unicode string and stores it.
  */
-muse_cell muse_mk_text_utf8( const char *start, const char *end )
+muse_cell muse_mk_text_utf8( muse_env *env, const char *start, const char *end )
 {
-	muse_cell c			= _setcellt( muse_cons( 0, 0 ), MUSE_TEXT_CELL );
+	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_text_cell *t	= &_ptr(c)->text;
 	int len				= (int)(end - start);
 
 	t->start			= (muse_char*)calloc( muse_unicode_size(start, len), 1 );
 	t->end				= t->start + muse_utf8_to_unicode( t->start, len, start, len );
 
-	add_special(c);
+	add_special(env,c);
 	
 	return c;
 }
@@ -597,18 +572,18 @@ muse_cell muse_mk_text_utf8( const char *start, const char *end )
  * Same as \c muse_mk_text() except that it assumes a null
  * terminated string.
  */
-muse_cell muse_mk_ctext( const muse_char *start )
+muse_cell muse_mk_ctext( muse_env *env, const muse_char *start )
 {
-	return muse_mk_text( start, start + wcslen(start) );
+	return muse_mk_text( env, start, start + wcslen(start) );
 }
 
 /**
  * Same as \c muse_mk_text_utf8() except that it assumes
  * a null terminated string as input.
  */
-muse_cell muse_mk_ctext_utf8( const char *start )
+muse_cell muse_mk_ctext_utf8( muse_env *env, const char *start )
 {
-	return muse_mk_text_utf8( start, start + strlen(start) );
+	return muse_mk_text_utf8( env, start, start + strlen(start) );
 }
 
 /**
@@ -620,9 +595,9 @@ muse_cell muse_mk_ctext_utf8( const char *start )
  * a call to a C++ member function, by writing a static 
  * wrapper function.
  */
-muse_cell muse_mk_nativefn( muse_nativefn_t fn, void *context )
+muse_cell muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context )
 {
-	muse_cell c			= _setcellt( muse_cons( 0, 0 ), MUSE_NATIVEFN_CELL );
+	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_NATIVEFN_CELL );
 	muse_cell_data *p	= _ptr(c);
 	
 	p->fn.fn			= fn;
@@ -636,14 +611,14 @@ muse_cell muse_mk_nativefn( muse_nativefn_t fn, void *context )
  * called with no arguments when the function is 
  * garbage collected.
  */
-muse_cell muse_mk_destructor( muse_nativefn_t fn, void *context )
+muse_cell muse_mk_destructor( muse_env *env, muse_nativefn_t fn, void *context )
 {
-	muse_cell f = muse_mk_nativefn( fn, context );
-	add_special(f);
+	muse_cell f = _mk_nativefn( fn, context );
+	add_special(env, f);
 	return f;
 }
 
-static muse_cell lookup_symbol( const muse_char *start, const muse_char *end, muse_int *out_hash )
+static muse_cell lookup_symbol( muse_env *env, const muse_char *start, const muse_char *end, muse_int *out_hash )
 {
 	muse_int hash = muse_hash_text( start, end, MUSE_SYMBOL_CELL );
 	
@@ -689,7 +664,7 @@ static muse_cell lookup_symbol( const muse_char *start, const muse_char *end, mu
  * is performed to see whether the symbol is already
  * interned or not.
  */
-muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash )
+muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_int hash )
 {
 	muse_stack *ss = _symstack();
 
@@ -697,13 +672,13 @@ muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash )
 
 	/* Define the symbol to be itself in all processes. */
 	{
-		muse_process_frame_t *cp = _env()->current_process;
+		muse_process_frame_t *cp = env->current_process;
 		muse_process_frame_t *p = cp;
 
 		do
 		{
 			p->locals.bottom[local_ix] = sym;
-			p->locals.top = p->locals.bottom + _env()->num_symbols;
+			p->locals.top = p->locals.bottom + env->num_symbols;
 			p = p->next;
 		}
 		while ( p != cp );
@@ -712,7 +687,7 @@ muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash )
 	/* Add the symbol to its hash bucket. */
 	{
 		int bucket = (int)(((hash % ss->size) + ss->size) % ss->size);
-		ss->bottom[bucket] = muse_cons( sym, ss->bottom[bucket] );
+		ss->bottom[bucket] = _cons( sym, ss->bottom[bucket] );
 	}
 
 	return sym;
@@ -734,11 +709,11 @@ muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash )
  * that you can push and pop using \c muse_pushdef() and
  * \c muse_popdef().
  */
-muse_cell muse_symbol( const muse_char *start, const muse_char *end )
+muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse_char *end )
 {
 	int p = -1;
 	muse_int hash = 0;
-	muse_cell sym = lookup_symbol( start, end, &hash );
+	muse_cell sym = lookup_symbol( env, start, end, &hash );
 	
 	if ( sym )
 		return sym;
@@ -749,20 +724,20 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
 		
 		/* sym -> ( . ) */
 		p = _spos();
-		sym = _setcellt( muse_cons( _localcell(local_ix), MUSE_NIL ), MUSE_SYMBOL_CELL );
+		sym = _setcellt( _cons( _localcell(local_ix), MUSE_NIL ), MUSE_SYMBOL_CELL );
 		
 		{
-			muse_cell name = muse_mk_text( start, end );
+			muse_cell name = muse_mk_text( env, start, end );
 			
 			/* symplist -> ( ( hash . name ) . nil ) */
-			muse_cell symplist = muse_cons( muse_cons( muse_mk_int( hash ),
+			muse_cell symplist = _cons( _cons( _mk_int( hash ),
 													   name ),
 											MUSE_NIL );
 			
 			/* sym -> ( sym . symplist ) */
 			_sett( sym, symplist );
 
-			muse_intern_symbol( sym, local_ix, hash );
+			muse_intern_symbol( env, sym, local_ix, hash );
 		}
 		
 		_unwind(p);
@@ -775,23 +750,23 @@ muse_cell muse_symbol( const muse_char *start, const muse_char *end )
  * Same as \c muse_symbol(), but takes a c-style null
  * terminated unicode character string.
  */
-muse_cell muse_csymbol( const muse_char *sym )
+muse_cell muse_csymbol( muse_env *env, const muse_char *sym )
 {
-	return muse_symbol( sym, sym + wcslen(sym) );
+	return muse_symbol( env, sym, sym + wcslen(sym) );
 }
 
 /**
  * Same as \c muse_symbol() except that it takes a
  * UTF8 string.
  */
-muse_cell muse_symbol_utf8( const char *start, const char *end )
+muse_cell muse_symbol_utf8( muse_env *env, const char *start, const char *end )
 {
 	int utf8_len = (int)(end - start);
 	muse_char *s = (muse_char*)calloc( muse_unicode_size(start, utf8_len), 1 );
 	int len = (int)muse_utf8_to_unicode( s, utf8_len, start, utf8_len );
 	
 	{
-		muse_cell c = muse_symbol( s, s + len );
+		muse_cell c = muse_symbol( env, s, s + len );
 		free(s);
 		return c;
 	}
@@ -801,9 +776,9 @@ muse_cell muse_symbol_utf8( const char *start, const char *end )
  * Same as \c muse_symbol_utf8() except that it takes
  * a c-style null terminated utf8 string.
  */
-muse_cell muse_csymbol_utf8( const char *sym )
+muse_cell muse_csymbol_utf8( muse_env *env, const char *sym )
 {
-	return muse_symbol_utf8( sym, sym + strlen(sym) );
+	return muse_symbol_utf8( env, sym, sym + strlen(sym) );
 }
 
 /**
@@ -812,10 +787,10 @@ muse_cell muse_csymbol_utf8( const char *sym )
  * 
  * @see muse_builtin_symbol_t
  */
-muse_cell muse_builtin_symbol( muse_builtin_symbol_t s )
+muse_cell muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s )
 {
 	muse_assert( s >= 0 && s < MUSE_NUM_BUILTIN_SYMBOLS );
-	return _env()->builtin_symbols[s];
+	return env->builtin_symbols[s];
 }
 
 /**
@@ -831,14 +806,14 @@ muse_cell muse_builtin_symbol( muse_builtin_symbol_t s )
  * in muSE's object system. An object's properties are
  * stored in the plist of an anonymous symbol.
  */
-muse_cell muse_mk_anon_symbol()
+muse_cell muse_mk_anon_symbol(muse_env *env)
 {
-	muse_cell sym = _setcellt( muse_cons( 0, 0 ), MUSE_SYMBOL_CELL );
+	muse_cell sym = _setcellt( _cons( 0, 0 ), MUSE_SYMBOL_CELL );
 	
 	int p = _spos();
 	
 	muse_cell symval	= sym;
-	muse_cell symplist	= muse_cons( muse_cons( muse_mk_int(sym),
+	muse_cell symplist	= _cons( _cons( _mk_int(sym),
 												MUSE_NIL ),
 									 MUSE_NIL );
 	
@@ -854,7 +829,7 @@ muse_cell muse_mk_anon_symbol()
  * should not be garbage collected. The unmarked cells
  * are then swept into the free list.
  */
-void muse_mark( muse_cell c )
+void muse_mark( muse_env *env, muse_cell c )
 {
 	if ( c > 0 && !_ismarked(c) )
 	{
@@ -872,8 +847,8 @@ void muse_mark( muse_cell c )
 
 			TODO: Find out if there's a more optimal way to handle this. */
 
-			muse_mark( _quq(_head(c)) );
-			muse_mark( _quq(_tail(c)) );
+			muse_mark( env, _quq(_head(c)) );
+			muse_mark( env, _quq(_tail(c)) );
 		}
 		else
 		{
@@ -883,22 +858,22 @@ void muse_mark( muse_cell c )
 			muse_functional_object_t *obj = _fnobjdata(c);
 			if ( obj && obj->type_info->mark )
 			{
-				obj->type_info->mark(obj);
+				obj->type_info->mark(env,obj);
 			}
 		}
 	}
 }
 
-static void mark_stack( muse_stack *stack )
+static void mark_stack( muse_env *env, muse_stack *stack )
 {
 	muse_cell *bottom = stack->bottom;
 	muse_cell *top = stack->top;
 	
 	while ( bottom < top )
-		muse_mark( *bottom++ );
+		muse_mark( env, *bottom++ );
 }
 
-static void free_text( muse_cell t )
+static void free_text( muse_env *env, muse_cell t )
 {
 	if ( t )
 	{
@@ -909,7 +884,7 @@ static void free_text( muse_cell t )
 	}
 }
 
-void free_unused_specials( muse_cell *specials )
+void free_unused_specials( muse_env *env, muse_cell *specials )
 {
 	muse_cell *cp = specials;
 	muse_cell c = *cp;
@@ -936,19 +911,19 @@ void free_unused_specials( muse_cell *specials )
 			 */
 			switch ( _cellt(s) )
 			{
-				case MUSE_TEXT_CELL			: free_text(s); break;
+				case MUSE_TEXT_CELL			: free_text(env,s); break;
 				case MUSE_NATIVEFN_CELL		: 
 					{
 						muse_functional_object_t *data = _fnobjdata(s);
 						if ( data )
 						{
 							if ( data->type_info->destroy )
-								data->type_info->destroy(data);
+								data->type_info->destroy(env,data);
 
 							free(data);
 						}
 						else
-							muse_apply( s, MUSE_NIL, MUSE_FALSE );
+							_apply( s, MUSE_NIL, MUSE_FALSE );
 					}
 					break;
 				
@@ -961,7 +936,7 @@ void free_unused_specials( muse_cell *specials )
 	}
 }
 
-void collect_free_cells( muse_heap *heap )
+void collect_free_cells( muse_env *env, muse_heap *heap )
 {
 	muse_cell f = MUSE_NIL;
 	int marks_size = heap->size_cells;
@@ -1023,13 +998,13 @@ void collect_free_cells( muse_heap *heap )
 }
 
 
-void muse_gc_impl( int free_cells_needed );
+void muse_gc_impl( muse_env *env, int free_cells_needed );
 
 /**
  * Collects all the garbage cells - i.e. unreferenced
  * cells. Cells referenced on the various stacks 
  * including the symbol stack are not collected.
- * \c muse_cons() automaticallly invokes this function
+ * \c _cons() automaticallly invokes this function
  * when it cannot take a cell from the free list.
  * 
  * @param free_cells_needed Tells the garbage collector
@@ -1040,18 +1015,18 @@ void muse_gc_impl( int free_cells_needed );
  * it means muse environment is being destroyed and 
  * the gc call simply destroys all the specials.
  */
-void muse_gc( int free_cells_needed )
+void muse_gc( muse_env *env, int free_cells_needed )
 {
 	fprintf(stderr, "Gc...");
 	fflush(stderr);
 	{
 		muse_int time_taken;
 		void *timer = muse_tick();
-		_env()->collecting_garbage = MUSE_TRUE;
-		enter_atomic();
-		muse_gc_impl( free_cells_needed );
-		leave_atomic();
-		_env()->collecting_garbage = MUSE_FALSE;
+		env->collecting_garbage = MUSE_TRUE;
+		enter_atomic(env);
+		muse_gc_impl( env, free_cells_needed );
+		leave_atomic(env);
+		env->collecting_garbage = MUSE_FALSE;
 		time_taken = muse_tock(timer);
 		fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
 		fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
@@ -1070,7 +1045,7 @@ muse_boolean muse_doing_gc( muse_env *env )
 	return env->collecting_garbage;
 }
 
-void muse_gc_impl( int free_cells_needed )
+void muse_gc_impl( muse_env *env, int free_cells_needed )
 {
 	muse_heap *heap = _heap();
 	
@@ -1087,16 +1062,16 @@ void muse_gc_impl( int free_cells_needed )
 
 			/* 2. Mark all symbols and their values and plists. */
 			/*mark_stack( _symstack() );*/
-			mark_stack( _symstack() );
+			mark_stack( env, _symstack() );
 			
 			/* 3. Mark references held by every process. */
 			{
-				muse_process_frame_t *cp = _env()->current_process;
+				muse_process_frame_t *cp = env->current_process;
 				muse_process_frame_t *p = cp;
 
 				do 
 				{
-					mark_process(p);
+					mark_process(env,p);
 					p = p->next;
 				}
 				while ( p != cp );
@@ -1104,12 +1079,12 @@ void muse_gc_impl( int free_cells_needed )
 
 			/* 4. Go through the specials list and release 
 				  everything that isn't referenced. */
-			free_unused_specials( &_env()->specials );
+			free_unused_specials( env, &env->specials );
 			
 			/* 5. Collect whatever is unmarked into the free list. */
-			collect_free_cells( _heap() );
+			collect_free_cells( env, _heap() );
 			
-			if ( heap->free_cell_count < (100 - _env()->parameters[MUSE_GROW_HEAP_THRESHOLD]) * heap->size_cells / 100 )
+			if ( heap->free_cell_count < (100 - env->parameters[MUSE_GROW_HEAP_THRESHOLD]) * heap->size_cells / 100 )
 			{
 				/* We're still too close to the edge here. Allocate 
 				   enough memory. */
@@ -1127,7 +1102,7 @@ void muse_gc_impl( int free_cells_needed )
 			everything that isn't referenced. We have to release
 			everythign when shutting down. free_cells_needed <= 0
 			indicates that we're shutting down. */
-			free_unused_specials( &_env()->specials );
+			free_unused_specials( env, &env->specials );
 		}
 	}
 }
@@ -1137,7 +1112,7 @@ void muse_gc_impl( int free_cells_needed )
  * information. The type of the returned cell is a native function,
  * so that the object can be used in the function position.
  */
-muse_cell muse_mk_functional_object( muse_functional_object_type_t *type_info, muse_cell init_args )
+muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
 {
 	muse_assert( type_info && type_info->magic_word == 'muSE' );
 	muse_assert( type_info->size >= sizeof(muse_functional_object_t) );
@@ -1147,11 +1122,11 @@ muse_cell muse_mk_functional_object( muse_functional_object_type_t *type_info, m
 		obj->magic_word		= 'muSE';
 		obj->type_info		= type_info;
 		if ( obj->type_info->init )
-			obj->type_info->init(obj, init_args);
+			obj->type_info->init(env, obj, init_args);
 
 		{
-			muse_cell fn = muse_mk_nativefn( obj->type_info->fn, obj );
-			add_special(fn);
+			muse_cell fn = _mk_nativefn( obj->type_info->fn, obj );
+			add_special(env,fn);
 			return fn;
 		}
 	}
@@ -1161,7 +1136,7 @@ muse_cell muse_mk_functional_object( muse_functional_object_type_t *type_info, m
  * Returns the data pointer of the functional object, or
  * NULL if the object is not a functional object.
  */
-muse_functional_object_t *muse_functional_object_data( muse_cell fobj, int type_word )
+muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word )
 {
 	muse_functional_object_t *obj = _fnobjdata(fobj);
 	
@@ -1263,12 +1238,12 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
  * Messages are added to the mailbox at the tail of this linked list and popped
  * off for processing at the head.
  */
-muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
+muse_process_frame_t *init_process_mailbox( muse_env *env, muse_process_frame_t *p )
 {
 	/* Messages get appended at the end of the mailbox
 	and popped off at the beginning. */
 	int sp = _spos();
-	p->mailbox = muse_cons( muse_mk_destructor( (muse_nativefn_t)fn_pid, p ), MUSE_NIL );
+	p->mailbox = _cons( _mk_destructor( (muse_nativefn_t)fn_pid, p ), MUSE_NIL );
 	p->mailbox_end = p->mailbox;
 	_unwind(sp);
 	return p;
@@ -1279,9 +1254,9 @@ muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
  * process's frame structure. The process id is to be found at the
  * head of the given process's mailbox.
  */
-muse_cell process_id( muse_process_frame_t *p )
+muse_cell process_id( muse_env *env, muse_process_frame_t *p )
 {
-	return muse_head(p->mailbox);
+	return _head(p->mailbox);
 }
 
 /**
@@ -1331,7 +1306,7 @@ muse_boolean run_process( muse_env *env )
 		do
 		{
 			int sp = _spos();
-			result = muse_apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
+			result = _apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
 			_unwind(sp);
 		} while ( !result );
 
@@ -1378,7 +1353,7 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 				/* Change the SP for the virgin process. */
 				CHANGE_STACK_POINTER(env->current_process->cstack.top);
 
-				return run_process( _env() );
+				return run_process( env );
 			}
 			else
 				longjmp( env->current_process->jmp, 1 );
@@ -1426,9 +1401,9 @@ muse_boolean procrastinate( muse_env *env )
  * Used by muse_apply() to decrement the attention spent on the
  * current process.
  */
-void yield_process( int spent_attention )
+void yield_process( muse_env *env, int spent_attention )
 {
-	muse_process_frame_t *p = _env()->current_process;
+	muse_process_frame_t *p = env->current_process;
 
 	if ( p->atomicity == 0 )
 	{
@@ -1437,7 +1412,7 @@ void yield_process( int spent_attention )
 		{
 			/* Give time to the next process. */
 			p->remaining_attention = p->attention;
-			switch_to_process( _env(), p->next );
+			switch_to_process( env, p->next );
 		}
 		else
 			p->remaining_attention -= spent_attention;
@@ -1537,13 +1512,13 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 		/* The list of arguments is the message in its full structure.
 		To this, we prepend the pid of the sending process and append
 		the result to the message queue of our process. */
-		muse_cell msg = muse_cons( process_id(env->current_process), muse_eval_list(args) );
+		muse_cell msg = _cons( _processid(env->current_process), muse_eval_list(env,args) );
 
-		post_message( p, msg );
+		post_message( env, p, msg );
 
 		_unwind(sp);
 
-		return muse_builtin_symbol( MUSE_T );
+		return _builtin_symbol( MUSE_T );
 	}
 
 	if ( muse_doing_gc(env) && p->state_bits == MUSE_PROCESS_DEAD )
@@ -1562,13 +1537,13 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
  * Marks all references held by the given process. Called prior to
  * garbage collection.
  */
-void mark_process( muse_process_frame_t *p )
+void mark_process( muse_env *env, muse_process_frame_t *p )
 {
-	mark_stack( &p->stack );
-	mark_stack( &p->bindings_stack );
-	mark_stack( &p->locals );
-	muse_mark( p->thunk );
-	muse_mark( p->mailbox );
+	mark_stack( env, &p->stack );
+	mark_stack( env, &p->bindings_stack );
+	mark_stack( env, &p->locals );
+	muse_mark( env, p->thunk );
+	muse_mark( env, p->mailbox );
 }
 
 /**
@@ -1576,9 +1551,9 @@ void mark_process( muse_process_frame_t *p )
  * without switching to another process.
  * @see leave_atomic()
  */
-void enter_atomic()
+void enter_atomic(muse_env *env)
 {
-	_env()->current_process->atomicity++;
+	env->current_process->atomicity++;
 }
 
 /**
@@ -1588,9 +1563,9 @@ void enter_atomic()
  * muSE function to mark an atomic do block.
  * @see enter_atomic()
  */
-void leave_atomic()
+void leave_atomic(muse_env *env)
 {
-	_env()->current_process->atomicity--;
+	env->current_process->atomicity--;
 }
 
 /**
@@ -1600,9 +1575,9 @@ void leave_atomic()
  *
  * @see fn_post
  */
-void post_message( muse_process_frame_t *p, muse_cell msg )
+void post_message( muse_env *env, muse_process_frame_t *p, muse_cell msg )
 {
-	muse_cell msg_entry = muse_cons( msg, MUSE_NIL );
+	muse_cell msg_entry = _cons( msg, MUSE_NIL );
 
 	_sett( p->mailbox_end, msg_entry );
 
@@ -1610,7 +1585,7 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 
 	if ( p->state_bits & MUSE_PROCESS_WAITING )
 	{
-		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(p) )
+		if ( !(p->waiting_for_pid) || p->waiting_for_pid == _processid(p) )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }

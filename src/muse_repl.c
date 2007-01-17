@@ -23,14 +23,14 @@
  * to exit the program by typing @code (exit) @endcode
  * into the command line.
  */
-void muse_repl()
+void muse_repl(muse_env *env)
 {
 	int sp = _spos();
 	int error_count = 0;
 	muse_cell c;
-	muse_cell current_expr = muse_csymbol(L"$");
-	muse_port_t pstdin = muse_stdport(0);
-	muse_port_t pstdout = muse_stdport(1);
+	muse_cell current_expr = _csymbol(L"$");
+	muse_port_t pstdin = muse_stdport(env,0);
+	muse_port_t pstdout = muse_stdport(env,1);
 	
 	fprintf( stderr, "--------------------------------------------------------------------------------\n"
  			 "muSE (muvee Symbolic Expressions) version %s\n"
@@ -61,9 +61,9 @@ void muse_repl()
 
 			if ( c != current_expr )
 			{
-				muse_define( current_expr, c );
+				_define( current_expr, c );
 			}
-			c = muse_eval(c);
+			c = _eval(c);
 			switch ( _cellt(c) )
 			{
 				case MUSE_INT_CELL :

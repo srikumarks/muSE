@@ -19,7 +19,7 @@
 /** @addtogroup Networking */
 /*@{*/
 muse_boolean muse_network_startup();
-void muse_network_shutdown();
+void muse_network_shutdown(muse_env *env);
 muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell args );
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args );
 muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args );
@@ -78,7 +78,7 @@ library! What a stupid thing to have to do! */
 		return MUSE_TRUE;
 	}
 
-	void muse_network_shutdown()
+	void muse_network_shutdown(muse_env *env)
 	{
         /* Shutdown the sockets API. */
         WSACleanup();
@@ -121,7 +121,7 @@ library! What a stupid thing to have to do! */
 		return MUSE_TRUE;
 	}
 
-	void muse_network_shutdown()
+	void muse_network_shutdown(muse_env *env)
 	{
 		/* Nothing to do. */
 	}
@@ -195,17 +195,17 @@ typedef struct
 } socketport_t;
 
 
-static void socket_init( void *s, muse_cell args )
+static void socket_init( muse_env *env, void *s, muse_cell args )
 {
 	muse_port_t p = (muse_port_t)s;
-	port_init( p );
+	port_init( env, p );
 	
 	p->eof = 0;
 	p->error = 0;
 }
 
 static void socket_close( void *s );
-static void socket_destroy( void *s )
+static void socket_destroy( muse_env *env, void *s )
 {
 	socket_close(s);
 	port_destroy( (muse_port_t)s );
@@ -228,7 +228,7 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 	
 	muse_int result;
 	
-	result = poll_network( _env(), p->socket, 0 ) ? recv( p->socket, buffer, (int)nbytes, 0 ) : SOCKET_ERROR;
+	result = poll_network( p->base.env, p->socket, 0 ) ? recv( p->socket, buffer, (int)nbytes, 0 ) : SOCKET_ERROR;
 	
 	if ( result <= 0 )
 	{
@@ -248,12 +248,11 @@ static size_t socket_write( void *buffer, size_t nbytes, void *s )
 	socketport_t *p = (socketport_t*)s;
 	unsigned char *b = buffer;
 	unsigned char *b_end = b + nbytes;
-	muse_env *env = _env();
 	muse_int bytes_sent = 0;
 	
 	while ( b < b_end )
 	{
-		bytes_sent = poll_network( env, p->socket, 1 ) ? send( p->socket, b, (int)(b_end - b), 0 ) : SOCKET_ERROR;
+		bytes_sent = poll_network( p->base.env, p->socket, 1 ) ? send( p->socket, b, (int)(b_end - b), 0 ) : SOCKET_ERROR;
 		
 		if ( bytes_sent <= 0 )
 		{
@@ -316,19 +315,19 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 {
 	int sp					= _spos();
 	muse_cell result		= MUSE_NIL;
-	muse_cell serverport	= muse_evalnext(&args);
+	muse_cell serverport	= _evalnext(&args);
 
-	muse_cell portcell		= muse_mk_functional_object( &g_socket_type.obj, MUSE_NIL );
-	socketport_t *port		= (socketport_t*)muse_port(portcell);
+	muse_cell portcell		= _mk_functional_object( &g_socket_type.obj, MUSE_NIL );
+	socketport_t *port		= (socketport_t*)_port(portcell);
 	
 	char serverStringAddress[32];
 	char *serverPortAddress;
 	int length = 0;
-	const muse_char *serverWstringAddress = muse_text_contents( serverport, &length );
+	const muse_char *serverWstringAddress = _text_contents( serverport, &length );
 	if ( length > 17 )
 	{
 		MUSE_DIAGNOSTICS({
-			muse_message( L"(with-connection-to-server >>addr<< ...)",
+			muse_message( env,L"(with-connection-to-server >>addr<< ...)",
 						  L"Invalid server address spec '%s'\n"
 						  L"Address must have the form NNN.NNN.NNN.NNN:PPPP\n", 
 						  serverWstringAddress );
@@ -336,7 +335,7 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 		goto UNDO_CONN;
 	}
 	
-	muse_unicode_to_utf8( serverStringAddress, 32, muse_text_contents(serverport,NULL), length );
+	muse_unicode_to_utf8( serverStringAddress, 32, _text_contents(serverport,NULL), length );
 	serverPortAddress = strchr( serverStringAddress, ':' );
 	if ( serverPortAddress )
 	{
@@ -404,10 +403,10 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 
 	/* Connection succeeded. Call the service function. */
 	{
-		muse_cell handler = muse_evalnext(&args);
-		muse_cell port_args = muse_cons( portcell, MUSE_NIL );
+		muse_cell handler = _evalnext(&args);
+		muse_cell port_args = _cons( portcell, MUSE_NIL );
 		
-		result = muse_apply( handler, port_args, MUSE_TRUE );
+		result = _apply( handler, port_args, MUSE_TRUE );
 		
 		/* Save the result. */
 		_unwind(sp);
@@ -450,8 +449,8 @@ typedef struct muse_server_stream_socket__
  */
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args )
 {
-	short listenPort		= (short)muse_int_value( muse_evalnext(&args) );
-	muse_cell handler		= muse_evalnext(&args);
+	short listenPort		= (short)_intvalue( _evalnext(&args) );
+	muse_cell handler		= _evalnext(&args);
 	int sp					= _spos();
 	muse_server_stream_socket_t *conn = (muse_server_stream_socket_t*)calloc( 1, sizeof(muse_server_stream_socket_t) );
 	muse_cell result = MUSE_NIL;
@@ -524,8 +523,8 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 						);
 			});
 
-			client_port_cell = muse_mk_functional_object( &g_socket_type.obj, MUSE_NIL );
-			client_port = (socketport_t*)muse_port( client_port_cell );
+			client_port_cell = _mk_functional_object( &g_socket_type.obj, MUSE_NIL );
+			client_port = (socketport_t*)_port( client_port_cell );
 	
 			client_port->socket = client;
 			client_port->base.mode = MUSE_PORT_READ_WRITE;
@@ -534,11 +533,11 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 
 			/* Client connection accepted successfully. Call the handler. */
 			{
-				muse_cell handlerArgs = muse_list( "ct", 
+				muse_cell handlerArgs = muse_list( env, "ct", 
 													client_port_cell, 
 													inet_ntoa( client_address.sin_addr ) );			
 
-				result = muse_apply( handler, handlerArgs, MUSE_TRUE );
+				result = _apply( handler, handlerArgs, MUSE_TRUE );
 				
 				/* Save the result. The handler must return a non-NIL value to indicate that
 					subsequent connections have to be processed. It should return MUSE_NIL
@@ -595,11 +594,11 @@ typedef struct
 	int reply;
 } multicast_socket_port_t;
 
-static void multicast_socket_init( void *p, muse_cell args )
+static void multicast_socket_init( muse_env *env, void *p, muse_cell args )
 {
 	multicast_socket_port_t *s = (multicast_socket_port_t*)p;
-	muse_cell group		= muse_evalnext(&args);
-	muse_cell mcport	= muse_evalnext(&args);
+	muse_cell group		= _evalnext(&args);
+	muse_cell mcport	= _evalnext(&args);
 	char group_address[32];
 	u_short group_port;
 	int result = 0;
@@ -607,7 +606,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 	if ( mcport )
 	{
 		/* Get the port number to use. */
-		group_port = (u_short)muse_int_value(mcport);		
+		group_port = (u_short)_intvalue(mcport);		
 	}
 	else
 	{
@@ -621,7 +620,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 		/* The group is supposed to specify an internet numeric address.
 		Convert the wide string to a narrow string. */
 		int length = 0;
-		muse_unicode_to_utf8( group_address, 32, muse_text_contents( group, &length ), 32 );
+		muse_unicode_to_utf8( group_address, 32, _text_contents( group, &length ), 32 );
 		muse_assert( length < 16 );
 		if ( length >= 16 )
 		{
@@ -636,7 +635,7 @@ static void multicast_socket_init( void *p, muse_cell args )
 		MUSE_DIAGNOSTICS3({ fprintf( stderr, "No group specified. Using default group %s\n", group_address ); });
 	}
 		
-	port_init(&s->base);
+	port_init( env,&s->base);
 
 	/* Set to read/write mode. All sockets support this. */
 	s->base.mode = MUSE_PORT_READ_WRITE;
@@ -732,7 +731,7 @@ static void multicast_socket_close( void *p )
 	}
 }
 
-static void multicast_socket_destroy( void *p )
+static void multicast_socket_destroy( muse_env *env, void *p )
 {
 	multicast_socket_port_t *s = (multicast_socket_port_t*)p;
 
@@ -746,13 +745,14 @@ static void multicast_socket_destroy( void *p )
 static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 {
 	multicast_socket_port_t *s = (multicast_socket_port_t*)p;
+	muse_env *env = s->base.env;
 
 	/* Wait for and read a datagram from any of the group. */
 	s->src_addr_len = sizeof(s->src_addr);
 
 	{
 		int result = 
-			poll_network( _env(), s->socket, 0 )
+			poll_network( env, s->socket, 0 )
 				? recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len )
 				: SOCKET_ERROR;
 
@@ -771,12 +771,13 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 static size_t multicast_socket_write( void *buffer, size_t nbytes, void *p )
 {
 	multicast_socket_port_t *s = (multicast_socket_port_t*)p;
+	muse_env *env = s->base.env;
 
 	/* Multicast the datagram to the group or the individual. */
 	const struct sockaddr *addr = (const struct sockaddr *)(s->reply ? &s->src_addr : &s->dst_addr);
 	int addr_len = s->reply ? s->src_addr_len : sizeof(s->dst_addr);
 	int result = 
-			poll_network( _env(), s->socket, 1 )
+			poll_network( env, s->socket, 1 )
 				? sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len )
 				: SOCKET_ERROR;
 
@@ -838,7 +839,7 @@ static muse_port_type_t g_multicast_socket_type =
  */
 muse_cell fn_multicast_group( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_functional_object( (muse_functional_object_type_t*)&g_multicast_socket_type, args );
+	return _mk_functional_object( (muse_functional_object_type_t*)&g_multicast_socket_type, args );
 }
 
 /**
@@ -847,8 +848,8 @@ muse_cell fn_multicast_group( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell p = muse_evalnext(&args);
-	muse_port_t port = muse_port(p);
+	muse_cell p = _evalnext(&args);
+	muse_port_t port = _port(p);
 	if ( p && port && port->base.type_info == &g_multicast_socket_type.obj )
 		return p;
 	else
@@ -864,8 +865,8 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_reply( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell port = muse_evalnext(&args);
-	multicast_socket_port_t *s = (multicast_socket_port_t*)muse_port(port);
+	muse_cell port = _evalnext(&args);
+	multicast_socket_port_t *s = (multicast_socket_port_t*)_port(port);
 
 	muse_assert( s && s->base.base.type_info == &g_multicast_socket_type.obj );
 	/**< We support only multicast sockets. */
@@ -875,7 +876,7 @@ muse_cell fn_reply( muse_env *env, void *context, muse_cell args )
 	/* Behave like write w.r.t. the remaining arguments. */
 	while ( args )
 	{
-		muse_pwrite( (muse_port_t)s, muse_evalnext(&args) );
+		muse_pwrite( (muse_port_t)s, _evalnext(&args) );
 		if ( args )
 			port_putc( ' ', (muse_port_t)s );
 	}
@@ -895,13 +896,13 @@ muse_cell fn_reply( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell port = muse_evalnext(&args);
-	muse_cell timeout = args ? muse_evalnext(&args) : MUSE_NIL;
+	muse_cell port = _evalnext(&args);
+	muse_cell timeout = args ? _evalnext(&args) : MUSE_NIL;
 	
 	/* Wait for 10 minutes in the default case. */
-	muse_int timeout_us = timeout ? muse_int_value(timeout) : (1000000 * 60 * 10);
+	muse_int timeout_us = timeout ? _intvalue(timeout) : (1000000 * 60 * 10);
 	
-	muse_port_t p = muse_port(port);
+	muse_port_t p = _port(port);
 	if ( p && (p->base.type_info == &g_socket_type.obj || p->base.type_info == &g_multicast_socket_type.obj) )
 	{
 		/* This is a socket. Don't wait for anything else. */
@@ -917,7 +918,7 @@ muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
 			switch ( result )
 			{
 				case 1 : /* Success. */ return _t();
-				case 0 : /* Timed out. */ return muse_builtin_symbol(MUSE_TIMEOUT);
+				case 0 : /* Timed out. */ return _builtin_symbol(MUSE_TIMEOUT);
 				default: /* Error. */ return MUSE_NIL;
 			}
 		}
@@ -934,11 +935,11 @@ static muse_cell fn_network_shutdown( muse_env *env, void *context, muse_cell ar
 {
 	free(env->net);
 	env->net = NULL;
-	muse_network_shutdown();
+	muse_network_shutdown(env);
 	return MUSE_NIL;
 }
 
-void muse_define_builtin_networking()
+void muse_define_builtin_networking(muse_env *env)
 {
 	struct funs_t { const muse_char *name; muse_nativefn_t fn; };
 
@@ -953,23 +954,23 @@ void muse_define_builtin_networking()
 		{		NULL,									NULL									}
 	};
 
-	muse_network_startup();
+	muse_network_startup(env);
 
-	_env()->net = (muse_net_t*)calloc( 1, sizeof(muse_net_t) );
-	FD_ZERO( &(_env()->net->fdsets[0]) );	// read
-	FD_ZERO( &(_env()->net->fdsets[1]) );	// write
-	FD_ZERO( &(_env()->net->fdsets[2]) );	// except
+	env->net = (muse_net_t*)calloc( 1, sizeof(muse_net_t) );
+	FD_ZERO( &(env->net->fdsets[0]) );	// read
+	FD_ZERO( &(env->net->fdsets[1]) );	// write
+	FD_ZERO( &(env->net->fdsets[2]) );	// except
 
 	/* Define a destructor function to shutdown the network when everything is done. 
 	Using braces in the symbol name ensures that this symbol cannot be written directly
 	in muSE code. */
-	muse_define( muse_csymbol(L"{{network-shutdown}}"), muse_mk_destructor(fn_network_shutdown,NULL) );
+	_define( _csymbol(L"{{network-shutdown}}"), _mk_destructor(fn_network_shutdown,NULL) );
 
 	{
 		const struct funs_t *funs = k_networking_funs;
 		while ( funs->name )
 		{
-			muse_define( muse_csymbol(funs->name), muse_mk_nativefn(funs->fn,NULL) );
+			_define( _csymbol(funs->name), _mk_nativefn(funs->fn,NULL) );
 			++funs;
 		}
 	}
