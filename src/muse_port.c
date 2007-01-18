@@ -424,13 +424,11 @@ typedef struct
 	int col_start, col_end;
 } ez_result_t;
 
-int ez_update_col( int ch, int col )
+int ez_update_col( muse_port_t f, int ch, int col )
 {
-	static const int k_tab_size = 4;
-
 	switch ( ch )
 	{
-	case '\t'	: return col + k_tab_size;
+	case '\t'	: return col + f->tab_size;
 	case '\n'	:
 	case '\r'	: return 0;
 	default		: return col + 1;
@@ -478,7 +476,7 @@ white_space_t ez_skip_whitespace( muse_port_t f, int line, int col )
 	c = port_getc(f);
 	while ( c != EOF && isspace(c) )
 	{
-		col = ez_update_col( c, col );
+		col = ez_update_col( f, c, col );
 		
 		if ( c == '\n' )
 			++line;
@@ -789,7 +787,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 				}
 			}
 
-			col_end = ez_update_col( c, col_end );
+			col_end = ez_update_col( f, c, col_end );
 			
 			s[endpos++] = (char)c;
 			if ( endpos > maxlen )

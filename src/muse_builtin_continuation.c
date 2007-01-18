@@ -189,9 +189,9 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		has 64-bit int, this simply has to be worked around. */
 		c = (continuation_t*)result;
 
-		/* Restore the system stack. */
+		/* Restore the system stack. The function parameters become valid after the
+		stack is restored and we can refer to "env" and others. */
 		memcpy( c->system_stack_from, c->system_stack_copy, c->system_stack_size );
-		muse_assert( env == c->process->env );
 		muse_assert( c && c->base.type_info->type_word == 'cont' );
 		
 		/* Restore the process atomicity that was at capture time. 
