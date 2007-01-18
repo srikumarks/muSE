@@ -182,10 +182,16 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 	}
 	else
 	{
-		/* result-1 is the continuation object that was invoked, with
-		the invoke_result field set to the argument supplied to the invocation. */
-		/* BUG: env cannot be used here. */
-		c = (continuation_t*)_functional_object_data(result-1,'cont');
+		/* A pointer to the continuation is passed in "result". 
+		The invoke_result field is set to the argument supplied to the invocation. */
+		/* TODO: Passing a pointer in "result" is not 64-bit clean, because
+		result is 32-bit and the pointer can be 64-bit. But until longjmp interface
+		has 64-bit int, this simply has to be worked around. */
+		c = (continuation_t*)result;
+
+		/* Restore the system stack. */
+		memcpy( c->system_stack_from, c->system_stack_copy, c->system_stack_size );
+		muse_assert( env == c->process->env );
 		muse_assert( c && c->base.type_info->type_word == 'cont' );
 		
 		/* Restore the process atomicity that was at capture time. 
@@ -206,9 +212,6 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		/* Restore the saved symbol values. */
 		restore_bindings( env, c->bindings_copy, c->bindings_size );
 
-		/* Restore the system stack. */
-		memcpy( c->system_stack_from, c->system_stack_copy, c->system_stack_size );
-
 		muse_assert( c->invoke_result >= 0 );
 		muse_assert( (c->process->state_bits & MUSE_PROCESS_DEAD) == 0 );
 
@@ -227,7 +230,7 @@ static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell ar
 
 	c->invoke_result = _evalnext(&args);
 	
-	longjmp( c->state, c->this_cont+1 );
+	longjmp( c->state, (int)c );
 
 	return MUSE_NIL;
 }
