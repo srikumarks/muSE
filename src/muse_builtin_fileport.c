@@ -29,11 +29,10 @@ typedef struct
 typedef struct
 {
 	muse_port_type_t port;
-	muse_cell sym_read, sym_write;
 } fileport_type_t;
 
-static void write_utf8_header( fileport_t *p );
-static void discard_utf8_header( fileport_t *p );
+static void write_utf8_header( muse_env *env, fileport_t *p );
+static void discard_utf8_header( muse_env *env, fileport_t *p );
 
 static void check_for_ezscheme_file( fileport_t *p )
 {
@@ -41,32 +40,32 @@ static void check_for_ezscheme_file( fileport_t *p )
 		p->base.mode |= MUSE_PORT_EZSCHEME;
 }
 
-static void fileport_init( void *ptr, muse_cell args )
+static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 {
 	fileport_t *p = (fileport_t*)ptr;
 
 	muse_boolean read_flag = MUSE_FALSE;
 	muse_boolean write_flag = MUSE_FALSE;
-	muse_cell filename = muse_evalnext(&args);
+	muse_cell filename = _evalnext(&args);
 
 	/* Get the read/write flags. */
 	while ( args )
 	{
-		muse_cell flag = muse_evalnext(&args);
-		if ( flag == ((fileport_type_t*)p->base.base.type_info)->sym_read )
+		muse_cell flag = _evalnext(&args);
+		if ( flag == _csymbol(L"for-reading") )
 			read_flag = MUSE_TRUE;
-		else if ( flag == ((fileport_type_t*)p->base.base.type_info)->sym_write )
+		else if ( flag == _csymbol(L"for-reading") )
 			write_flag = MUSE_TRUE;
 	}
 
 	if ( read_flag ) p->base.mode |= MUSE_PORT_READ;
 	if ( write_flag ) p->base.mode |= MUSE_PORT_WRITE;
 
-	port_init( (muse_port_base_t*)p );
+	port_init( env, (muse_port_base_t*)p );
 	
 	/* Open the file. */
 	{
-		p->file = muse_fopen( muse_text_contents(filename,NULL), (read_flag ? (write_flag ? L"rwb" : L"rb") : (write_flag ? L"wb" : L"rb")) );
+		p->file = muse_fopen( _text_contents(filename,NULL), (read_flag ? (write_flag ? L"rwb" : L"rb") : (write_flag ? L"wb" : L"rb")) );
 		if ( !p->file )
 			return;
 		p->desc = fileno( p->file );
@@ -75,16 +74,16 @@ static void fileport_init( void *ptr, muse_cell args )
 		p->base.eof		= 0;
 
 		if ( write_flag )
-			write_utf8_header(p);
+			write_utf8_header(env,p);
 		if ( read_flag )
 		{
-			discard_utf8_header(p);
+			discard_utf8_header(env,p);
 			check_for_ezscheme_file(p);
 		}
 	}
 }
 
-static void fileport_destroy( void *ptr )
+static void fileport_destroy( muse_env *env, void *ptr )
 {
 	fileport_t *p = (fileport_t*)ptr;
 	fileport_type_t *t = (fileport_type_t*)p->base.base.type_info;
@@ -120,7 +119,7 @@ static size_t fileport_read( void *buffer, size_t nbytes, void *port )
 		return read( p->desc, buffer, nbytes );
 }
 
-static size_t fileport_write( void *buffer, size_t nbytes, void *port )
+static size_t fileport_write(void *buffer, size_t nbytes, void *port )
 {
 	fileport_t *p = (fileport_t*)port;
 	
@@ -159,10 +158,7 @@ static fileport_type_t g_fileport_type =
 		fileport_read,
 		fileport_write,
 		fileport_flush
-	},
-
-	MUSE_NIL,
-	MUSE_NIL
+	}
 };
 
 static fileport_type_t g_port_type_stdin =
@@ -184,10 +180,7 @@ static fileport_type_t g_port_type_stdin =
 		fileport_read,
 		NULL,
 		NULL
-	},
-
-	MUSE_NIL,
-	MUSE_NIL
+	}
 };
 
 static fileport_type_t g_port_type_stdout =
@@ -209,10 +202,7 @@ static fileport_type_t g_port_type_stdout =
 		NULL,
 		fileport_write,
 		fileport_flush
-	},
-
-	MUSE_NIL,
-	MUSE_NIL
+	}
 };
 
 static fileport_t g_muse_stdports[3] =
@@ -228,10 +218,10 @@ static fileport_t g_muse_stdports[3] =
 	}
 };
 
-muse_port_t muse_stdport( muse_stdport_t descriptor )
+muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
 {
 	muse_assert( descriptor >= MUSE_STDIN_PORT && descriptor <= MUSE_STDERR_PORT );
-	return (muse_port_t)&g_muse_stdports[descriptor];
+	return env->stdports[descriptor];
 }
 
 /**
@@ -249,7 +239,7 @@ muse_port_t muse_stdport( muse_stdport_t descriptor )
  */
 static muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args );
+	return _mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args );
 }
 
 /**
@@ -262,42 +252,42 @@ static muse_cell fn_destroy_stdports( muse_env *env, void *context, muse_cell ar
 	for ( i = MUSE_STDIN_PORT; i <= MUSE_STDERR_PORT; ++i )
 	{
 		if ( i != MUSE_STDIN_PORT )
-			port_flush( (muse_port_t)&g_muse_stdports[i] );
+			port_flush( env->stdports[i] );
 
-		port_destroy( (muse_port_t)&g_muse_stdports[i] );
+		port_destroy( env->stdports[i] );
+		free(env->stdports[i]);
+		env->stdports[i] = NULL;
 	}
 
 	return MUSE_NIL;
 }
 
-void muse_define_builtin_fileport()
+void muse_define_builtin_fileport(muse_env *env)
 {
-	g_fileport_type.sym_read = 
-		g_port_type_stdout.sym_read = 
-		g_port_type_stdin.sym_read = muse_csymbol(L"for-reading");
+	{
+		int i;
+		for ( i = 0; i < 3; ++i )
+		{
+			env->stdports[i] = malloc(sizeof(fileport_t));
+			memcpy( env->stdports[i], &g_muse_stdports[i], sizeof(fileport_t) );
+			port_init( env, env->stdports[i] );
+		}
+	}
 
-	g_fileport_type.sym_write = 
-		g_port_type_stdout.sym_write = 
-		g_port_type_stdin.sym_write = muse_csymbol(L"for-writing");
-
-	port_init( (muse_port_t)&g_muse_stdports[0] );
-	port_init( (muse_port_t)&g_muse_stdports[1] );
-	port_init( (muse_port_t)&g_muse_stdports[2] );
-
-	g_muse_stdports[0].base.mode |= MUSE_PORT_TRUSTED_INPUT;
-	g_muse_stdports[1].base.tab_size = 8;
-	g_muse_stdports[2].base.tab_size = 8;
+	env->stdports[0]->mode |= MUSE_PORT_TRUSTED_INPUT;
+	env->stdports[1]->tab_size = 8;
+	env->stdports[2]->tab_size = 8;
 	
 	/* Define the "open-file" function. This is the only file specific function needed.
 	After this the generic port functions take over. */
-	muse_define( muse_csymbol(L"open-file"), muse_mk_nativefn( fn_open_file, NULL ) );
+	_define( _csymbol(L"open-file"), _mk_nativefn( fn_open_file, NULL ) );
 
 	/* We add a destructor for the standard ports and set the value of an internal symbol
 	to the destructor. We do this so that the destructor will be invoked only at environment
 	destruction time. If we don't assign it to a symbol, the destructor will be invoked
 	the next time garbage collection kicks in, since there will be no active reference to
 	the destructor. */
-	muse_define( muse_csymbol(L"{(##standard-ports##)}"), muse_mk_destructor( fn_destroy_stdports, NULL ) );
+	_define( _csymbol(L"{(##standard-ports##)}"), _mk_destructor( fn_destroy_stdports, NULL ) );
 }
 
 
@@ -314,7 +304,7 @@ void muse_define_builtin_fileport()
  * @param mode A combination of \c muse_port_mode_bits_t indicating 
  * properties of the file port.
  */
-muse_port_t muse_assign_port( FILE *f, int mode )
+muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode )
 {
 	fileport_t *port = calloc( 1, sizeof(fileport_t) );
 	
@@ -323,12 +313,12 @@ muse_port_t muse_assign_port( FILE *f, int mode )
 	port->file					= f;
 	port->desc					= fileno(f);
 	
-	port_init( &port->base );
+	port_init( env, &port->base );
 	
 	if ( mode & MUSE_PORT_READ )
 	{
 		port->base.in.fpos = ftell(port->file);
-		discard_utf8_header(port);
+		discard_utf8_header(env, port);
 		check_for_ezscheme_file(port);
 	}
 
@@ -341,7 +331,7 @@ muse_port_t muse_assign_port( FILE *f, int mode )
 	if ( mode & MUSE_PORT_WRITE )
 	{
 		port->base.out.fpos = ftell(port->file);
-		write_utf8_header( port );
+		write_utf8_header( env, port );
 	}
 
 	return &port->base;
@@ -369,9 +359,9 @@ void muse_unassign_port( muse_port_t p )
  * 
  * Use this to load definitions from files.
  */
-muse_cell muse_load( FILE *f )
+muse_cell muse_load( muse_env *env, FILE *f )
 {
-	muse_port_t in = muse_assign_port(f, MUSE_PORT_TRUSTED_INPUT );
+	muse_port_t in = muse_assign_port(env, f, MUSE_PORT_TRUSTED_INPUT );
 	int sp = _spos();
 	muse_cell result = MUSE_NIL;
 	
@@ -385,7 +375,7 @@ muse_cell muse_load( FILE *f )
 		{
 			_unwind(sp);
 			_spush(expr);
-			result = muse_eval( expr );
+			result = _eval( expr );
 			_unwind(sp);
 			_spush(result);
 		}
@@ -397,7 +387,7 @@ muse_cell muse_load( FILE *f )
 	return result;
 }
 
-static void write_utf8_header( fileport_t *p )
+static void write_utf8_header( muse_env *env, fileport_t *p )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
 	if ( tell(p->desc) == 0 )
@@ -412,7 +402,7 @@ static void write_utf8_header( fileport_t *p )
 #endif
 }
 
-static void discard_utf8_header( fileport_t *p )
+static void discard_utf8_header( muse_env *env, fileport_t *p )
 {
 	if ( ftell(p->file) == 0 )
 	{

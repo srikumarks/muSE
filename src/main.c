@@ -10,6 +10,7 @@
  */
 
 #include "muse.h"
+#include "muse_opcodes.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,7 +94,7 @@ static int is_muSEexec( FILE *e, int *source_pos, int *source_size )
  * @param argv The arguments as strings, which must all be file paths.
  *  The first argument should be the path to the output file.
  */
-static int create_exec( const char *execfile, int argc, char **argv )
+static int create_exec( muse_env *env, const char *execfile, int argc, char **argv )
 {
 	const char *outputfile = argv[0];
 	void *buffer = NULL;
@@ -188,7 +189,7 @@ static int create_exec( const char *execfile, int argc, char **argv )
  * appended. If it is, then the sourcee code appended is loaded
  * using muse_load().
  */
-static int load_exec( const char *execfile )
+static int load_exec( muse_env *env, const char *execfile )
 {
 	FILE *e = fopen( execfile, "rb" );
 	int s_pos = 0;
@@ -210,7 +211,7 @@ static int load_exec( const char *execfile )
 	{
 		/* Load the source portion of the executable. */
 		fseek( e, s_pos, SEEK_SET );
-		muse_load( e );
+		muse_load( env, e );
 		fclose( e );
 		return 1;
 	}
@@ -228,14 +229,14 @@ typedef struct
 /**
  * Converts each path argument into a muSE text object.
  */
-static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
+static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_boolean *eol )
 {
 	args_list_generator_data_t *data = (args_list_generator_data_t*)context;
 	
 	if ( i < data->argc )
 	{
 		(*eol) = MUSE_FALSE;
-		return muse_mk_ctext_utf8( data->argv[i] );
+		return muse_mk_ctext_utf8( env, data->argv[i] );
 	}
 	else
 	{
@@ -246,7 +247,7 @@ static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
 
 #if MUSE_PLATFORM_WINDOWS
 	unsigned int __stdcall GetModuleFileNameA( void *, char *, unsigned int );
-	static void get_execpath( const char *suggestion, char *result, int size )
+	static void get_execpath( muse_env *env, const char *suggestion, char *result, int size )
 	{
 		/* Under Windows, GetModuleFileName always works and will 
 		always return the full executable path, whereas the argv[0] 
@@ -255,7 +256,7 @@ static muse_cell args_list_generator( void *context, int i, muse_boolean *eol )
 		muse_assert( len > 0 );
 	}
 #else
-	static void get_execpath( const char *suggestion, char *result, int size )
+	static void get_execpath( use_env *env, const char *suggestion, char *result, int size )
 	{
 		strcpy( result, suggestion );
 		
@@ -326,23 +327,23 @@ int main( int argc, char **argv )
 	char execpath[1024];
 	muse_env *env = muse_init_env(NULL);
 	
-	get_execpath( argv[0], execpath, 1024 );
+	get_execpath( env, argv[0], execpath, 1024 );
 
 	/* If we've been asked to create an executable, do so. */
 	if ( argc > 1 && strcmp( argv[1], k_args_exec_switch ) == 0 )
 	{
 		/* When passing arguments, skip the exec path as well as the
 		   "--exec" switch. */
-		create_exec( execpath, argc-2, argv+2 );
+		create_exec( env, execpath, argc-2, argv+2 );
 	}
 	
 	/* Check if this is a muSE executable that has
 	source code at the end of the file. */
-	else if ( load_exec( execpath ) )
+	else if ( load_exec( env, execpath ) )
 	{
 		/* Evaluate the main function, creating a list
 		of strings out of the remaining arguments. */
-		muse_cell fn_main = muse_eval( muse_csymbol(k_main_function_name) );
+		muse_cell fn_main = _eval( _csymbol(k_main_function_name) );
 		
 		if ( muse_isfn(fn_main) )
 		{
@@ -351,21 +352,21 @@ int main( int argc, char **argv )
 			data.argc = argc-1; /* Skip the first entry, which is the executable's path. */
 			data.argv = argv+1;
 			
-			args = muse_generate_list( args_list_generator, &data );
-			muse_apply( fn_main, args, MUSE_TRUE );
+			args = muse_generate_list( env, args_list_generator, &data );
+			_apply( fn_main, args, MUSE_TRUE );
 		}
 		else
 		{
 			/* Drop into the REPL if there is no main function defined.
 			This way, we can load some library functions that we
 			always need and are defined at the scheme level. */
-			muse_repl();
+			muse_repl(env);
 		}
 	}
 	else
 	{
 		/* Its not an executable. Start the REPL. */
-		muse_repl();
+		muse_repl(env);
 	}
 	
 	muse_destroy_env(env);

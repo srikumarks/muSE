@@ -12,7 +12,7 @@
 
 #include "muse_builtins.h"
 
-static void anonymize_formals( muse_cell syms )
+static void anonymize_formals( muse_env *env, muse_cell syms )
 {
 	if ( !syms )
 		return;
@@ -25,57 +25,57 @@ static void anonymize_formals( muse_cell syms )
 			 * local variables. I'm switching back to preserving local
 			 * variables instead. This line used to be
 			 * @code
-			 * mnuse_pushdef( syms, muse_mk_anon_symbol() );
+			 * mnuse_pushdef( syms, _mk_anon_symbol() );
 			 * @endcode
 			 * */
-			muse_pushdef( syms, syms );
+			_pushdef( syms, syms );
 			break;
 		case MUSE_CONS_CELL :
 			if ( !_isquote(_head(syms)) )
 			{
-				anonymize_formals( _head(syms) );
-				anonymize_formals( _tail(syms) );
+				anonymize_formals( env, _head(syms) );
+				anonymize_formals( env, _tail(syms) );
 			}
 			break;
 		case MUSE_LAMBDA_CELL :
 			/* This is the case of a guarded pattern. 
 			Anonymize the lambda's argument pattern. */
-			anonymize_formals( _quq(_head(syms)) );
+			anonymize_formals( env, _quq(_head(syms)) );
 			break;
 
 		default:;
 	}
 }
 
-static void anonymize_letvars( muse_cell bindings )
+static void anonymize_letvars( muse_env *env, muse_cell bindings )
 {
 	int sp = _spos();
 	while ( bindings )
 	{
-		anonymize_formals( _head(_next(&bindings)) );
+		anonymize_formals( env, _head(_next(&bindings)) );
 		_unwind(sp);
 	}
 }
 
-static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start );
+static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean list_start );
 
-static muse_cell anonymize_copy_case_body( muse_cell body )
+static muse_cell anonymize_copy_case_body( muse_env *env, muse_cell body )
 {
 	if ( body )
 	{
 		muse_cell case1 = _head(body);
-		muse_cell case1_copy = muse_cons(_head(case1), MUSE_NIL);
+		muse_cell case1_copy = _cons(_head(case1), MUSE_NIL);
 		
 		{
 			int sp = _spos();
 			int bsp = _bspos();
-			anonymize_formals( _head(case1) );
-			_sett( case1_copy, bind_copy_body( _tail(case1), MUSE_FALSE ) );
+			anonymize_formals( env, _head(case1) );
+			_sett( case1_copy, bind_copy_body( env, _tail(case1), MUSE_FALSE ) );
 			_unwind_bindings(bsp);
 			_unwind(sp);
 		}
 		
-		return muse_cons( case1_copy, anonymize_copy_case_body(_tail(body)) );
+		return _cons( case1_copy, anonymize_copy_case_body(env,_tail(body)) );
 	}
 	else
 	{
@@ -83,7 +83,7 @@ static muse_cell anonymize_copy_case_body( muse_cell body )
 	}
 }
 
-static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
+static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean list_start )
 {
 	if ( body <= 0 )
 		return body;
@@ -94,7 +94,7 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 		{
 			muse_cell h, t;
 			
-			h = bind_copy_body( _head(body), MUSE_TRUE );
+			h = bind_copy_body( env, _head(body), MUSE_TRUE );
 			if ( list_start )
 			{
 				if ( _cellt(h) == MUSE_NATIVEFN_CELL )
@@ -114,7 +114,7 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 						lexical scope enclosing the expression. */
 						muse_cell c = MUSE_NIL;
 						muse_cell formals = _head(_tail(body));
-						if ( _head(formals) == _env()->builtin_symbols[MUSE_QUOTE] )
+						if ( _head(formals) == env->builtin_symbols[MUSE_QUOTE] )
 						{
 							/* If the formal parameter list is quoted, it means
 							the arguments to be given to this lambda must be passed
@@ -122,34 +122,34 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 							formals = _tail(formals);
 							{
 								int bsp = _bspos();
-								anonymize_formals( formals );
-								c = bind_copy_body( _tail(_tail(body)), MUSE_FALSE );
+								anonymize_formals( env, formals );
+								c = bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE );
 								_unwind_bindings(bsp);
 							}
-							return muse_cons( h, muse_cons( muse_quote(formals), c ) );
+							return _cons( h, _cons( muse_quote(env,formals), c ) );
 						}
 						else
 						{
 							int bsp = _bspos();
-							anonymize_formals( formals );
-							c = bind_copy_body( _tail(_tail(body)), MUSE_FALSE );
+							anonymize_formals( env, formals );
+							c = bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE );
 							_unwind_bindings(bsp);
-							return muse_cons( h, muse_cons( formals, c ) );
+							return _cons( h, _cons( formals, c ) );
 						}
 					}
 					else if ( fn == syntax_let )
 					{
-						muse_cell c = muse_cons( MUSE_NIL, MUSE_NIL );
+						muse_cell c = _cons( MUSE_NIL, MUSE_NIL );
 						int bsp = _bspos();
-						anonymize_letvars( _head(_tail(body)) );
-						_setht( c, h, bind_copy_body(_tail(body),MUSE_FALSE) );
+						anonymize_letvars( env, _head(_tail(body)) );
+						_setht( c, h, bind_copy_body(env,_tail(body),MUSE_FALSE) );
 						_unwind_bindings(bsp);
 						return c;
 					}
 					else if ( fn == syntax_case )
 					{
-						muse_cell obj = bind_copy_body(_head(_tail(body)), MUSE_FALSE);
-						return muse_cons( h, muse_cons( obj, anonymize_copy_case_body(_tail(_tail(body))) ) );
+						muse_cell obj = bind_copy_body(env,_head(_tail(body)), MUSE_FALSE);
+						return _cons( h, _cons( obj, anonymize_copy_case_body(env,_tail(_tail(body))) ) );
 					}
 				}
 			}
@@ -162,8 +162,8 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 				}
 			}
 
-			t = bind_copy_body( _tail(body), MUSE_FALSE );
-			return muse_cons( h, t );
+			t = bind_copy_body( env, _tail(body), MUSE_FALSE );
+			return _cons( h, t );
 		}
 		case MUSE_SYMBOL_CELL :
 		{
@@ -173,7 +173,7 @@ static muse_cell bind_copy_body( muse_cell body, muse_boolean list_start )
 			quoted but formals symbols (which are already quick quoted
 			in anonymize_formals() function) will appear unquoted, which is 
 			what we need. */
-			muse_cell v = muse_symbol_value(body);
+			muse_cell v = _symval(body);
 			return _cellt(v) == MUSE_CONS_CELL ? -v : v;
 		}
 		default:
@@ -257,9 +257,9 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell formals = _head(args);
 	muse_cell body = _tail(args);
-	muse_cell closure = _setcellt( muse_cons( formals, MUSE_NIL ), MUSE_LAMBDA_CELL );
+	muse_cell closure = _setcellt( _cons( formals, MUSE_NIL ), MUSE_LAMBDA_CELL );
 
-	if ( _head(formals) == _env()->builtin_symbols[MUSE_QUOTE] )
+	if ( _head(formals) == env->builtin_symbols[MUSE_QUOTE] )
 	{
 		/* The formals list is quoted. So we have to create the lambda
 		which will process its arguments unevaluated. We indicate this
@@ -267,19 +267,19 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		Typically, these "macros" should only be used at read-time.
 
 		Using quick-quoting to indicate macros saves us the cost of
-		doing _head(_head(fn)) == _env()->builtin_symbol[MUSE_QUOTE]
+		doing _head(_head(fn)) == env->builtin_symbol[MUSE_QUOTE]
 		kind of elaborate check.
 		
-		See also muse_eval and muse_apply_lambda. */
+		See also _eval and muse_apply_lambda. */
 
 		int bsp = _bspos();
 
 		/* Skip the quote indicator. */
 		formals = _tail(formals);
 
-		anonymize_formals( formals );
+		anonymize_formals( env, formals );
 		
-		_sett( closure, bind_copy_body( body, MUSE_FALSE ) );
+		_sett( closure, bind_copy_body( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
 
@@ -291,9 +291,9 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 	else
 	{
 		int bsp = _bspos();
-		anonymize_formals( formals );
+		anonymize_formals( env, formals );
 		
-		_sett( closure, bind_copy_body( body, MUSE_FALSE ) );
+		_sett( closure, bind_copy_body( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
 
@@ -389,8 +389,8 @@ muse_cell syntax_block( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_apply( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn = muse_evalnext(&args);
-	return muse_apply( fn, muse_evalnext(&args), MUSE_TRUE );
+	muse_cell fn = _evalnext(&args);
+	return _apply( fn, _evalnext(&args), MUSE_TRUE );
 }
 
 /**
@@ -398,23 +398,23 @@ muse_cell fn_apply( muse_env *env, void *context, muse_cell args )
  * and the 2nd, 4th, etc. places being the values that those symbols must be
  * set to.
  */
-static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
+static int bind_keys( muse_env *env, muse_cell kvpairs, muse_boolean args_already_evaluated )
 {
 	int bsp = _bspos();
 	int sp = _spos();
 
 	while ( kvpairs )
 	{
-		muse_cell sym = muse_evalnext(&kvpairs);
+		muse_cell sym = _evalnext(&kvpairs);
 
 		MUSE_DIAGNOSTICS({
-			muse_expect( L"(call/keywords f ... >>sym<< val ...)", L"v?", sym, MUSE_SYMBOL_CELL );
+			muse_expect( env, L"(call/keywords f ... >>sym<< val ...)", L"v?", sym, MUSE_SYMBOL_CELL );
 		});
 
 		{
-			muse_cell val = args_already_evaluated ? _next(&kvpairs) : muse_evalnext(&kvpairs);
+			muse_cell val = args_already_evaluated ? _next(&kvpairs) : _evalnext(&kvpairs);
 
-			muse_pushdef( sym, val );
+			_pushdef( sym, val );
 		}
 	}
 
@@ -464,19 +464,19 @@ static int bind_keys( muse_cell kvpairs, muse_boolean args_already_evaluated )
  */
 muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args )
 {
-	yield_process(1);
+	yield_process(env,1);
 
 	{
-		muse_cell f = muse_evalnext(&args);
+		muse_cell f = _evalnext(&args);
 
 		/* Only works with user defined functions. */
 		muse_assert( _cellt(f) == MUSE_LAMBDA_CELL );
 
 		/* Bind all the keyword arguments to their values. */
 		{
-			int bsp = bind_keys(args, (_head(f) < 0) ? MUSE_TRUE : MUSE_FALSE );
+			int bsp = bind_keys( env,args, (_head(f) < 0) ? MUSE_TRUE : MUSE_FALSE );
 
-			muse_cell result = muse_do(_tail(f));
+			muse_cell result = _do(_tail(f));
 
 			_unwind_bindings(bsp);
 
@@ -485,7 +485,7 @@ muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args )
 	}
 }
 
-static int bind_alist( muse_cell kvpairs )
+static int bind_alist( muse_env *env, muse_cell kvpairs )
 {
 	int bsp = _bspos();
 	int sp = _spos();
@@ -495,10 +495,10 @@ static int bind_alist( muse_cell kvpairs )
 		muse_cell pair = _next(&kvpairs);
 
 		MUSE_DIAGNOSTICS({
-			muse_expect( L"(apply/keywords f >>alist<<)", L"v?", _head(pair), MUSE_SYMBOL_CELL );
+			muse_expect( env, L"(apply/keywords f >>alist<<)", L"v?", _head(pair), MUSE_SYMBOL_CELL );
 		});
 
-		muse_pushdef( _head(pair), _tail(pair) );
+		_pushdef( _head(pair), _tail(pair) );
 	}
 
 	_unwind(sp);
@@ -517,19 +517,19 @@ static int bind_alist( muse_cell kvpairs )
  */
 muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args )
 {
-	yield_process(1);
+	yield_process(env,1);
 
 	{
-		muse_cell f = muse_evalnext(&args);
+		muse_cell f = _evalnext(&args);
 
 		/* Only works with user defined functions. */
 		muse_assert( _cellt(f) == MUSE_LAMBDA_CELL );
 
 		/* Bind all the keyword arguments to their values. */
 		{
-			int bsp = bind_alist( muse_evalnext(&args) );
+			int bsp = bind_alist( env, _evalnext(&args) );
 
-			muse_cell result = muse_do(_tail(f));
+			muse_cell result = _do(_tail(f));
 
 			_unwind_bindings(bsp);
 
@@ -542,19 +542,19 @@ muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args )
  * Runs through the bindings and returns MUSE_TRUE if everything bound successfully
  * and MUSE_FALSE if there was a failure. In case of failure, all bindings are reversed.
  */
-static muse_boolean bind_letvars( muse_cell bindings )
+static muse_boolean bind_letvars( muse_env *env, muse_cell bindings )
 {
 	if ( bindings )
 	{
 		muse_cell binding = _head(bindings);
 		int bsp = _bspos();
-		muse_cell value = muse_eval(_head(_tail(binding)));
-		if ( muse_bind_formals( _head(binding), value ) )
+		muse_cell value = _eval(_head(_tail(binding)));
+		if ( muse_bind_formals( env, _head(binding), value ) )
 		{
 			/* This binding succeeded. If everything else also succeeds,
 			we keep this binding, otherwise we reverse it. */
 						
-			if ( bind_letvars( _tail(bindings) ) )
+			if ( bind_letvars( env, _tail(bindings) ) )
 			{
 				return MUSE_TRUE;
 			}
@@ -567,7 +567,7 @@ static muse_boolean bind_letvars( muse_cell bindings )
 		else
 		{
 			MUSE_DIAGNOSTICS({
-				muse_message(	L"Error in let expression!",
+				muse_message( env,	L"Error in let expression!",
 								L"The pattern\n\t%m\n"
 								L"doesn't match the result of the expression\n\t%m\n"
 								L"which evaluates to\n\t%m.",
@@ -647,10 +647,10 @@ muse_cell syntax_let( muse_env *env, void *context, muse_cell args )
 	muse_cell bindings = _next(&args);
 	
 	_spush(bindings);
-	if ( bind_letvars( bindings ) )
+	if ( bind_letvars( env, bindings ) )
 	{
 		_spush(args);
-		result = muse_do( args );
+		result = _do( args );
 		_unwind(sp);
 		_spush(result);
 	}
@@ -712,12 +712,12 @@ muse_cell syntax_let( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell object = muse_evalnext(&args);
+	muse_cell object = _evalnext(&args);
 	muse_cell cases = args;
 	int bsp = _bspos();
 	
 	MUSE_DIAGNOSTICS({
-		muse_expect( L"case expression", L"v?!=", cases, MUSE_CONS_CELL, MUSE_NIL );
+		muse_expect( env, L"case expression", L"v?!=", cases, MUSE_CONS_CELL, MUSE_NIL );
 	});
 
 	while ( cases )
@@ -725,16 +725,16 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 		muse_cell thiscase = _next(&cases);
 		
 		MUSE_DIAGNOSTICS({
-			if ( !muse_expect( L"case expression", L"v!=", _tail(thiscase), MUSE_NIL ) )
-				muse_message( L"Syntax error in case body",
+			if ( !muse_expect( env, L"case expression", L"v!=", _tail(thiscase), MUSE_NIL ) )
+				muse_message( env,L"Syntax error in case body",
 							  L"%m\n\nis not a valid case body, which must have the form\n"
 							  L"(<case-pattern> <body>...)",
 							  thiscase );
 		});
 
-		if ( muse_bind_formals( _head(thiscase), object ) )
+		if ( muse_bind_formals( env, _head(thiscase), object ) )
 		{
-			muse_cell result = muse_do( _tail(thiscase) );
+			muse_cell result = _do( _tail(thiscase) );
 
 			_unwind_bindings(bsp);
 			return result;
@@ -742,7 +742,7 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 	}
 
 	MUSE_DIAGNOSTICS({
-		muse_message(	L"Error in case expression",
+		muse_message( env,	L"Error in case expression",
 						L"The object\n\t%m\nfailed to match any case.",
 						object 
 						);

@@ -49,17 +49,17 @@
  */
 muse_cell fn_class( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell className = muse_evalnext(&args);
+	muse_cell className = _evalnext(&args);
 
 	_sett( _tail(className), MUSE_NIL );
 	
-	muse_put_prop( className, muse_builtin_symbol(MUSE_SUPER), muse_evalnext(&args) );
+	_put_prop( className, _builtin_symbol(MUSE_SUPER), _evalnext(&args) );
 
 	while ( args )
 	{
 		muse_cell pty = _head(args);
 		
-		muse_put_prop( className, _head(pty), muse_eval(_head(_tail(pty))) );
+		_put_prop( className, _head(pty), _eval(_head(_tail(pty))) );
 		
 		args = _tail(args);
 	}
@@ -99,54 +99,54 @@ muse_cell fn_class( muse_env *env, void *context, muse_cell args )
 muse_cell fn_new( muse_env *env, void *context, muse_cell args )
 {
 	if ( !args )
-		return muse_mk_anon_symbol();
+		return _mk_anon_symbol();
 	else
 	{
-		muse_cell className = muse_evalnext(&args);
-		muse_cell obj = muse_mk_anon_symbol();
+		muse_cell className = _evalnext(&args);
+		muse_cell obj = _mk_anon_symbol();
 	
 		muse_cell supers = MUSE_NIL;
 		switch ( _cellt(className) )
 		{
-			case MUSE_SYMBOL_CELL : supers = muse_cons( className, MUSE_NIL ); break;
+			case MUSE_SYMBOL_CELL : supers = _cons( className, MUSE_NIL ); break;
 			case MUSE_CONS_CELL : supers = className; break;
 			default :
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(new >>class/-or-supers<< ...)",
+					if ( !muse_expect( env, L"(new >>class/-or-supers<< ...)",
 									   L"v|??|", className, MUSE_SYMBOL_CELL, MUSE_CONS_CELL ) )
 					{
-						muse_message( L"(new >>class-or-supers<< ...)",
+						muse_message( env, L"(new >>class-or-supers<< ...)",
 									  L"new's first argument is expected to be a class symbol\n"
 									  L"or a list of super class symbols." );
 					}
 				});
 		}
 		
-		muse_put_prop( obj, muse_builtin_symbol(MUSE_SUPER), supers );
+		_put_prop( obj, _builtin_symbol(MUSE_SUPER), supers );
 		
 		if ( args )
 		{
 			/* Append the given plist to it. */
-			muse_list_append( _tail(obj), muse_evalnext(&args) );
+			muse_list_append( env, _tail(obj), _evalnext(&args) );
 		}
 		
 		return obj;
 	}
 }
 
-static muse_cell search_class_hierarchy( muse_cell classHierarchy, muse_cell member )
+static muse_cell search_class_hierarchy( muse_env *env, muse_cell classHierarchy, muse_cell member )
 {
 	while ( classHierarchy )
 	{
 		muse_cell parent = _head(classHierarchy);
 
 		/* Search specified class. */
-		muse_cell result = muse_get_prop( parent, member );
+		muse_cell result = _get_prop( parent, member );
 		if ( result )
 			return result;
 
 		/* Method not available in class. Search super classes. */
-		result = search_class_hierarchy( _tail(muse_get_prop( parent, muse_builtin_symbol(MUSE_SUPER) )), member );
+		result = search_class_hierarchy( env, _tail(_get_prop( parent, _builtin_symbol(MUSE_SUPER) )), member );
 		if ( result )
 			return result;
 		
@@ -156,16 +156,16 @@ static muse_cell search_class_hierarchy( muse_cell classHierarchy, muse_cell mem
 	return MUSE_NIL;
 }
 
-static muse_cell search_object( muse_cell obj, muse_cell member )
+static muse_cell search_object( muse_env *env, muse_cell obj, muse_cell member )
 {
-	muse_cell prop = muse_get_prop( obj, member );
+	muse_cell prop = _get_prop( obj, member );
 	
 	if ( prop )
 		return prop;
 	else
 	{
-		muse_cell classHierarchy = _tail(muse_get_prop( obj, muse_builtin_symbol(MUSE_SUPER) ));
-		return search_class_hierarchy( classHierarchy, member );
+		muse_cell classHierarchy = _tail(_get_prop( obj, _builtin_symbol(MUSE_SUPER) ));
+		return search_class_hierarchy( env, classHierarchy, member );
 	}
 }
 
@@ -193,15 +193,15 @@ static muse_cell search_object( muse_cell obj, muse_cell member )
  */
 muse_cell fn_send( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell obj			= muse_evalnext(&args);
-	muse_cell memberName	= muse_evalnext(&args);
-	muse_cell member		= search_object( obj, memberName );
+	muse_cell obj			= _evalnext(&args);
+	muse_cell memberName	= _evalnext(&args);
+	muse_cell member		= search_object( env, obj, memberName );
 	muse_cell memberVal		= _tail(member);
 	
 	/* If we're calling send, the member is expected to be a function
 	   we can call. */
 	if ( memberVal )
-		return muse_apply( memberVal, muse_cons( obj, muse_eval_list(args) ), MUSE_TRUE );
+		return _apply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
 	else
 		return MUSE_NIL;
 }
@@ -231,16 +231,16 @@ muse_cell fn_send( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell classes		= muse_evalnext(&args);
-	muse_cell obj			= muse_evalnext(&args);
-	muse_cell methodName	= muse_evalnext(&args);
+	muse_cell classes		= _evalnext(&args);
+	muse_cell obj			= _evalnext(&args);
+	muse_cell methodName	= _evalnext(&args);
 	muse_cell methodEntry	= (_cellt(classes) == MUSE_CONS_CELL) 
-								? search_class_hierarchy( classes, methodName )
-								: search_object( classes, methodName );
+								? search_class_hierarchy( env, classes, methodName )
+								: search_object( env, classes, methodName );
 	muse_cell method		= _tail(methodEntry);
 	
 	if ( method )
-		return muse_apply( method, muse_cons( obj, muse_eval_list(args) ), MUSE_TRUE );
+		return _apply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
 	else
 		return MUSE_NIL;
 }
@@ -265,28 +265,28 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell obj			= muse_evalnext(&args);
-	muse_cell memberName	= muse_evalnext(&args);
+	muse_cell obj			= _evalnext(&args);
+	muse_cell memberName	= _evalnext(&args);
 	
 	if ( args )
 	{
 		/* Argument given. We should set the member value. */
-		muse_cell pty = muse_get_prop( obj, memberName );
+		muse_cell pty = _get_prop( obj, memberName );
 		if ( pty )
 		{
-			_sett( pty, muse_evalnext(&args) );
+			_sett( pty, _evalnext(&args) );
 			return pty;
 		}
 		else
 		{
-			pty = muse_cons(memberName, muse_evalnext(&args));
-			_sett( _tail(obj), muse_cons( pty, _tail(_tail(obj)) ) );
+			pty = _cons(memberName, _evalnext(&args));
+			_sett( _tail(obj), _cons( pty, _tail(_tail(obj)) ) );
 			return pty;
 		}
 	}
 	else
 	{
 		/* Argument not given. We should get the member value. */
-		return _tail(search_object( obj, memberName ));
+		return _tail(search_object( env, obj, memberName ));
 	}
 }

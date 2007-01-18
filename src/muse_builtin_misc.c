@@ -25,11 +25,11 @@ typedef struct
 	WIN32_FIND_DATAW data;
 } filesearchinfo_t;
 
-static muse_cell generate_files( filesearchinfo_t *info, int i, muse_boolean *eol )
+static muse_cell generate_files( muse_env *env, filesearchinfo_t *info, int i, muse_boolean *eol )
 {
 	if ( i == 0 )
 	{
-		info->search = FindFirstFileW( muse_text_contents( info->path, NULL ), &info->data );
+		info->search = FindFirstFileW( _text_contents( info->path, NULL ), &info->data );
 		if ( info->search == INVALID_HANDLE_VALUE )
 		{
 			(*eol) = MUSE_TRUE;
@@ -59,7 +59,7 @@ static muse_cell generate_files( filesearchinfo_t *info, int i, muse_boolean *eo
 	}
 
 	(*eol) = MUSE_FALSE;
-	return muse_mk_ctext( info->data.cFileName );
+	return muse_mk_ctext( env, info->data.cFileName );
 }
 
 /**
@@ -76,11 +76,11 @@ static muse_cell generate_files( filesearchinfo_t *info, int i, muse_boolean *eo
 muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 {
 	filesearchinfo_t info;
-	info.path		= muse_evalnext(&args);
+	info.path		= _evalnext(&args);
 	info.attrmask	= FILE_ATTRIBUTE_DIRECTORY;
 	info.attrcomp	= 0;
 
-	return muse_generate_list( (muse_list_generator_t)generate_files, &info );
+	return muse_generate_list( env, (muse_list_generator_t)generate_files, &info );
 }
 
 /**
@@ -99,17 +99,17 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 {
 	filesearchinfo_t info;
-	info.path		= muse_evalnext(&args);
+	info.path		= _evalnext(&args);
 	info.attrmask	= FILE_ATTRIBUTE_DIRECTORY;
 	info.attrcomp	= FILE_ATTRIBUTE_DIRECTORY;
 
-	return muse_generate_list( (muse_list_generator_t)generate_files, &info );
+	return muse_generate_list( env, (muse_list_generator_t)generate_files, &info );
 }
 
 #else // POSIX
 
 
-static muse_cell generate_files( FILE *info, int i, muse_boolean *eol )
+static muse_cell generate_files( muse_env *env, FILE *info, int i, muse_boolean *eol )
 {
 	char line[4096];
 	if ( fgets( line, 4096, info ) )
@@ -154,11 +154,11 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 {
 	FILE *f;
 	char cmd[4096];
-	snprintf( cmd, 4096, "ls -p %S | grep -v /", muse_text_contents( muse_evalnext(&args), NULL ) );
+	snprintf( cmd, 4096, "ls -p %S | grep -v /", _text_contents( _evalnext(&args), NULL ) );
 
 	f = popen( cmd, "r" );
 	if ( f )
-		return muse_generate_list( (muse_list_generator_t)generate_files, f );
+		return muse_generate_list( env, (muse_list_generator_t)generate_files, f );
 
 	return MUSE_NIL;
 }
@@ -180,11 +180,11 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 {
 	FILE *f;
 	char cmd[4096];
-	snprintf( cmd, 4096, "ls -p %S | grep /", muse_text_contents( muse_evalnext(&args), NULL ) );
+	snprintf( cmd, 4096, "ls -p %S | grep /", _text_contents( _evalnext(&args), NULL ) );
 
 	f = popen( cmd, "r" );
 	if ( f )
-		return muse_generate_list( (muse_list_generator_t)generate_files, f );
+		return muse_generate_list( env, (muse_list_generator_t)generate_files, f );
 
 	return MUSE_NIL;
 }

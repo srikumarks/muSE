@@ -12,7 +12,7 @@
 
 #include "muse_builtins.h"
 
-int compare_text( muse_cell lhs, muse_cell rhs )
+int compare_text( muse_env *env, muse_cell lhs, muse_cell rhs )
 {
 	muse_char *ls = _ptr(lhs)->text.start;
 	muse_char *rs = _ptr(rhs)->text.start;
@@ -24,7 +24,7 @@ static inline int deep_compare_int( muse_int i1, muse_int i2 )
 	return (i1 < i2) ? -1 : (i1 > i2 ? 1 : 0);
 }
 
-static int deep_compare( muse_cell lhs, muse_cell rhs )
+static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 {
 	int lhs_t, rhs_t, compare_t;
 	
@@ -58,14 +58,14 @@ static int deep_compare( muse_cell lhs, muse_cell rhs )
 			return (f1 < f2) ? -1 : (f1 > f2 ? 1 : 0);
 		}
 		case MUSE_TEXT_CELL		:
-			return compare_text(lhs,rhs);
+			return compare_text(env,lhs,rhs);
 		case MUSE_CONS_CELL		:
 		{
-			int c = deep_compare( _head(lhs), _head(rhs) );
+			int c = deep_compare( env, _head(lhs), _head(rhs) );
 			if ( c != 0 )
 				return c;
 			else
-				return deep_compare( _tail(lhs), _tail(rhs) );
+				return deep_compare( env, _tail(lhs), _tail(rhs) );
 		}
 		case MUSE_SYMBOL_CELL	:
 		{
@@ -75,18 +75,18 @@ static int deep_compare( muse_cell lhs, muse_cell rhs )
 			if ( lt == MUSE_NIL && rt == MUSE_NIL )
 				return lhs - rhs;
 			else
-				return deep_compare( lt, rt );
+				return deep_compare( env, lt, rt );
 		}
 		default					:
 			return lhs - rhs;
 	}	
 }
 
-int fn_deep_compare( muse_cell args )
+int fn_deep_compare( muse_env *env, muse_cell args )
 {
-	muse_cell lhs = muse_evalnext(&args);
-	muse_cell rhs = muse_evalnext(&args);
-	int result = deep_compare( lhs, rhs );
+	muse_cell lhs = _evalnext(&args);
+	muse_cell rhs = _evalnext(&args);
+	int result = deep_compare( env, lhs, rhs );
 
 	return result;
 }
@@ -99,9 +99,9 @@ int fn_deep_compare( muse_cell args )
  */
 muse_cell fn_eq( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell lhs = muse_evalnext(&args);
-	muse_cell rhs = muse_evalnext(&args);
-	return muse_eq( lhs, rhs ) ? _t() : MUSE_NIL;
+	muse_cell lhs = _evalnext(&args);
+	muse_cell rhs = _evalnext(&args);
+	return muse_eq( env, lhs, rhs ) ? _t() : MUSE_NIL;
 }
 
 /**
@@ -111,39 +111,39 @@ muse_cell fn_eq( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_equal( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) == 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) == 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_ne( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) != 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) != 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_lt( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) < 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) < 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_gt( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) > 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) > 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_le( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) <= 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) <= 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_ge( muse_env *env, void *context, muse_cell args )
 {
-	return fn_deep_compare( args ) >= 0 ? _t() : MUSE_NIL;
+	return fn_deep_compare( env, args ) >= 0 ? _t() : MUSE_NIL;
 }
 
 muse_cell fn_and( muse_env *env, void *context, muse_cell args )
 {
 	while ( args )
 	{
-		muse_cell c = muse_evalnext(&args);
+		muse_cell c = _evalnext(&args);
 		if ( !c )
 			return MUSE_NIL;
 	}
@@ -155,7 +155,7 @@ muse_cell fn_or( muse_env *env, void *context, muse_cell args )
 {
 	while ( args )
 	{
-		muse_cell c = muse_evalnext(&args);
+		muse_cell c = _evalnext(&args);
 		if ( c )
 			return _t();
 	}
@@ -165,6 +165,6 @@ muse_cell fn_or( muse_env *env, void *context, muse_cell args )
 
 muse_cell fn_not( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell c = muse_evalnext(&args);
+	muse_cell c = _evalnext(&args);
 	return c ? MUSE_NIL : _t();
 }

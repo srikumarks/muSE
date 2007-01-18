@@ -49,7 +49,7 @@ static void port_destroy_buffer( muse_port_buffer_t *buffer )
  * Intended to be called inside a particular port's init function
  * at port creation time. Sets up the port's buffers.
  */
-void port_init( muse_port_base_t *p )
+void port_init( muse_env *env, muse_port_base_t *p )
 {
 	/* Allocate an input buffer if you can read from this port. */
 	if ( ((muse_port_type_t*)p->base.type_info)->read )
@@ -59,8 +59,10 @@ void port_init( muse_port_base_t *p )
 	if ( ((muse_port_type_t*)p->base.type_info)->write )
 		port_init_buffer( &p->out );
 
-	p->pretty_print = _env()->parameters[MUSE_PRETTY_PRINT];
-	p->tab_size		= _env()->parameters[MUSE_TAB_SIZE];
+	p->env = env;
+	p->pretty_print = env->parameters[MUSE_PRETTY_PRINT];
+	p->tab_size		= env->parameters[MUSE_TAB_SIZE];
+	p->pp_align_level = 0;
 }
 
 /**
@@ -79,6 +81,7 @@ void port_destroy( muse_port_base_t *p )
  */
 int	port_getc( muse_port_base_t *p )
 {
+	muse_env *env = p->env;
 	muse_port_buffer_t *b	= &p->in;
 	
 	muse_assert( b->bytes );
@@ -121,6 +124,8 @@ int	port_getc( muse_port_base_t *p )
  */
 int port_ungetc( int c, muse_port_base_t *p )
 {
+	muse_env *env = p->env;
+
 	if ( c != EOF )
 	{
 		muse_port_buffer_t *b = &p->in;
@@ -148,6 +153,8 @@ int port_ungetc( int c, muse_port_base_t *p )
  */
 int port_putc( int c, muse_port_base_t *p )
 {
+	muse_env *env = p->env;
+
 	muse_port_buffer_t *b = &p->out;
 	
 	muse_assert( b->bytes );
@@ -207,6 +214,8 @@ void port_close( muse_port_base_t *p )
  */
 size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
 {
+	muse_env *env = port->env;
+
 	muse_port_buffer_t *in	= &port->in;
 	unsigned char *b		= (unsigned char *)buffer;
 	size_t bytes_to_copy	= nbytes;
@@ -272,6 +281,7 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
  */
 size_t port_write( void *buffer, size_t nbytes, muse_port_base_t *port )
 {
+	muse_env *env = port->env;
 	muse_port_buffer_t *out	= &port->out;
 	
 	muse_assert( buffer && port && (nbytes > 0) );
@@ -349,53 +359,47 @@ enum
 
 /** @name Pretty print support. */
 /*@{*/
-enum { MAX_INDENT_COLS = 128 };
-
-static int g_align_cols[MAX_INDENT_COLS];
-static int g_align_level = 0;
-static muse_boolean g_pretty_printer_enabled = MUSE_TRUE;
-static int g_tab_size = 4;
 
 static void pretty_printer_reset( muse_port_t p )
 {
-	g_pretty_printer_enabled		= p->pretty_print ? MUSE_TRUE : MUSE_FALSE;
-	g_align_level					= 0;
-	g_align_cols[g_align_level]		= 0;
-	g_tab_size						= p->tab_size;
+	p->pp_align_level = 0;
+	p->pp_align_cols[p->pp_align_level] = 0;
 }
 
-static void pretty_printer_indent()
+static void pretty_printer_indent( muse_port_t p )
 {
-	if ( g_pretty_printer_enabled )
+	if ( p->pretty_print )
 	{
-		muse_assert( g_align_level < MAX_INDENT_COLS-1 );
-		g_align_cols[g_align_level+1] = g_align_cols[g_align_level];
-		++g_align_level;
+		muse_env *env = p->env;
+		muse_assert( p->pp_align_level < MAX_INDENT_COLS-1 );
+		p->pp_align_cols[p->pp_align_level+1] = p->pp_align_cols[p->pp_align_level];
+		++(p->pp_align_level);
 	}
 }
 
-static void pretty_printer_unindent()
+static void pretty_printer_unindent( muse_port_t p )
 {
-	if ( g_pretty_printer_enabled )
+	if ( p->pretty_print )
 	{
-		muse_assert( g_align_level > 0 );
-		--g_align_level;
+		muse_env *env = p->env;
+		muse_assert( p->pp_align_level > 0 );
+		--(p->pp_align_level);
 	}
 }
 
 static void pretty_printer_line_break( muse_port_t f )
 {
-	if ( g_pretty_printer_enabled )
+	if ( f->pretty_print )
 	{
 		port_putc('\n',f);
 		
 		{
-			int i = 0, N = g_align_cols[g_align_level] - g_tab_size;
+			int i = 0, N = f->pp_align_cols[f->pp_align_level] - f->tab_size;
 
-			for ( ; i < N; i += g_tab_size ) 
+			for ( ; i < N; i += f->tab_size ) 
 				port_putc( '\t', f );
 
-			N += g_tab_size;
+			N += f->tab_size;
 
 			for ( ; i < N; ++i )
 				port_putc( ' ', f );
@@ -403,10 +407,10 @@ static void pretty_printer_line_break( muse_port_t f )
 	}
 }
 
-static void pretty_printer_move( int numc )
+static void pretty_printer_move( muse_port_t p, int numc )
 {
-	if ( g_pretty_printer_enabled )
-		g_align_cols[g_align_level] += numc;
+	if ( p->pretty_print )
+		p->pp_align_cols[p->pp_align_level] += numc;
 }
 /*@}*/
 
@@ -420,13 +424,11 @@ typedef struct
 	int col_start, col_end;
 } ez_result_t;
 
-int ez_update_col( int ch, int col )
+int ez_update_col( muse_port_t f, int ch, int col )
 {
-	static const int k_tab_size = 4;
-
 	switch ( ch )
 	{
-	case '\t'	: return col + k_tab_size;
+	case '\t'	: return col + f->tab_size;
 	case '\n'	:
 	case '\r'	: return 0;
 	default		: return col + 1;
@@ -474,7 +476,7 @@ white_space_t ez_skip_whitespace( muse_port_t f, int line, int col )
 	c = port_getc(f);
 	while ( c != EOF && isspace(c) )
 	{
-		col = ez_update_col( c, col );
+		col = ez_update_col( f, c, col );
 		
 		if ( c == '\n' )
 			++line;
@@ -518,6 +520,7 @@ static inline int _token_end_list( int c )
  */
 static ez_result_t _read_number( muse_port_t f, int col )
 {
+	muse_env *env = f->env;
 	char buffer[128];
 	int count = 0, digit_count = 0, denom_pos = -1;
 	muse_boolean is_fractional = MUSE_FALSE;
@@ -626,20 +629,20 @@ static ez_result_t _read_number( muse_port_t f, int col )
 				fprintf( stderr, "Syntax error: Zero denominator used in literal fraction '%s'! Not a number!\n", buffer );
 			}
 			else
-				return ez_result( muse_mk_float( (muse_float)num / (muse_float)denom ), col, col + count );
+				return ez_result( _mk_float( (muse_float)num / (muse_float)denom ), col, col + count );
 		}
 		else
 		{
 			if ( is_fractional )
 			{
 				muse_float f = atof(buffer);
-				return ez_result( muse_mk_float(f), col, col + count );
+				return ez_result( _mk_float(f), col, col + count );
 			}
 			else
 			{
 				muse_int i;
 				sscanf( buffer, MUSE_FMT_INT, &i );
-				return ez_result( muse_mk_int(i), col, col + count );
+				return ez_result( _mk_int(i), col, col + count );
 			}
 		}
 	}
@@ -671,6 +674,7 @@ static int hex( int c )
  */
 static ez_result_t _read_hex( muse_port_t f, int col )
 {
+	muse_env *env = f->env;
 	int c = port_getc(f);
 
 	/* First character sequence must be "0x" */
@@ -714,7 +718,7 @@ static ez_result_t _read_hex( muse_port_t f, int col )
 		}
 
 		muse_assert( len > 0 || !"No valid hex characters after '0x'!\n" );
-		return ez_result( muse_mk_int(n), col, col + len + 2 );
+		return ez_result( _mk_int(n), col, col + len + 2 );
 	}
 }
 
@@ -724,6 +728,8 @@ static ez_result_t _read_hex( muse_port_t f, int col )
  */
 static ez_result_t _read_string( muse_port_t f, int col )
 {
+	muse_env *env = f->env;
+
 	int col_end = col;
 	char c = port_getc(f);
 	if ( c != '"' )
@@ -768,7 +774,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 						s[endpos+1] = '\0';
 						swprintf( temp, endpos + 1, L"%S", s );
 
-						muse_message( L"Parser", L"There are two consecutive double quote characters in\n"
+						muse_message( env,L"Parser", L"There are two consecutive double quote characters in\n"
 												 L"[%s]. Did you really mean to use a double-quote character\n"
 												 L"inside a literal string?",
 												 temp );
@@ -781,7 +787,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 				}
 			}
 
-			col_end = ez_update_col( c, col_end );
+			col_end = ez_update_col( f, c, col_end );
 			
 			s[endpos++] = (char)c;
 			if ( endpos > maxlen )
@@ -798,7 +804,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 		s[endpos] = '\0';
 		
 		{
-			muse_cell result = muse_mk_text_utf8( s, s + endpos );
+			muse_cell result = muse_mk_text_utf8( f->env, s, s + endpos );
 			free(s);
 			return ez_result( result, col, col_end );
 		}
@@ -822,6 +828,7 @@ static muse_boolean is_symbol_char( int c )
  */
 static ez_result_t _read_symbol( muse_port_t f, int col )
 {
+	muse_env *env = f->env;
 	int maxlen = 32;
 	int pos = 0;
 	int c = '\0';
@@ -848,7 +855,7 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 	
 	if ( pos > 0 )
 	{
-		muse_cell sym = muse_symbol_utf8( s, s + pos );
+		muse_cell sym = muse_symbol_utf8( f->env, s, s + pos );
 		free(s);
 		return ez_result( sym, col, col + pos );
 	}
@@ -863,7 +870,7 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 			temp[0] = c;
 			temp[1] = '\0';
 
-			muse_message( L"Parser", L"Expecting a symbol, number or a string, but I get '%s' instead.\n"
+			muse_message( env,L"Parser", L"Expecting a symbol, number or a string, but I get '%s' instead.\n"
 									 L"Mismatched parentheses somewhere? Maybe you should use the\n"
 									 L"\"Check Syntax\" feature in DrScheme.", temp );
 		});
@@ -922,6 +929,7 @@ static ez_result_t _read_atom( muse_port_t f, int col )
  */
 static muse_cell _read_list( muse_port_t f )
 {
+	muse_env *env = f->env;
 	char c = port_getc(f);
 	
 	if ( !_token_begin_list(c) )
@@ -940,7 +948,7 @@ static muse_cell _read_list( muse_port_t f )
 		if ( c == EOF )
 		{
 			MUSE_DIAGNOSTICS({
-				muse_message( L"Parser", L"File ended soon after a '('. Maybe you should use\n"
+				muse_message( env,L"Parser", L"File ended soon after a '('. Maybe you should use\n"
 										 L"the \"Check syntax\" feature of DrScheme." );
 			});
 			return PARSE_ERROR_EXPECTED_LIST;
@@ -953,16 +961,16 @@ static muse_cell _read_list( muse_port_t f )
 		else
 			port_ungetc(c,f);
 		
-		h = t = muse_cons(MUSE_NIL,MUSE_NIL);
+		h = t = _cons(MUSE_NIL,MUSE_NIL);
 		
 		sp = _spos();
 		next_element = muse_pread( f );
 		if ( next_element < 0 )
 		{
 			MUSE_DIAGNOSTICS({
-				muse_message( L"Parser", L"Error while trying to read elements of a list.\n"
+				muse_message( env,L"Parser", L"Error while trying to read elements of a list.\n"
 										 L"The last term is\n\t%m",
-										 muse_head(t) );
+										 _head(t) );
 			});
 			return next_element; /* Parse error. */
 		}
@@ -985,7 +993,7 @@ static muse_cell _read_list( muse_port_t f )
 				if ( c2 == EOF )
 				{
 					MUSE_DIAGNOSTICS({
-						muse_message( L"Parser", L"Didn't expect the file to end after\n\t%m\nwhile parsing a list.", _head(t) );
+						muse_message( env,L"Parser", L"Didn't expect the file to end after\n\t%m\nwhile parsing a list.", _head(t) );
 					});
 					return PARSE_ERROR;
 				}
@@ -1005,7 +1013,7 @@ static muse_cell _read_list( muse_port_t f )
 					if ( !_token_end_list(c) )
 					{
 						MUSE_DIAGNOSTICS({
-							muse_message( L"Parser", L"The list should end after\n\t. %m", _tail(t) );
+							muse_message( env,L"Parser", L"The list should end after\n\t. %m", _tail(t) );
 						});
 						return PARSE_ERROR_BAD_CONS_SYNTAX;
 						/* Next token after second item of cons pair must be ')' */
@@ -1033,7 +1041,7 @@ static muse_cell _read_list( muse_port_t f )
 
 			/* Add to the end of the list. */
 			{
-				muse_cell c = muse_cons( next_element, MUSE_NIL );
+				muse_cell c = _cons( next_element, MUSE_NIL );
 				_sett( t, c );
 				t = c;
 				_unwind(sp);
@@ -1051,7 +1059,7 @@ static muse_cell _read_list( muse_port_t f )
  * which has a symbol at its head that is defined to
  * be a macro.
  */
-static muse_boolean is_macro_sexpr( muse_cell sexpr )
+static muse_boolean is_macro_sexpr( muse_env *env, muse_cell sexpr )
 {
 	/* sexpr must not be (). */
 	if ( !sexpr )
@@ -1087,9 +1095,15 @@ static muse_boolean is_macro_sexpr( muse_cell sexpr )
 	return MUSE_FALSE;
 }
 
-extern muse_cell mk_bytes( muse_int size );
-extern unsigned char *bytes_ptr( muse_cell b );
-extern void bytes_set_size( muse_cell b, muse_int size );
+
+#define _mk_bytes(size) mk_bytes(env,size)
+extern muse_cell mk_bytes( muse_env *env, muse_int size );
+
+#define _bytes_ptr(b) bytes_ptr(env,b)
+extern unsigned char *bytes_ptr( muse_env *env, muse_cell b );
+
+#define _bytes_set_size( b, size ) bytes_set_size( env, b, size )
+extern void bytes_set_size( muse_env *env, muse_cell b, muse_int size );
 
 /**
  * A byte sequence has the format -
@@ -1099,8 +1113,9 @@ extern void bytes_set_size( muse_cell b, muse_int size );
  * since the number of bytes is specified explicitly, the data can include 
  * square brackets.
  */
-static muse_cell _read_bytes( muse_port_t f )
+static muse_cell read_bytes( muse_port_t f )
 {
+	muse_env *env = f->env;
 	muse_cell bytes = MUSE_NIL;
 	muse_int size = 0;
 	int c = '0';
@@ -1114,8 +1129,8 @@ static muse_cell _read_bytes( muse_port_t f )
 	muse_assert( c == '[' );
 
 	{
-		bytes = mk_bytes(size);
-		bytes_set_size( bytes, (muse_int)port_read( bytes_ptr(bytes), (size_t)size, f ) );
+		bytes = _mk_bytes(size);
+		_bytes_set_size( bytes, (muse_int)port_read( _bytes_ptr(bytes), (size_t)size, f ) );
 	}
 
 	c = port_getc(f);
@@ -1127,10 +1142,10 @@ static muse_cell _read_bytes( muse_port_t f )
 /**
  * General function to handle special codes of the form @code #... @endcode.
  */
-static muse_cell _read_special( muse_port_t f )
+static muse_cell read_special( muse_port_t f )
 {
 	/* Currently only byte data is supported. */
-	return _read_bytes(f);
+	return read_bytes(f);
 }
 
 /**
@@ -1142,6 +1157,7 @@ static muse_cell _read_special( muse_port_t f )
  */
 muse_cell muse_pread( muse_port_t f )
 {
+	muse_env *env = f->env;
 	char c;
 
 	if ( f->mode & MUSE_PORT_EZSCHEME )
@@ -1164,7 +1180,7 @@ muse_cell muse_pread( muse_port_t f )
 		f->mode &= ~MUSE_PORT_READ_DETECT_MACROS;
 		expr = muse_pread( f );
 		f->mode = saved_mode;
-		return muse_quote(expr);
+		return muse_quote(env,expr);
 	}
 	else if ( c == '(' || c == '{' )
 	{
@@ -1177,7 +1193,7 @@ muse_cell muse_pread( muse_port_t f )
 			if ( sexpr < 0 )
 			{
 				MUSE_DIAGNOSTICS({
-					muse_message( L"Parser", L"Expected a list. Got error %d.", (muse_int)sexpr );
+					muse_message( env,L"Parser", L"Expected a list. Got error %d.", (muse_int)sexpr );
 				});
 				return sexpr; /**< Some error happened. */
 			}
@@ -1194,9 +1210,9 @@ muse_cell muse_pread( muse_port_t f )
 			if ( (f->mode & MUSE_PORT_READ_EXPAND_BRACES)
 					&& (c == '{' || ((f->mode & MUSE_PORT_READ_DETECT_MACROS)
 										&& c == '(' 
-										&& is_macro_sexpr(sexpr))) )
+										&& is_macro_sexpr(env,sexpr))) )
 			{
-				return muse_eval(sexpr);
+				return _eval(sexpr);
 			}
 			else
 				return sexpr;
@@ -1204,7 +1220,7 @@ muse_cell muse_pread( muse_port_t f )
 	}
 	else if ( c == '#' )
 	{
-		return _read_special(f);
+		return read_special(f);
 	}
 	else 
 	{
@@ -1216,7 +1232,7 @@ muse_cell muse_pread( muse_port_t f )
 			MUSE_DIAGNOSTICS({
 				if ( expr < 0 && expr != PARSE_EOF )
 				{
-						muse_message( L"Parser", L"Expected a symbol, number or a string.\n"
+						muse_message( env,L"Parser", L"Expected a symbol, number or a string.\n"
 												 L"Mismatched parentheses somewhere? Maybe you should\n"
 												 L"use the \"Check syntax\" feature of DrScheme.");
 				}
@@ -1231,14 +1247,16 @@ static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote );
 
 static void muse_print_int( muse_port_t f, muse_cell i )
 {
+	muse_env *env = f->env;
 	char buffer[64];
 	int count = sprintf( buffer, MUSE_FMT_INT, _ptr(i)->i );
-	pretty_printer_move(count);
+	pretty_printer_move(f,count);
 	port_write( buffer, count, f );
 }
 
 static void muse_print_float( muse_port_t s, muse_cell f )
 {
+	muse_env *env = s->env;
 	char buffer[128];
 	int count = sprintf( buffer, MUSE_FMT_FLOAT, _ptr(f)->f );
 
@@ -1250,12 +1268,13 @@ static void muse_print_float( muse_port_t s, muse_cell f )
 		buffer[count++] = '0';
 	}
 
-	pretty_printer_move(count);
+	pretty_printer_move(s,count);
 	port_write( buffer, count, s );
 }
 
 static size_t muse_print_text( muse_port_t f, muse_cell t, muse_boolean quote )
 {
+	muse_env *env = f->env;
 	const char dquote		= '"';
 	muse_text_cell *tc		= &_ptr(t)->text;
 	size_t size				= muse_utf8_size(tc->start, (int)(tc->end - tc->start));
@@ -1312,8 +1331,9 @@ static size_t muse_print_text( muse_port_t f, muse_cell t, muse_boolean quote )
 	}
 }
 
-static void muse_print_list ( muse_port_t f, muse_cell l, muse_boolean quote )
+static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 {
+	muse_env *env = f->env;
 	if ( l )
 	{
 		muse_boolean need_line_break = MUSE_FALSE;
@@ -1321,27 +1341,27 @@ static void muse_print_list ( muse_port_t f, muse_cell l, muse_boolean quote )
 		if ( _isquote( _head(l) ) )
 		{
 			port_putc( '\'', f );
-			pretty_printer_move(1);
+			pretty_printer_move(f,1);
 			muse_print_q( f, _tail(l), quote );
 			return;
 		}
 		
-		pretty_printer_indent();
+		pretty_printer_indent(f);
 		port_putc( '(', f );
-		pretty_printer_move(1);
+		pretty_printer_move(f,1);
 		
 		while ( l )
 		{
 			muse_cell h = _next(&l);
 
-			if ( need_line_break ) pretty_printer_indent();
+			if ( need_line_break ) pretty_printer_indent(f);
 			muse_print_q( f, h, quote );
-			if ( need_line_break ) pretty_printer_unindent();
+			if ( need_line_break ) pretty_printer_unindent(f);
 			
 			if ( l && _cellt(l) != MUSE_CONS_CELL )
 			{
 				port_write( " . ", 3, f );
-				pretty_printer_move(3);
+				pretty_printer_move(f,3);
 				muse_print_q( f, l, quote );
 				break;
 			}
@@ -1356,71 +1376,74 @@ static void muse_print_list ( muse_port_t f, muse_cell l, muse_boolean quote )
 				else
 				{
 					port_putc( ' ', f );
-					pretty_printer_move(1);
+					pretty_printer_move(f,1);
 				}
 			}
 		}
 		
 		port_putc( ')', f );
-		pretty_printer_move(1);
-		pretty_printer_unindent();
+		pretty_printer_move(f,1);
+		pretty_printer_unindent(f);
 	}
 	else
 	{
-		pretty_printer_indent();
+		pretty_printer_indent(f);
 		port_putc( '(', f );
 		port_putc( ')', f );
-		pretty_printer_move(2);
-		pretty_printer_unindent();
+		pretty_printer_move(f,2);
+		pretty_printer_unindent(f);
 	}
 }
 
 static void muse_print_sym( muse_port_t f, muse_cell s )
 {
+	muse_env *env = f->env;
 	muse_cell name = _symname(s);
 	if ( name )
-		pretty_printer_move( (int)muse_print_text( f, name, MUSE_FALSE ) );
+		pretty_printer_move( f, (int)muse_print_text( f, name, MUSE_FALSE ) );
 	else
 	{
 		char buffer[64];
 		int count = sprintf( buffer, "<sym:%x>", s );
 		port_write( buffer, count, f );
-		pretty_printer_move(count);
+		pretty_printer_move(f,count);
 	}
 }
 
 static void muse_print_lambda( muse_port_t f, muse_cell l, muse_boolean quote )
 {
+	muse_env *env = f->env;
 	char buffer[64];
 	int count = sprintf( buffer, "(fn ", l );
-	pretty_printer_indent();
+	pretty_printer_indent(f);
 	port_write( buffer, count, f );
-	pretty_printer_move(count);
+	pretty_printer_move(f,count);
 	while ( l )
 	{
-		pretty_printer_indent();
+		pretty_printer_indent(f);
 		muse_print_q( f, _next(&l), quote );
-		pretty_printer_unindent();
+		pretty_printer_unindent(f);
 		if ( l ) pretty_printer_line_break(f);
 	}
 	port_putc( ')', f );
-	pretty_printer_unindent();
+	pretty_printer_unindent(f);
 }
 
 static void muse_print_nativefn( muse_port_t f, muse_cell l )
 {
+	muse_env *env = f->env;
 	muse_functional_object_t *obj = _fnobjdata(l);
 	
 	if ( obj && obj->type_info->write )
 	{
-		obj->type_info->write( obj, f );
+		obj->type_info->write( f->env, obj, f );
 	}
 	else
 	{
 		char buffer[64];
 		int count = sprintf( buffer, "<prim:%x>", l );
 		port_write( buffer, count, f );
-		pretty_printer_move(count);
+		pretty_printer_move(f,count);
 	}
 }
 
@@ -1432,13 +1455,14 @@ static void muse_print_nativefn( muse_port_t f, muse_cell l )
  */
 static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote )
 {
+	muse_env *env = f->env;
 	/* If the expression has been quick-quoted, unquote
 	it to print the contents.*/
 	if ( sexpr < 0 )
 	{
 		sexpr = -sexpr;
 		port_putc( '\'', f );
-		pretty_printer_move(1);
+		pretty_printer_move(f,1);
 	}
 	
 	/*pretty_printer_indent();*/
@@ -1485,9 +1509,9 @@ void muse_pwrite( muse_port_t f, muse_cell sexpr )
  * If the given thing is not a port, then it
  * returns NULL.
  */
-muse_port_t muse_port( muse_cell p )
+muse_port_t muse_port( muse_env *env, muse_cell p )
 {
-	return (muse_port_t)muse_functional_object_data(p,'port');
+	return (muse_port_t)_functional_object_data(p,'port');
 }
 
 /*@}*/
@@ -1522,10 +1546,11 @@ let [	a		:: 53
 ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head );
 muse_cell ez_parse_expr( muse_port_t p );
 
-static ez_result_t ez_expr( muse_cell expr, int col_start, int col_end )
+static ez_result_t ez_expr( muse_port_t p, muse_cell expr, int col_start, int col_end )
 {
-	if ( is_macro_sexpr(expr) )
-		expr = muse_eval(expr);
+	muse_env *env = p->env;
+	if ( is_macro_sexpr(env,expr) )
+		expr = _eval(expr);
 
 	{
 		ez_result_t r = { expr, col_start, col_end };
@@ -1556,6 +1581,7 @@ ez_result_t ez_parse_atom( muse_port_t p, int col )
  */
 ez_result_t ez_parse_group( muse_port_t p, int col )
 {
+	muse_env *env = p->env;
 	int c = port_getc(p);
 	
 	muse_assert( c == '(' );
@@ -1605,6 +1631,7 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
  */		
 ez_result_t ez_parse_list( muse_port_t p, int col )
 {
+	muse_env *env = p->env;
 	int c = port_getc(p);
 	
 	muse_assert( c == '[' );
@@ -1624,7 +1651,7 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 			if ( r.expr == PARSE_END_OF_LIST )
 			{
 				port_getc(p);
-				return ez_expr( h, col, r.col_end );
+				return ez_expr( p, h, col, r.col_end );
 			}
 			
 			if ( r.expr == PARSE_LIST_ITEM_SEPARATOR )
@@ -1640,11 +1667,11 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 						fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
 				});
 					
-				return ez_expr( h, col, r.col_end );
+				return ez_expr( p, h, col, r.col_end );
 			}
 			
 			{
-				muse_cell nt = muse_cons( r.expr, MUSE_NIL );
+				muse_cell nt = _cons( r.expr, MUSE_NIL );
 				
 				if ( t )
 					_sett( t, nt );
@@ -1660,7 +1687,7 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 		MUSE_DIAGNOSTICS({ 			
 			fprintf( stderr, "Syntax error: No ']' before end of file.\n" );
 		});
-		return ez_expr( h, col, r.col_end );
+		return ez_expr( p, h, col, r.col_end );
 	}
 }
 
@@ -1703,6 +1730,7 @@ static muse_boolean is_data_cell( muse_cell c )
  */
 ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 {
+	muse_env *env = p->env;
 	white_space_t ws = ez_skip_whitespace( p, 0, col );
 	
 	int c = peekc(p);
@@ -1743,7 +1771,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 			c = port_getc(p);
 			
 			head = ez_parse( p, col + 1, MUSE_FALSE );
-			head.expr = muse_quote(head.expr);
+			head.expr = muse_quote(env,head.expr);
 			head.col_start = col;
 		}	
 		else
@@ -1781,7 +1809,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 				// A head term suffixed with an empty group is parenthesized.
 				while ( !collect_args && oparg.expr == PARSE_EMPTY_GROUP )
 				{
-					head = ez_expr( muse_cons( head.expr, MUSE_NIL ), col, oparg.col_end );
+					head = ez_expr( p, _cons( head.expr, MUSE_NIL ), col, oparg.col_end );
 					oparg = ez_parse( p, oparg.col_end, MUSE_FALSE );
 				}
 
@@ -1790,7 +1818,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 				if ( !collect_args && oparg.expr >= 0 && _cellt(oparg.expr) == MUSE_SYMBOL_CELL )
 				{
 					/* Yes its a symbol. Check if its an operator. */
-					const muse_char *name = muse_symbol_name(oparg.expr);
+					const muse_char *name = muse_symbol_name(env,oparg.expr);
 					
 					if ( is_operator(name) )
 					{
@@ -1803,7 +1831,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 						{
 							/* A line break when interpreting an infix expression means
 							we have a postfix operator. */
-							return ez_expr( muse_cons( oparg.expr, muse_cons( head.expr, MUSE_NIL ) ), col, ws3.col );
+							return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col );
 						}
 						
 						{
@@ -1813,34 +1841,34 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 							if ( arg.expr < 0 )
 							{
 								/* Something happened! Treat it as though there is a line break. */
-								return ez_expr( muse_cons( oparg.expr, muse_cons( head.expr, MUSE_NIL ) ), col, ws3.col );
+								return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col );
 							}
 
 							/* Check for special operators ':' and '0x2261' */
 							if ( wcscmp( name, L":" ) == 0 )
 							{
 								/* : is the cons operator. */
-								return ez_result( muse_cons( head.expr, arg.expr ), col, arg.col_end );								
+								return ez_result( _cons( head.expr, arg.expr ), col, arg.col_end );								
 							}
 							else if ( wcscmp( name, L"::" ) == 0 )
 							{
 								/* :: creates a 2-element list. */
-								return ez_result( muse_cons( head.expr, muse_cons( arg.expr, MUSE_NIL ) ), col, arg.col_end );
+								return ez_result( _cons( head.expr, _cons( arg.expr, MUSE_NIL ) ), col, arg.col_end );
 							}
 							else if ( wcscmp( name, L":=" ) == 0 )
 							{
 								/* Creates a define. */
-								return ez_result( muse_cons( muse_builtin_symbol(MUSE_DEFINE), 
-															 muse_cons(	head.expr, 
-																		muse_cons( arg.expr , MUSE_NIL ) ) ), 
+								return ez_result( _cons( _builtin_symbol(MUSE_DEFINE), 
+															 _cons(	head.expr, 
+																		_cons( arg.expr , MUSE_NIL ) ) ), 
 													col, 
 													arg.col_end );
 							}
 							else
 								/* Compose the infix operator with the lhs and rhs. */
-								return ez_expr( 	muse_cons( 	oparg.expr, 
-																muse_cons( 	head.expr, 
-																			muse_cons( arg.expr, MUSE_NIL ) ) ), 
+								return ez_expr( p, _cons( 	oparg.expr, 
+																_cons( 	head.expr, 
+																			_cons( arg.expr, MUSE_NIL ) ) ), 
 													col, 
 													arg.col_end );
 						}
@@ -1854,7 +1882,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 					if ( oparg.expr == PARSE_EMPTY_GROUP )
 					{
 						/* Its a function call with no arguments. */
-						return ez_expr( muse_cons( head.expr, MUSE_NIL ), col, oparg.col_end );
+						return ez_expr( p, _cons( head.expr, MUSE_NIL ), col, oparg.col_end );
 					}
 					else if ( oparg.expr < 0 )
 					{
@@ -1864,8 +1892,8 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 					else
 					{
 						int col_end = oparg.col_end;
-						muse_cell t = muse_cons( oparg.expr, MUSE_NIL );
-						muse_cell h = muse_cons( head.expr, t );
+						muse_cell t = _cons( oparg.expr, MUSE_NIL );
+						muse_cell h = _cons( head.expr, t );
 						is_head = MUSE_FALSE;
 
 						do 
@@ -1881,7 +1909,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 								if ( ws3.col <= head.col_start )
 								{
 									/* Terminate arg list. */
-									return ez_expr( h, col, ws3.col );
+									return ez_expr( p, h, col, ws3.col );
 								}
 
 								if ( ws3.col > head.col_start )
@@ -1902,12 +1930,12 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 									}
 
 									if ( nextarg.expr < 0 )
-										return ez_expr( h, col, nextarg.col_end );
+										return ez_expr( p, h, col, nextarg.col_end );
 								}
 
 								// Process the next argument.
 								{
-									muse_cell nt = muse_cons( nextarg.expr, MUSE_NIL );
+									muse_cell nt = _cons( nextarg.expr, MUSE_NIL );
 									_sett( t, nt );
 									t = nt;
 
@@ -1918,13 +1946,13 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 										is_head = MUSE_TRUE; /* Treat the next one as "head". */
 									}
 									else
-										return ez_expr( h, col, nextarg.col_end );
+										return ez_expr( p, h, col, nextarg.col_end );
 								}
 							}
 						} while ( !port_eof(p) );
 						
 						/* We've reached end of file. End-of-file implicitly terminates argument list. */
-						return ez_expr( h, col, col_end );
+						return ez_expr( p, h, col, col_end );
 					}
 				}
 			}

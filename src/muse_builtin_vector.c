@@ -65,12 +65,12 @@ static void vector_init_with_length( void *ptr, int length )
 	}
 }
 
-static void vector_init( void *ptr, muse_cell args )
+static void vector_init( muse_env *env, void *ptr, muse_cell args )
 {
-	vector_init_with_length( ptr, args ? (int)muse_int_value(muse_evalnext(&args)) : 0 );
+	vector_init_with_length( ptr, args ? (int)_intvalue(_evalnext(&args)) : 0 );
 }
 
-static void vector_mark( void *ptr )
+static void vector_mark( muse_env *env, void *ptr )
 {
 	vector_t *v = (vector_t*)ptr;
 	muse_cell *cptr = v->slots;
@@ -78,11 +78,11 @@ static void vector_mark( void *ptr )
 
 	while ( cptr < cptr_env )
 	{
-		muse_mark( *cptr++ );
+		muse_mark( env, *cptr++ );
 	}
 }
 
-static void vector_destroy( void *ptr )
+static void vector_destroy( muse_env *env, void *ptr )
 {
 	vector_t *v = (vector_t*)ptr;
 	free(v->slots);
@@ -95,7 +95,7 @@ static void vector_destroy( void *ptr )
  * way that the expression written out is converted
  * to a vector by a trusted read operation.
  */
-static void vector_write( void *ptr, void *port )
+static void vector_write( muse_env *env, void *ptr, void *port )
 {
 	vector_t *v = (vector_t*)ptr;
 	muse_port_t p = (muse_port_t)port;
@@ -122,14 +122,14 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 {
 	if ( args )
 	{
-		int index = (int)muse_int_value(muse_evalnext(&args));
+		int index = (int)_intvalue(_evalnext(&args));
 
 		muse_assert( index >= 0 && index < v->length );
 		
 		MUSE_DIAGNOSTICS({
     		if ( index < 0 || index >= v->length )
     		{
-        		muse_message( L"vector", 
+        		muse_message( env,L"vector", 
         		              L"DANGER: Given index %d is not in the range [0,%d).",
         		              (muse_int)index, 
         		              (muse_int)v->length );
@@ -139,7 +139,7 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 		if ( args )
 		{
 			/* We're setting a slot. */
-			muse_cell result = muse_evalnext(&args);
+			muse_cell result = _evalnext(&args);
 			v->slots[index] = result;
 			return result;
 		}
@@ -153,9 +153,9 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 	return MUSE_NIL;
 }
 
-static muse_cell vector_size( void *self )
+static muse_cell vector_size( muse_env *env, void *self )
 {
-	return muse_mk_int( ((vector_t*)self)->length );
+	return _mk_int( ((vector_t*)self)->length );
 }
 
 static void vector_resize( vector_t *self, int new_size )
@@ -168,15 +168,15 @@ static void vector_resize( vector_t *self, int new_size )
 	self->length = new_size;
 }
 
-static void vector_merge_one( vector_t *v, int i, muse_cell new_value, muse_cell reduction_fn )
+static void vector_merge_one( muse_env *env, vector_t *v, int i, muse_cell new_value, muse_cell reduction_fn )
 {
 	if ( reduction_fn && v->slots[i] )
 	{
 		/* Value exists at the specified slot. */
 		v->slots[i] = 
-			muse_apply( reduction_fn,
-						muse_cons( v->slots[i],
-								   muse_cons( new_value,
+			_apply( reduction_fn,
+						_cons( v->slots[i],
+								   _cons( new_value,
 											  MUSE_NIL ) ),
 						MUSE_TRUE );
 	}
@@ -193,31 +193,31 @@ static void vector_trim( vector_t *v )
 		--(v->length);
 }
 
-static muse_cell vector_map( void *self, muse_cell fn )
+static muse_cell vector_map( muse_env *env, void *self, muse_cell fn )
 {
 	vector_t *v = (vector_t*)self;
 	
-	muse_cell result = muse_mk_vector( v->length );
-	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+	muse_cell result = muse_mk_vector( env, v->length );
+	vector_t *result_ptr = (vector_t*)_functional_object_data( result, 'vect' );
 	
-	muse_cell args = muse_cons( MUSE_NIL, MUSE_NIL );
+	muse_cell args = _cons( MUSE_NIL, MUSE_NIL );
 	
-	int sp = muse_stack_pos();
+	int sp = _spos();
 	int i = 0;
 	for ( i = 0; i < v->length; ++i )
 	{
 		/* Initialize the arguments to the mapper function. */
-		muse_set_head( args, v->slots[i] );
+		_seth( args, v->slots[i] );
 		
-		result_ptr->slots[i] = muse_apply( fn, args, MUSE_TRUE );
+		result_ptr->slots[i] = _apply( fn, args, MUSE_TRUE );
 		
-		muse_stack_unwind(sp);
+		_unwind(sp);
 	}
 	
 	return result;
 }
 
-static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction_fn )
+static muse_cell vector_join( muse_env *env, void *self, muse_cell objlist, muse_cell reduction_fn )
 {
 	vector_t *v1 = (vector_t*)self;
 	muse_cell result;
@@ -230,14 +230,14 @@ static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction
 		while ( temp_objlist )
 		{
 			muse_cell obj = _next(&temp_objlist);
-			vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
+			vector_t *v2 = (vector_t*)_functional_object_data( obj, 'vect' );
 			total_length += v2->length;
 		}
 	}
 	
 	{
-		result = muse_mk_vector( total_length );
-		result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+		result = muse_mk_vector( env, total_length );
+		result_ptr = (vector_t*)_functional_object_data( result, 'vect' );
 		
 		memcpy( result_ptr->slots, v1->slots, sizeof(muse_cell) * v1->length );
 		
@@ -246,7 +246,7 @@ static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction
 			while ( objlist )
 			{
 				muse_cell obj = _next(&objlist);
-				vector_t *v2 = (vector_t*)muse_functional_object_data( obj, 'vect' );
+				vector_t *v2 = (vector_t*)_functional_object_data( obj, 'vect' );
 				memcpy( result_ptr->slots + offset, v2->slots, sizeof(muse_cell) * v2->length );
 				offset += v2->length;
 			}
@@ -256,52 +256,52 @@ static muse_cell vector_join( void *self, muse_cell objlist, muse_cell reduction
 	return result;	
 }
 
-static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
+static muse_cell vector_collect( muse_env *env, void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
 {
 	vector_t *v1 = (vector_t*)self;
 	
-	muse_cell result = muse_mk_vector( v1->length );
-	vector_t *result_ptr = (vector_t*)muse_functional_object_data( result, 'vect' );
+	muse_cell result = muse_mk_vector( env, v1->length );
+	vector_t *result_ptr = (vector_t*)_functional_object_data( result, 'vect' );
 	
-	muse_cell ix = muse_mk_int(0);
-	muse_cell args = muse_cons( ix, MUSE_NIL );
+	muse_cell ix = _mk_int(0);
+	muse_cell args = _cons( ix, MUSE_NIL );
 	muse_int *ixptr = &(_ptr(ix)->i);
 	
 	{
-		int sp = muse_stack_pos();
+		int sp = _spos();
 		int i, j;
 		for ( i = 0, j = 0; i < v1->length; ++i )
 		{
 			(*ixptr) = i;
-			muse_set_tail( args, v1->slots[i] );
+			_sett( args, v1->slots[i] );
 			
-			if ( !predicate || muse_apply( predicate, args, MUSE_TRUE ) )
+			if ( !predicate || _apply( predicate, args, MUSE_TRUE ) )
 			{
 				if ( mapper )
 				{
 					muse_cell m;
 					
 					(*ixptr) = j;
-					m = muse_apply( mapper, args, MUSE_TRUE );
+					m = _apply( mapper, args, MUSE_TRUE );
 					
 					if ( m )
 					{
-						muse_int new_ix = muse_int_value( muse_head(m) );
+						muse_int new_ix = _intvalue( _head(m) );
 						
 						vector_resize( result_ptr, (int)(new_ix + 1) );
 						
-						vector_merge_one( result_ptr, (int)new_ix, muse_tail(m), reduction_fn );
+						vector_merge_one( env, result_ptr, (int)new_ix, _tail(m), reduction_fn );
 					}
 				}
 				else
 				{
-					vector_merge_one( result_ptr, j, v1->slots[i], reduction_fn );
+					vector_merge_one( env, result_ptr, j, v1->slots[i], reduction_fn );
 				}
 
 				++j;
 			}
 			
-			muse_stack_unwind(sp);			
+			_unwind(sp);			
 		}
 	}
 	
@@ -309,32 +309,32 @@ static muse_cell vector_collect( void *self, muse_cell predicate, muse_cell mapp
 	return result;
 }
 
-static muse_cell vector_reduce( void *self, muse_cell reduction_fn, muse_cell initial )
+static muse_cell vector_reduce( muse_env *env, void *self, muse_cell reduction_fn, muse_cell initial )
 {
 	vector_t *v = (vector_t*)self;
 	
 	muse_cell result = initial;
 	
 	{
-		int sp = muse_stack_pos();
+		int sp = _spos();
 		int i;
 		
-		muse_stack_push(result);
+		_spush(result);
 		
 		for ( i = 0; i < v->length; ++i )
 		{
-			result = muse_apply( reduction_fn,
-								 muse_cons( result, muse_cons( v->slots[i], MUSE_NIL ) ),
+			result = _apply( reduction_fn,
+								 _cons( result, _cons( v->slots[i], MUSE_NIL ) ),
 								 MUSE_TRUE );
-			muse_stack_unwind(sp);
-			muse_stack_push(result);
+			_unwind(sp);
+			_spush(result);
 		}
 	}
 	
 	return result;	
 }
 
-static muse_cell vector_iterator( vector_t *self, muse_iterator_callback_t callback, void *context )
+static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_callback_t callback, void *context )
 {
 	int sp = _spos();
 	int i;
@@ -342,10 +342,10 @@ static muse_cell vector_iterator( vector_t *self, muse_iterator_callback_t callb
 	
 	for ( i = 0; i < self->length; ++i )
 	{
-		cont = callback( self, context, self->slots[i] );
+		cont = callback( env, self, context, self->slots[i] );
 		_unwind(sp);
 		if ( !cont )
-			return muse_mk_int(i); /**< Return the current index. */
+			return _mk_int(i); /**< Return the current index. */
 	}
 	
 	return MUSE_NIL;
@@ -360,7 +360,7 @@ static muse_monad_view_t g_vector_monad_view =
 	vector_reduce
 };
 
-static void *vector_view( int id )
+static void *vector_view( muse_env *env, int id )
 {
 	switch ( id )
 	{
@@ -394,7 +394,7 @@ static muse_functional_object_type_t g_vector_type =
  */
 muse_cell fn_mk_vector( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_functional_object( &g_vector_type, args ); 
+	return _mk_functional_object( &g_vector_type, args ); 
 }
 
 /**
@@ -404,14 +404,14 @@ muse_cell fn_mk_vector( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args )
 {
-	int i, length			= muse_list_length(args);
-	muse_cell length_arg	= muse_cons( muse_mk_int( length ), MUSE_NIL );
-	muse_cell vec			= muse_mk_functional_object( &g_vector_type, length_arg );
-	vector_t *v				= (vector_t*)muse_functional_object_data(vec,'vect');
+	int i, length			= _list_length(args);
+	muse_cell length_arg	= _cons( _mk_int( length ), MUSE_NIL );
+	muse_cell vec			= _mk_functional_object( &g_vector_type, length_arg );
+	vector_t *v				= (vector_t*)_functional_object_data(vec,'vect');
 
 	for ( i = 0; i < length; ++i )
 	{
-		v->slots[i] = muse_evalnext(&args);
+		v->slots[i] = _evalnext(&args);
 	}
 
 	return vec;
@@ -423,8 +423,8 @@ muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_vector_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fv = muse_evalnext(&args);
-	vector_t *v = (vector_t*)muse_functional_object_data( fv, 'vect' );
+	muse_cell fv = _evalnext(&args);
+	vector_t *v = (vector_t*)_functional_object_data( fv, 'vect' );
 
 	return v ? fv : MUSE_NIL;
 }
@@ -435,7 +435,7 @@ muse_cell fn_vector_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_vector_length( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_int( muse_vector_length( muse_evalnext(&args) ) );
+	return _mk_int( muse_vector_length( env, _evalnext(&args) ) );
 }
 
 /**
@@ -444,17 +444,17 @@ muse_cell fn_vector_length( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_list_to_vector( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell list = muse_evalnext(&args);
-	int length = muse_list_length(list);
+	muse_cell list = _evalnext(&args);
+	int length = _list_length(list);
 	
 	if ( length > 0 )
 	{
 		muse_cell fv = fn_mk_vector( env, NULL, MUSE_NIL );
-		vector_t *v = (vector_t*)muse_functional_object_data(fv,'vect');
+		vector_t *v = (vector_t*)_functional_object_data(fv,'vect');
 
 		vector_init_with_length( v, length );
 
-		muse_list_extract( length, list, 1, v->slots, 1 );
+		muse_list_extract( env, length, list, 1, v->slots, 1 );
 
 		return fv;
 	}
@@ -472,8 +472,8 @@ muse_cell fn_list_to_vector( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_vector_to_list( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fv = muse_evalnext(&args);
-	vector_t *v = (vector_t*)muse_functional_object_data(fv,'vect');
+	muse_cell fv = _evalnext(&args);
+	vector_t *v = (vector_t*)_functional_object_data(fv,'vect');
 	muse_assert( v != NULL && "First argument must be a functional vector!" );
 
 	{
@@ -481,18 +481,18 @@ muse_cell fn_vector_to_list( muse_env *env, void *context, muse_cell args )
 		int count	= v->length;
 		int step	= 1;
 
-		if ( args ) from	= (int)muse_int_value(muse_evalnext(&args));
+		if ( args ) from	= (int)_intvalue(_evalnext(&args));
 		
 		/* Make sure count stays within valid limits even if
 		it isn't specified explcitly. */
 		count = v->length - from;
 		
-		if ( args ) count	= (int)muse_int_value(muse_evalnext(&args));
-		if ( args ) step	= (int)muse_int_value(muse_evalnext(&args));
+		if ( args ) count	= (int)_intvalue(_evalnext(&args));
+		if ( args ) step	= (int)_intvalue(_evalnext(&args));
 
 		muse_assert( count >= 0 && from >= 0 && from + step * count <= v->length );
 
-		return muse_array_to_list( count, v->slots + from, step );
+		return muse_array_to_list( env, count, v->slots + from, step );
 	}
 }
 
@@ -508,13 +508,13 @@ static const struct vector_fns_t { const muse_char *name; muse_nativefn_t fn; } 
 	{	NULL,					NULL				},
 };
 
-void muse_define_builtin_type_vector()
+void muse_define_builtin_type_vector(muse_env *env)
 {
 	int sp = _spos();
 	const struct vector_fns_t *fns = g_vector_fns;
 	for ( ; fns->name; ++fns )
 	{
-		muse_define( muse_csymbol(fns->name), muse_mk_nativefn( fns->fn, NULL ) );
+		_define( _csymbol(fns->name), _mk_nativefn( fns->fn, NULL ) );
 		_unwind(sp);
 	}
 }
@@ -523,12 +523,12 @@ void muse_define_builtin_type_vector()
  * Creates a new vector object that has enough slots allocated to hold
  * the given number of objects. All slots are initialized to MUSE_NIL.
  */
-muse_cell muse_mk_vector( int length )
+muse_cell muse_mk_vector( muse_env *env, int length )
 {
 	muse_assert( length >= 0 );
 	{
 		int sp = _spos();
-		muse_cell result = fn_mk_vector( _env(), NULL, muse_cons( muse_mk_int(length), MUSE_NIL ) );
+		muse_cell result = fn_mk_vector( env, NULL, _cons( _mk_int(length), MUSE_NIL ) );
 		_unwind(sp);
 		_spush(result);
 		return result;
@@ -538,9 +538,9 @@ muse_cell muse_mk_vector( int length )
 /**
  * Returns the number of slots the vector has.
  */
-int muse_vector_length( muse_cell vec )
+int muse_vector_length( muse_env *env, muse_cell vec )
 {
-	vector_t *v = (vector_t*)muse_functional_object_data( vec, 'vect' );
+	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!" );
 	return v ? v->length : 0;
 }
@@ -548,9 +548,9 @@ int muse_vector_length( muse_cell vec )
 /**
  * Returns the value occupying the slot at the given 0-based index.
  */
-muse_cell muse_vector_get( muse_cell vec, int index )
+muse_cell muse_vector_get( muse_env *env, muse_cell vec, int index )
 {
-	vector_t *v = (vector_t*)muse_functional_object_data( vec, 'vect' );
+	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!" );
 	if ( v )
 	{
@@ -564,9 +564,9 @@ muse_cell muse_vector_get( muse_cell vec, int index )
 /**
  * Replaces the value in the slot at the given index with the new value.
  */
-muse_cell muse_vector_put( muse_cell vec, int index, muse_cell value )
+muse_cell muse_vector_put( muse_env *env, muse_cell vec, int index, muse_cell value )
 {
-	vector_t *v = (vector_t*)muse_functional_object_data( vec, 'vect' );
+	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!");
 	if ( v )
 	{

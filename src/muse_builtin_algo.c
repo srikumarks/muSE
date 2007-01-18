@@ -14,19 +14,21 @@
 
 typedef struct _sort_property_t
 {
+	muse_env *env;
 	muse_cell cell;
 	muse_cell pty;
 } sort_property_t;
 
 static int pty_compare( const void *cell1, const void *cell2 )
 {
-	return muse_compare( ((const sort_property_t *)cell1)->pty, ((const sort_property_t *)cell2)->pty );
+	muse_env *env = ((sort_property_t *)cell1)->env;
+	return _compare( ((const sort_property_t *)cell1)->pty, ((const sort_property_t *)cell2)->pty );
 }
 
-static muse_cell sort_by_property_inplace( muse_cell list, muse_cell propertyFn )
+static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_cell propertyFn )
 {
 	int	sp				= _spos();
-	int	length			= muse_list_length(list);
+	int	length			= _list_length(list);
 	
 	/* Allocate a vector to hold a copy of the cells
 		so that we can sort fast. */
@@ -40,7 +42,7 @@ static muse_cell sort_by_property_inplace( muse_cell list, muse_cell propertyFn 
 		int			i		= 0;
 		muse_cell	c		= list; 
 		int			sp		= _spos();
-		muse_cell	argcell = muse_cons( MUSE_NIL, MUSE_NIL );
+		muse_cell	argcell = _cons( MUSE_NIL, MUSE_NIL );
 
 		/* TODO: Danger of exceeding stack limit! We should use
 		a vector to do the sorting. */
@@ -49,8 +51,9 @@ static muse_cell sort_by_property_inplace( muse_cell list, muse_cell propertyFn 
 			muse_cell h		= _head(c);
 			
 			_seth( argcell, h );
+			vec[i].env		= env;
 			vec[i].cell		= h;
-			vec[i].pty		= muse_apply( propertyFn, argcell, MUSE_TRUE );
+			vec[i].pty		= _apply( propertyFn, argcell, MUSE_TRUE );
 		}
 
 		_unwind(sp);
@@ -119,9 +122,9 @@ static muse_cell sort_by_property_inplace( muse_cell list, muse_cell propertyFn 
  */
 muse_cell fn_sort_inplace( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell	list			= muse_evalnext(&args);
-	muse_cell	propertyFn		= args ? muse_evalnext(&args) : MUSE_NIL;
-	return sort_by_property_inplace( list, propertyFn );
+	muse_cell	list			= _evalnext(&args);
+	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
+	return sort_by_property_inplace( env, list, propertyFn );
 }
 
 /**
@@ -131,7 +134,7 @@ muse_cell fn_sort_inplace( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_sort( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell	list			= muse_dup( muse_evalnext(&args) );
-	muse_cell	propertyFn		= args ? muse_evalnext(&args) : MUSE_NIL;
-	return sort_by_property_inplace( list, propertyFn );
+	muse_cell	list			= muse_dup( env, _evalnext(&args) );
+	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
+	return sort_by_property_inplace( env, list, propertyFn );
 }

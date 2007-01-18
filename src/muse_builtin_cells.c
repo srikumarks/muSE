@@ -53,7 +53,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell sym = _next(&args);
 	
-	MUSE_DIAGNOSTICS({ muse_expect( L"define", L"s!:", sym, L"defined" ); });
+	MUSE_DIAGNOSTICS({ muse_expect( env, L"define", L"s!:", sym, L"defined" ); });
 
 	/*	First mark the symbol as a fresh symbol by defining it to be itself.
 		This way, if the symbol is referred to in the body of the value,
@@ -64,10 +64,10 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 		NOTE: There is no implementation of tail-recursion. So beware of
 		stack blowup. It usually safe to use recursion for small bound
 		routines such as syntax transformers. */
-	muse_define( sym, sym );
+	_define( sym, sym );
 	
 	/* Process documentation if specified. */
-	if ( _cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == muse_builtin_symbol(MUSE_DOC) )
+	if ( _cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC) )
 	{
 		/* We have some documentation. We process documentation only if we've
 		been asked to. */
@@ -85,22 +85,22 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 			args = _tail(args);
 			
 			/* Also add the code itself to the plist for reference. */
-			muse_put_prop( sym, muse_builtin_symbol(MUSE_CODE), _head(args) );
+			_put_prop( sym, _builtin_symbol(MUSE_CODE), _head(args) );
 		}
 	}
 	
 	/* Define the value of the symbol. */
 	{
-		muse_cell value = muse_eval(_head(args));
-		muse_define( sym, value );
+		muse_cell value = _eval(_head(args));
+		_define( sym, value );
 
 		MUSE_DIAGNOSTICS({
 			if ( _tail(args) )
 			{
 				muse_char ctxt[128];
-				muse_sprintf( ctxt, 128, L"(define %m ...)", sym );
+				muse_sprintf( env, ctxt, 128, L"(define %m ...)", sym );
 
-				muse_message( ctxt, L"You've given the following extra parameters -\n"
+				muse_message( env,ctxt, L"You've given the following extra parameters -\n"
 									L"\t%m\n"
 									L"that will all be ignored. Maybe you meant to do something else.",
 									_tail(args) );
@@ -122,11 +122,11 @@ muse_cell fn_set_M( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell sym = _next(&args);
 
-	MUSE_DIAGNOSTICS({ muse_expect( L"set!", L"s:", sym, L"something" ); });
+	MUSE_DIAGNOSTICS({ muse_expect( env, L"set!", L"s:", sym, L"something" ); });
 
 	{
-		muse_cell value = muse_eval(_head(args));
-		_def(sym,value);
+		muse_cell value = _eval(_head(args));
+		_define(sym,value);
 		return value;
 	}
 }
@@ -138,8 +138,8 @@ muse_cell fn_set_M( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell c = muse_evalnext(&args);
-	muse_cell v = muse_evalnext(&args);
+	muse_cell c = _evalnext(&args);
+	muse_cell v = _evalnext(&args);
 	_seth( c, v );
 	return v;
 }
@@ -151,8 +151,8 @@ muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell c = muse_evalnext(&args);
-	muse_cell v = muse_evalnext(&args);
+	muse_cell c = _evalnext(&args);
+	muse_cell v = _evalnext(&args);
 	_sett( c, v );
 	return v;
 }
@@ -163,7 +163,7 @@ muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_first( muse_env *env, void *context, muse_cell args )
 {
-	return _head( muse_eval(_head(args)) );
+	return _head( _eval(_head(args)) );
 }
 
 /**
@@ -174,12 +174,7 @@ muse_cell fn_first( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_rest( muse_env *env, void *context, muse_cell args )
 {
-	return _tail( muse_eval(_head(args)) );
-}
-
-muse_cell fn_next( muse_env *env, void *context, muse_cell args )
-{
-	return muse_next( muse_eval(_head(args)) );
+	return _tail( _eval(_head(args)) );
 }
 
 /**
@@ -191,8 +186,8 @@ muse_cell fn_next( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_nth( muse_env *env, void *context, muse_cell args )
 {
-	int N = (int)_ptr(muse_evalnext(&args))->i;
-	muse_cell c = muse_evalnext(&args);
+	int N = (int)_ptr(_evalnext(&args))->i;
+	muse_cell c = _evalnext(&args);
 	
 	while ( N-- > 0 )
 		c = _tail(c);
@@ -209,18 +204,18 @@ muse_cell fn_nth( muse_env *env, void *context, muse_cell args )
 muse_cell fn_take( muse_env *env, void *context, muse_cell args )
 {
 	int sp = _spos();
-	muse_int N = muse_int_value(muse_evalnext(&args));
-	muse_cell list = muse_evalnext(&args);
+	muse_int N = _intvalue(_evalnext(&args));
+	muse_cell list = _evalnext(&args);
 
 	if ( list && (--N) >= 0 )
 	{
-		muse_cell h = muse_cons( _next(&list), MUSE_NIL );
+		muse_cell h = _cons( _next(&list), MUSE_NIL );
 		muse_cell t = h;
 		int sp2 = _spos();
 
 		while ( list && (--N) >= 0 )
 		{
-			_sett( t, muse_cons( _next(&list), MUSE_NIL ) );
+			_sett( t, _cons( _next(&list), MUSE_NIL ) );
 			t = _tail(t);
 			_unwind(sp2);
 		}
@@ -250,8 +245,8 @@ muse_cell fn_take( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_drop( muse_env *env, void *context, muse_cell args )
 {
-	int N = (int)_ptr(muse_evalnext(&args))->i;
-	muse_cell c = muse_evalnext(&args);
+	int N = (int)_ptr(_evalnext(&args))->i;
+	muse_cell c = _evalnext(&args);
 	
 	while ( N-- > 0 )
 		c = _tail(c);
@@ -266,7 +261,7 @@ muse_cell fn_drop( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_dup( muse_env *env, void *context, muse_cell args )
 {
-	return muse_dup( muse_evalnext(&args) );
+	return muse_dup( env, _evalnext(&args) );
 }
 
 /**
@@ -276,7 +271,7 @@ muse_cell fn_dup( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_list( muse_env *env, void *context, muse_cell args )
 {
-	return muse_eval_list( args );
+	return muse_eval_list( env, args );
 }
 
 /**
@@ -303,15 +298,15 @@ muse_cell fn_append_M( muse_env *env, void *context, muse_cell args )
 
 	if ( args )
 	{
-		head = last = muse_evalnext(&args);
+		head = last = _evalnext(&args);
 	}
 
 	while ( args )
 	{
-		muse_cell tail = muse_evalnext(&args);
+		muse_cell tail = _evalnext(&args);
 		if ( tail )
 		{
-			muse_list_append( last, tail );
+			muse_list_append( env, last, tail );
 			last = tail;
 		}
 	}
