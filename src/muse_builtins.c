@@ -839,7 +839,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 			p->timeout_us = muse_elapsed_us(env->timer) + timeout_us;
 		}
 
-		switch_to_process( p->next );
+		switch_to_process( env, p->next );
 	}
 
 	/* Check for message again. If there's still no message, return with MUSE_NIL. 
@@ -887,7 +887,7 @@ muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 
 	do
 	{
-		switch_to_process( env->current_process->next );
+		switch_to_process( env, env->current_process->next );
 	}
 	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
 

@@ -18,8 +18,8 @@
 
 /** @addtogroup Networking */
 /*@{*/
-muse_boolean muse_network_startup();
-void muse_network_shutdown(muse_env *env);
+muse_boolean muse_network_startup( muse_env *env );
+void muse_network_shutdown( muse_env *env );
 muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell args );
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args );
 muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args );
@@ -56,7 +56,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 
 /** For Windows, we have to explicitly startup the socket
 library! What a stupid thing to have to do! */
-	muse_boolean muse_network_startup()
+	muse_boolean muse_network_startup( muse_env *env )
 	{
         /* We ask for sockets version 2.0. */
         const WORD kRequestedVersion = MAKEWORD(2,0);
@@ -103,7 +103,7 @@ library! What a stupid thing to have to do! */
  * <a href="http://www.faqs.org/faqs/unix-faq/socket/">Unix-socket-faq</a>
  * <a href="http://www.faqs.org/faqs/unix-faq/programmer/faq/">Unix programming FAQ</a>
  */
-	muse_boolean muse_network_startup()
+	muse_boolean muse_network_startup( muse_env *env )
 	{
 		/* We ignore the SIGPIPE signal so that the application won't abort
 		on socket termination errors. */

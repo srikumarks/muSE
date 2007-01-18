@@ -266,8 +266,9 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 			{
 				/* Get the full path name using the "which" command. */
 				char cmd[256];
+				FILE *p;
 				sprintf( cmd, "which \"%s\"", suggestion );
-				FILE *p = popen( cmd, "r" );
+				p = popen( cmd, "r" );
 				if ( p != NULL )
 				{
 					if ( fgets( result, size, p ) )
@@ -280,11 +281,13 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 							result[--len] = '\0';
 						
 						/* Check whether which returned a valid file path. */
-						FILE *wf = fopen( result, "rb" );
-						if ( wf == NULL )
-							strcpy( result, suggestion ); /* which gave us an invalid answer. */
-						else
-							fclose(wf);
+						{
+							FILE *wf = fopen( result, "rb" );
+							if ( wf == NULL )
+								strcpy( result, suggestion ); /* which gave us an invalid answer. */
+							else
+								fclose(wf);
+						}
 					}
 					
 					pclose(p);

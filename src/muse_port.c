@@ -1455,7 +1455,6 @@ static void muse_print_nativefn( muse_port_t f, muse_cell l )
  */
 static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote )
 {
-	muse_env *env = f->env;
 	/* If the expression has been quick-quoted, unquote
 	it to print the contents.*/
 	if ( sexpr < 0 )

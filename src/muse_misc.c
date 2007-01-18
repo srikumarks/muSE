@@ -277,8 +277,9 @@ int	muse_unicode_size( const char *utf8, int nbytes )
 /**
  * Prints out an muse_assertion failure message in debug builds.
  */
-void muse_assert_failed( muse_env *env, const char *file, int line, const char *condtext )
+void muse_assert_failed( void *_env, const char *file, int line, const char *condtext )
 {
+	muse_env *env = _env;
 	static const char *k_heading = "muSE:\tASSERT failed!\n";
 
 	muse_port_t out = _stdport( MUSE_STDERR_PORT );

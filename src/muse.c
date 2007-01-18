@@ -293,7 +293,7 @@ muse_env *muse_init_env( const int *parameters )
 
 	/* Create the main process. */
 	{
-		SAVE_STACK_POINTER( saved_sp )
+		SAVE_STACK_POINTER( saved_sp );
 
 		{
 			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );
@@ -1294,14 +1294,18 @@ muse_boolean prime_process( muse_process_frame_t *process )
 	return MUSE_TRUE;
 }
 
+static muse_env *g_env = NULL;
+
 /**
  * Evaluates a process's thunk in a loop until the thunk 
  * evaluates to a non-nil value. Once the thunk completes
  * evaluation, the process dies and evaluation switches to
  * the next process.
  */
-muse_boolean run_process( muse_env *env )
+muse_boolean run_process()
 {
+	muse_env *env = g_env;
+	
 	if ( env->current_process->cstack.size > 0 && env->current_process->thunk )
 	{
 		/* Repeatedly evaluate the thunk in a loop until the
@@ -1333,10 +1337,8 @@ muse_boolean run_process( muse_env *env )
  * - i.e. it will either block indefinitely or successfuly switch to the
  * given process.
  */
-muse_boolean switch_to_process( muse_process_frame_t *process )
+muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 {
-	muse_env *env = process->env;
-
 	if ( env->current_process == process )
 		return MUSE_TRUE;
 
@@ -1357,9 +1359,10 @@ muse_boolean switch_to_process( muse_process_frame_t *process )
 				env->current_process->state_bits = MUSE_PROCESS_RUNNING;
 
 				/* Change the SP for the virgin process. */
+				g_env = env;
 				CHANGE_STACK_POINTER(env->current_process->cstack.top);
 
-				return run_process( env );
+				return run_process();
 			}
 			else
 				longjmp( env->current_process->jmp, 1 );
@@ -1383,11 +1386,11 @@ muse_boolean switch_to_process( muse_process_frame_t *process )
 		}
 
 		if ( process->state_bits == MUSE_PROCESS_RUNNING )
-			return switch_to_process( process );
+			return switch_to_process( env, process );
 	}
 
 	/* Can't run this one. Try the next process. */
-	return switch_to_process( process->next );
+	return switch_to_process( env, process->next );
 }
 
 /**
@@ -1398,7 +1401,7 @@ muse_boolean switch_to_process( muse_process_frame_t *process )
 muse_boolean procrastinate( muse_env *env )
 {
 	if ( env->current_process->atomicity == 0 )
-		return switch_to_process( env->current_process->next );
+		return switch_to_process( env, env->current_process->next );
 	else
 		return MUSE_TRUE;
 }
@@ -1418,7 +1421,7 @@ void yield_process( muse_env *env, int spent_attention )
 		{
 			/* Give time to the next process. */
 			p->remaining_attention = p->attention;
-			switch_to_process( p->next );
+			switch_to_process( env, p->next );
 		}
 		else
 			p->remaining_attention -= spent_attention;
@@ -1471,7 +1474,7 @@ muse_boolean remove_process( muse_process_frame_t *process )
 			exit(0); /* All processes exited! */
 		}
 		else
-			return switch_to_process( next );
+			return switch_to_process( env, next );
 	}
 	else
 		return MUSE_TRUE;

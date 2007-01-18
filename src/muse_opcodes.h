@@ -527,7 +527,7 @@ static inline muse_cell _quq( muse_cell c )
 muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell thunk, void *sp );
 muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p );
 muse_boolean prime_process( muse_process_frame_t *process );
-muse_boolean switch_to_process( muse_process_frame_t *process );
+muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process );
 void yield_process( muse_env *env, int spent_attention );
 muse_boolean procrastinate( muse_env *env );
 muse_boolean remove_process( muse_process_frame_t *process );
