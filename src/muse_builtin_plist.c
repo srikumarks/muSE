@@ -89,7 +89,7 @@ muse_cell fn_name( muse_env *env, void *context, muse_cell args )
 }
 
 /* Defined in muse.c */
-muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash );
+muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_int hash );
 
 /**
  * Generates an interned anonymous symbol that can be
@@ -104,5 +104,5 @@ muse_cell muse_intern_symbol( muse_cell sym, int local_ix, muse_int hash );
 muse_cell fn_gensym( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell sym = _mk_anon_symbol();
-	return muse_intern_symbol( sym, _newlocal(), sym );
+	return muse_intern_symbol( env, sym, _newlocal(), sym );
 }
