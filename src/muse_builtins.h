@@ -28,8 +28,16 @@ muse_cell syntax_block( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_let( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_case( muse_env *env, void *context, muse_cell args );
 muse_cell fn_apply( muse_env *env, void *context, muse_cell args );
+muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args );
 muse_cell fn_eval( muse_env *env, void *context, muse_cell args );
+muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args );
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
+/*@}*/
+
+/** @addtogroup Exceptions Raising and handling exceptions */
+/*@{*/
+muse_cell syntax_try( muse_env *env, void *context, muse_cell args );
+muse_cell fn_raise( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup PropertyLists Property lists */
@@ -40,6 +48,7 @@ muse_cell fn_assoc( muse_env *env, void *context, muse_cell args);
 muse_cell fn_plist( muse_env *env, void *context, muse_cell args);
 muse_cell fn_symbol( muse_env *env, void *context, muse_cell args );
 muse_cell fn_name( muse_env *env, void *context, muse_cell args ); 
+muse_cell fn_gensym( muse_env *env, void *context, muse_cell args ); 
 /*@}*/
 
 /** @addtogroup CellManipulation Basic cell, list and symbol manipulation */
@@ -50,7 +59,6 @@ muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_first( muse_env *env, void *context, muse_cell args );
 muse_cell fn_rest( muse_env *env, void *context, muse_cell args );
-muse_cell fn_next( muse_env *env, void *context, muse_cell args );
 muse_cell fn_nth( muse_env *env, void *context, muse_cell args );
 muse_cell fn_take( muse_env *env, void *context, muse_cell args );
 muse_cell fn_drop( muse_env *env, void *context, muse_cell args );
@@ -137,6 +145,51 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args );
 muse_cell fn_exit( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
+/** 
+ * @addtogroup Processes Processes 
+ *
+ * The "processes" branch of muSE has an implementation of a notion of
+ * processes as an abstraction that helps model concurrently running
+ * tasks. Every muSE environment is initialized with a <em>main process</em>
+ * through which all API calls enter and exit. A muSE expression may 
+ * spawn off additional processes using the \ref fn_spawn "spawn" 
+ * function. The evaluator may switch to another process upon any
+ * invocation of muse_apply(). Therefore, process switching appears
+ * to be pre-emptive at the Scheme code level, but evaluation is
+ * atomic at the C code level unless explicitly pre-empted in a muse_apply(). 
+ * You can force the evaluation of any expression to occur atomically 
+ * using the \ref syntax_atomic "atomic" construct.
+ *
+ * The basic mechanism by which processes communicate is by sending
+ * messages to each other. A process's \ref fn_pid "pid" serves as
+ * the function to use to send it messages, which can be arbitrary
+ * s-expressions. A process receives messages sent to its mailbox 
+ * using the \ref fn_receive "receive" function, which might block
+ * until a message is available or a timeout is reached.
+ *
+ * It is possible for any process to yield an arbitrary chunk of time
+ * to other processes using the \ref fn_run "run" expression.
+ *
+ * Each process is given its own namespace of symbol values. This means
+ * a process cannot change the value of a symbol that is being used by
+ * another process. When one process spawns another, the created process
+ * inherits the creating process's symbol values. If it subsequently 
+ * changes the symbol values, the changes are not visible to the process
+ * that created it. However, if two processes share an object such as a 
+ * list, both processes can modify the contents of the object. The only 
+ * constructs available to coordinate such modifications are
+ * message passing and atomic blocks.
+ */
+/*@{*/
+muse_cell fn_spawn( muse_env *env, void *context, muse_cell args );
+muse_cell fn_this_process( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args );
+muse_cell fn_receive( muse_env *env, void *context, muse_cell args );
+muse_cell fn_run( muse_env *env, void *context, muse_cell args );
+muse_cell fn_post( muse_env *env, void *context, muse_cell args );
+muse_cell fn_process_p( muse_env *env, void *context, muse_cell args );
+/*@}*/
+
 /** @name Misc */
 /*@{*/
 muse_cell fn_format( muse_env *env, void *context, muse_cell args ); 
@@ -146,7 +199,7 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args );
 muse_cell fn_list_files( muse_env *env, void *context, muse_cell args );
 muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args );
-void muse_load_builtin_fns();
+void muse_load_builtin_fns( muse_env *env );
 /*@}*/
 
 /** 
@@ -164,10 +217,11 @@ void muse_load_builtin_fns();
  * through the generic "read", "write" and such functions.
  */
 /*@{*/
-void muse_define_builtin_type_vector();
-void muse_define_builtin_type_hashtable();
+void muse_define_builtin_type_vector(muse_env *env);
+void muse_define_builtin_type_hashtable(muse_env *env);
+void muse_define_builtin_type_bytes( muse_env *env );
 /*@}*/
 
-void muse_define_builtin_networking();
+void muse_define_builtin_networking(muse_env *env);
 
 #endif /* __MUSE_BUILTINS_H__ */

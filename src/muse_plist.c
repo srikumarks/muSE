@@ -17,7 +17,7 @@
  * created by the \c muse_symbol() class of functions,
  * or an anonymous symbol created by \c muse_mk_anon_symbol().
  */
-muse_cell muse_symbol_plist( muse_cell sym )
+muse_cell muse_symbol_plist( muse_env *env, muse_cell sym )
 {
 	/* Skip the first item that has the hash code and symbol name. */
 	return _tail(_tail(sym));
@@ -37,14 +37,14 @@ muse_cell muse_symbol_plist( muse_cell sym )
  * pair instead. This will let us search through
  * an assoc list for all instances of a given key.
  */
-muse_cell muse_assoc( muse_cell alist, muse_cell prop )
+muse_cell muse_assoc( muse_env *env, muse_cell alist, muse_cell prop )
 {
 	if ( !alist )
 		return MUSE_NIL;
-	else if ( muse_equal( _head(_head(alist)), prop ) )
+	else if ( muse_equal( env, _head(_head(alist)), prop ) )
 		return _head(alist);
 	else
-		return muse_assoc( _tail(alist), prop );
+		return muse_assoc( env, _tail(alist), prop );
 }
 
 /**
@@ -67,14 +67,14 @@ muse_cell muse_assoc( muse_cell alist, muse_cell prop )
  * }
  * @endcode
  */
-muse_cell *muse_assoc_iter( muse_cell *alist, muse_cell prop )
+muse_cell *muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop )
 {
 	if ( !*alist )
 		return NULL;
-	else if ( muse_eq( _head(_head(*alist)), prop ) )
+	else if ( muse_eq( env, _head(_head(*alist)), prop ) )
 		return alist;
 	else
-		return muse_assoc_iter( &_ptr(*alist)->cons.tail, prop );
+		return muse_assoc_iter( env, &_ptr(*alist)->cons.tail, prop );
 }
 
 /**
@@ -83,9 +83,9 @@ muse_cell *muse_assoc_iter( muse_cell *alist, muse_cell prop )
  * head is the property key and the tail is the property
  * value.
  */
-muse_cell muse_get_prop( muse_cell sym, muse_cell prop )
+muse_cell muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop )
 {
-	return muse_assoc( muse_symbol_plist(sym), prop );
+	return muse_assoc( env, muse_symbol_plist(env, sym), prop );
 }
 
 /**
@@ -99,15 +99,15 @@ muse_cell muse_get_prop( muse_cell sym, muse_cell prop )
  * @return The cell in the symbol's plist that contains 
  * the association.
  */
-muse_cell muse_put_prop( muse_cell sym, muse_cell prop, muse_cell value )
+muse_cell muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value )
 {
-	muse_cell p = muse_get_prop( sym, prop );
+	muse_cell p = _get_prop( sym, prop );
 	if ( p )
 		_sett( p, value );
 	else
 	{
-		p = muse_cons(prop,value);
-		_sett( _tail(sym), muse_cons( p, _tail(_tail(sym)) ) );
+		p = _cons(prop,value);
+		_sett( _tail(sym), _cons( p, _tail(_tail(sym)) ) );
 	}
 	return p;
 }
@@ -117,7 +117,7 @@ muse_cell muse_put_prop( muse_cell sym, muse_cell prop, muse_cell value )
  * are "eq" if either they refer to the same cell,
  * or they are equal intgers.
  */
-int muse_eq( muse_cell a, muse_cell b )
+int muse_eq( muse_env *env, muse_cell a, muse_cell b )
 {
 	if ( a == b )
 		return MUSE_TRUE;
@@ -132,7 +132,7 @@ int muse_eq( muse_cell a, muse_cell b )
  * Deep compares two cells.
  * @return 1 if the two cells are equal, 0 otherwise.
  */
-int muse_equal( muse_cell a, muse_cell b )
+int muse_equal( muse_env *env, muse_cell a, muse_cell b )
 {
 	/* Two cells are eq is they are the same! */
 	if ( a == b )
@@ -150,7 +150,7 @@ int muse_equal( muse_cell a, muse_cell b )
 			case MUSE_INT_CELL		: return _ptr(a)->i == _ptr(b)->i;
 			case MUSE_FLOAT_CELL	: return _ptr(a)->f == _ptr(b)->f;
 			case MUSE_TEXT_CELL		: return wcscmp( _ptr(a)->text.start, _ptr(b)->text.start ) == 0;
-			case MUSE_CONS_CELL		: return muse_equal( _head(a), _head(b) ) && muse_equal( _tail(a), _tail(b) );
+			case MUSE_CONS_CELL		: return muse_equal( env, _head(a), _head(b) ) && muse_equal( env, _tail(a), _tail(b) );
 			default					: return a == b;
 		}
 	}
@@ -197,23 +197,23 @@ int compare_f_f( muse_float i, muse_float f )
 	return 0;
 }
 
-int compare_contents_of_conses( muse_cell a, muse_cell b )
+int compare_contents_of_conses( muse_env *env, muse_cell a, muse_cell b )
 {
 	/* CAUTION! Won't work for data structures with cycles. */
 	{
-		int c = muse_compare( _head(a), _head(b) );
+		int c = _compare( _head(a), _head(b) );
 		if ( c != 0 )
 			return c;
 	}
 	
-	return muse_compare( _tail(a), _tail(b) );
+	return _compare( _tail(a), _tail(b) );
 }
 
 /**
  * Deep compares two cells for ordering.
  * @return 0 if the cells are eq, 1 if b < a and -1 if a < b.
  */
-int	muse_compare( muse_cell a, muse_cell b )
+int	muse_compare( muse_env *env, muse_cell a, muse_cell b )
 {
 	if ( a == b )
 		return 0;
@@ -230,8 +230,8 @@ int	muse_compare( muse_cell a, muse_cell b )
 			case MUSE_INT_CELL		: return compare_i_i( _ptr(a)->i, _ptr(b)->i );
 			case MUSE_FLOAT_CELL	: return compare_f_f( _ptr(a)->f, _ptr(b)->f );
 			case MUSE_TEXT_CELL		: return wcscmp( _ptr(a)->text.start, _ptr(b)->text.start );
-			case MUSE_SYMBOL_CELL	: return wcscmp( muse_symbol_name(a), muse_symbol_name(b) );
-			case MUSE_CONS_CELL		: return compare_contents_of_conses( a, b );
+			case MUSE_SYMBOL_CELL	: return wcscmp( muse_symbol_name(env,a), muse_symbol_name(env,b) );
+			case MUSE_CONS_CELL		: return compare_contents_of_conses( env, a, b );
 			default					: return a - b;
 		}
 	}

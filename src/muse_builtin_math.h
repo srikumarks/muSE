@@ -32,7 +32,7 @@ muse_cell fn_trunc( muse_env *env, void *context, muse_cell args );
 muse_cell fn_rand( muse_env *env, void *context, muse_cell args );
 muse_cell fn_pow( muse_env *env, void *context, muse_cell args );
 
-void muse_math_load_common_unary_functions();
+void muse_math_load_common_unary_functions( muse_env *env );
 
 END_MUSE_C_FUNCTIONS
 

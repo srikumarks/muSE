@@ -1,5 +1,5 @@
 /**
- * @file muse_eval.c
+ * @file _eval.c
  * @author Srikumar K. S. (mailto:kumar@muvee.com)
  *
  * Copyright (c) 2006 Jointly owned by Srikumar K. S. and muvee Technologies Pte. Ltd. 
@@ -16,11 +16,11 @@
 /**
  * Returns the given arguments quoted.
  * The behaviour of quote is that 
- * @code s = muse_eval( muse_quote(s) ) @endcode
+ * @code s = _eval( muse_quote(s) ) @endcode
  */
-muse_cell muse_quote( muse_cell args )
+muse_cell muse_quote( muse_env *env, muse_cell args )
 {
-	return muse_cons( _env()->builtin_symbols[MUSE_QUOTE], args );
+	return _cons( env->builtin_symbols[MUSE_QUOTE], args );
 }
 
 /**
@@ -37,7 +37,7 @@ muse_cell muse_quote( muse_cell args )
  * The result of the evaluation is usually protected
  * by the stack if it is a newly allocated cell.
  */
-muse_cell muse_eval( muse_cell sexpr )
+muse_cell muse_eval( muse_env *env, muse_cell sexpr )
 {	
 	/* A -ve cell number is used as an indicator that the 
 	object being referred to is "quick-quoted". So in this
@@ -50,10 +50,10 @@ muse_cell muse_eval( muse_cell sexpr )
 	{
 		case MUSE_SYMBOL_CELL	:
 			/* Symbol evaluation */
-			return muse_symbol_value(sexpr);
+			return _symval(sexpr);
 		case MUSE_CONS_CELL		:
 			/* Function application */
-			return muse_apply( muse_eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE );
+			return _apply( _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE );
 		default					:
 			/* Self evaluation. */
 			return sexpr;
@@ -67,9 +67,9 @@ muse_cell muse_eval( muse_cell sexpr )
  * This is useful to evaluate arguments inside native 
  * functions.
  */
-muse_cell muse_evalnext( muse_cell *sexpr )
+muse_cell muse_evalnext( muse_env *env, muse_cell *sexpr )
 {
-	return muse_eval( _next(sexpr) );
+	return _eval( _next(sexpr) );
 }
 
 /**
@@ -77,30 +77,30 @@ muse_cell muse_evalnext( muse_cell *sexpr )
  * builds a new list out of the results of the
  * evaluations and returns the list.
  */
-muse_cell muse_eval_list( muse_cell list )
+muse_cell muse_eval_list( muse_env *env, muse_cell list )
 {
 	muse_cell h = MUSE_NIL, t = MUSE_NIL, c = MUSE_NIL;
 	int sp = -1;
 	
 	if ( _cellt(list) != MUSE_CONS_CELL )
-		return muse_eval(list);
+		return _eval(list);
 
 	if ( list )
 	{
-		h = t = muse_cons( MUSE_NIL, MUSE_NIL );
+		h = t = _cons( MUSE_NIL, MUSE_NIL );
 		sp = _spos();
-		_seth( h, muse_eval( _next(&list) ) );
+		_seth( h, _eval( _next(&list) ) );
 		_unwind(sp);
 	}
 	
 	while ( list )
 	{
 		if ( _cellt(list) == MUSE_CONS_CELL )
-			c = muse_cons( muse_eval( _next(&list) ), MUSE_NIL );
+			c = _cons( _eval( _next(&list) ), MUSE_NIL );
 		else
 		{	/* This isn't a proper list. Set the tail of last cons cell
 			to the value of "list" itself and return. */
-			c = muse_eval(list);
+			c = _eval(list);
 			list = MUSE_NIL;
 		}
 
@@ -117,11 +117,11 @@ muse_cell muse_eval_list( muse_cell list )
  * Calls the given C-native function with the given
  * sexpr as its argument list.
  */
-muse_cell muse_apply_nativefn( muse_cell fn, muse_cell args )
+muse_cell muse_apply_nativefn( muse_env *env, muse_cell fn, muse_cell args )
 {
 	register muse_nativefn_cell *f = &_ptr(fn)->fn;
 	muse_assert( f->fn != NULL );
-	return f->fn( _env(), f->context, args );
+	return f->fn( env, f->context, args );
 }
 
 /**
@@ -163,7 +163,7 @@ muse_cell muse_apply_nativefn( muse_cell fn, muse_cell args )
  * @see syntax_case
  * @see syntax_let
  */
-muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
+muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args )
 {
 	if ( formals == args ) 
 		return MUSE_TRUE; /* Usually happens when formals == args == MUSE_NIL */
@@ -174,7 +174,7 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 	switch ( _cellt(formals) )
 	{
 		case MUSE_SYMBOL_CELL		:
-			muse_pushdef( formals, args ); 
+			_pushdef( formals, args ); 
 			return MUSE_TRUE;	/* Can match when args == MUSE_NIL as well. */
 			
 		case MUSE_CONS_CELL			:
@@ -182,7 +182,7 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 			{
 				/* If we're dealing with a quoted expression,
 				we have to use eq to compare. */
-				return muse_equal( _tail(formals), args );
+				return muse_equal( env, _tail(formals), args );
 			}
 			else if ( _cellt(args) != MUSE_CONS_CELL )
 			{
@@ -196,9 +196,9 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 				 * to () simply because () can be infinitely decomposed
 				 * as for example, @code (().(().(().()))) @endcode. */
 				int bsp = _bspos();
-				if ( muse_bind_formals( _head(formals), _head(args) ) )
+				if ( muse_bind_formals( env, _head(formals), _head(args) ) )
 				{
-					if ( muse_bind_formals( _tail(formals), _tail(args) ) )
+					if ( muse_bind_formals( env, _tail(formals), _tail(args) ) )
 					{
 						return MUSE_TRUE; /* Both head and tail matched. */
 					}
@@ -229,12 +229,12 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 				int bsp = _bspos();
 
 				/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
-				if ( muse_bind_formals( subformals, args ) )
+				if ( muse_bind_formals( env, subformals, args ) )
 				{
 					/*	Evaluate the body. If the body evaluates to a non-NIL
 					value, then leave the bindings as is and continue. */
 					int sp = _spos();
-					muse_cell result = muse_do( _tail(fn) );
+					muse_cell result = _do( _tail(fn) );
 					_unwind(sp);
 					if ( !result )
 					{
@@ -250,7 +250,7 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
 
 				return MUSE_TRUE;
 			}
-		default : return muse_equal( formals, args );
+		default : return muse_equal( env, formals, args );
 	}
 }
 
@@ -267,7 +267,7 @@ muse_boolean muse_bind_formals( muse_cell formals, muse_cell args )
  * 
  * @see syntax_lambda
  */
-muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
+muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 {
 	/* The formals list could be quick quoted to indicate that
 	the arguments must not be evaluated - i.e. the function is
@@ -280,11 +280,11 @@ muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
 	int bsp = _bspos();
 
 	/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
-	if ( muse_bind_formals( formals, args ) )
+	if ( muse_bind_formals( env, formals, args ) )
 	{
 		/*	Evaluate the body. 
 			Only "result" will remain on the stack. */
-		muse_cell result = muse_do( _tail(fn) );
+		muse_cell result = _do( _tail(fn) );
 	
 		/* Unbind the latest bindings. */
 		_unwind_bindings(bsp);
@@ -294,7 +294,7 @@ muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
 	else
 	{
 		MUSE_DIAGNOSTICS({
-			muse_message(	L"Function application",
+			muse_message(	env, L"Function application",
 							L"The given arguments\n\t%m\n"
 							L"do not match the function's argument specification\n\t%m",
 							args,
@@ -309,11 +309,11 @@ muse_cell muse_apply_lambda( muse_cell fn, muse_cell args )
  * Quick quoting a cell is used as an efficient means
  * to pass expressions that have already been evaluated.
  * The cell's reference is simply negated to indicate
- * that it has been "quick-quoted". If you call muse_eval()
+ * that it has been "quick-quoted". If you call _eval()
  * on a quick-quoted objects, the object will be unquoted
  * by just negating its cell reference.
  */
-static muse_cell quick_quote_list( muse_cell list )
+static muse_cell quick_quote_list( muse_env *env, muse_cell list )
 {
 	muse_cell h = list;
 	while ( h )
@@ -328,7 +328,7 @@ static muse_cell quick_quote_list( muse_cell list )
  * After quick quoting a list when passing to a native function,
  * it must be unquoted before doing anything else.
  */
-static muse_cell quick_unquote_list( muse_cell list )
+static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
 {
 	muse_cell h = list;
 	while ( h )
@@ -352,63 +352,68 @@ static muse_cell quick_unquote_list( muse_cell list )
  * 
  * @see muse_apply_lambda
  */
-muse_cell muse_apply( muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
+muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
 {
-	int sp = _spos();
-	muse_cell result = fn;
-	_spush(fn);
-	_spush(args);
-	
-	switch ( _cellt(fn) )
+	/* Check whether we've devoted enough attention to this process. */
+	yield_process(env,1);
+
 	{
-		case MUSE_NATIVEFN_CELL		: 
-			if ( args_already_evaluated )
-			{
-				result = muse_apply_nativefn( fn, quick_quote_list(args) );
-				quick_unquote_list(args);
-			}
-			else
-			{
-				result = muse_apply_nativefn( fn, args );
-			}
-			break;
-		case MUSE_LAMBDA_CELL		: 
-			/* The head of fn gives us the list of formal parameters. If the formals
-			list is -ve (i.e. quick-quoted) we must not evaluate the arguments and pass
-			the arg list as it was given, unevaluated. Otherwise, we evaluate all the
-			arguments in list order. 
-			
-			See also syntax_lambda and muse_apply_lambda implementation. */
-			result = muse_apply_lambda( fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(args) );
-			break;
-		default						:
-			/*	If the first argument is not a function, simply return the sexpr. 
-				In this case, apply behaves like list. */
-
-			MUSE_DIAGNOSTICS2({ 
-				if ( _cellt(fn) == MUSE_SYMBOL_CELL ) 
-					muse_message( L"apply", L"You tried to use the symbol [%m] as a function.\n"
-											L"You haven't defined it to one though, so the expression\n\n"
-											L"%m\n\n"
-											L"will be considered as a list.\n"
-											L".. or did you mean to use [%m] instead?",
-											fn,
-											muse_cons( fn, args ),
-											muse_similar_symbol( fn, NULL ) );
+		int sp = _spos();
+		muse_cell result = fn;
+		_spush(fn);
+		_spush(args);
+		
+		switch ( _cellt(fn) )
+		{
+			case MUSE_NATIVEFN_CELL		: 
+				if ( args_already_evaluated )
+				{
+					result = muse_apply_nativefn( env, fn, quick_quote_list(env, args) );
+					quick_unquote_list(env, args);
+				}
 				else
-					muse_message( L"apply", L"You're trying to use [%m] as a function\n"
-											L"in the expression -\n\n%m\n\n"
-											L"It will be considered as a list.",
-											fn, muse_cons( fn, args ) );
-			});
+				{
+					result = muse_apply_nativefn( env, fn, args );
+				}
+				break;
+			case MUSE_LAMBDA_CELL		: 
+				/* The head of fn gives us the list of formal parameters. If the formals
+				list is -ve (i.e. quick-quoted) we must not evaluate the arguments and pass
+				the arg list as it was given, unevaluated. Otherwise, we evaluate all the
+				arguments in list order. 
+				
+				See also syntax_lambda and muse_apply_lambda implementation. */
+				result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				break;
+			default						:
+				/*	If the first argument is not a function, simply return the sexpr. 
+					In this case, apply behaves like list. */
 
-			result = muse_cons( fn, args_already_evaluated ? args : muse_eval_list(args) );
-			break;
+				MUSE_DIAGNOSTICS2({ 
+					if ( _cellt(fn) == MUSE_SYMBOL_CELL ) 
+						muse_message( env,L"apply", L"You tried to use the symbol [%m] as a function.\n"
+												L"You haven't defined it to one though, so the expression\n\n"
+												L"%m\n\n"
+												L"will be considered as a list.\n"
+												L".. or did you mean to use [%m] instead?",
+												fn,
+												_cons( fn, args ),
+												muse_similar_symbol( env, fn, NULL ) );
+					else
+						muse_message( env,L"apply", L"You're trying to use [%m] as a function\n"
+												L"in the expression -\n\n%m\n\n"
+												L"It will be considered as a list.",
+												fn, _cons( fn, args ) );
+				});
+
+				result = _cons( fn, args_already_evaluated ? args : muse_eval_list(env, args) );
+				break;
+		}
+		
+		_unwind(sp);
+		_spush(result);
+		return result;
 	}
-	
-	_unwind(sp);
-	_spush(result);
-	return result;
 }
 
 /**
@@ -416,7 +421,7 @@ muse_cell muse_apply( muse_cell fn, muse_cell args, muse_boolean args_already_ev
  * in sequence. The result of evaluating a block is the
  * result of evaluating the last expression in the block.
  */
-muse_cell muse_do( muse_cell block )
+muse_cell muse_do( muse_env *env, muse_cell block )
 {
 	muse_cell result = MUSE_NIL;
 	int sp = _spos();
@@ -424,7 +429,7 @@ muse_cell muse_do( muse_cell block )
 	while ( block )
 	{
 		_unwind(sp); /* Discard previous result on stack. */
-		result = muse_eval( _next(&block) );
+		result = _eval( _next(&block) );
 	}
 	
 	return result;

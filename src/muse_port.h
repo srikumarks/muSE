@@ -79,6 +79,8 @@ typedef struct
 	size_t fpos;
 } muse_port_buffer_t;
 
+enum { MAX_INDENT_COLS = 128 };
+
 /** 
  * The base port type.
  */
@@ -88,12 +90,21 @@ typedef struct _muse_port_base_t
 	muse_port_buffer_t in, out;
 	int mode;
 	int eof, error, pretty_print, tab_size;
+
+	/** Environment owning the port. */
+	muse_env *env;
+
+	/** Pretty printing. */
+	/*@{*/
+	int pp_align_cols[MAX_INDENT_COLS];
+	int pp_align_level;
+	/*@}*/
 } muse_port_base_t;
 
 /**
  * Adds all file port definitions such as "open-file".
  */
-void muse_define_builtin_fileport();
+void muse_define_builtin_fileport(muse_env *env);
 
 /** @name Ports implementation API */
 /**
@@ -103,7 +114,7 @@ void muse_define_builtin_fileport();
  * one.
  */
 /*@{*/
-void	port_init( muse_port_base_t *p );
+void	port_init( muse_env *env, muse_port_base_t *p );
 void	port_destroy( muse_port_base_t *p );
 
 int		port_getc( muse_port_base_t *p );

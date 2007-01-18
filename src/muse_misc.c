@@ -60,7 +60,7 @@ muse_int muse_hash_text( const muse_char *start, const muse_char *end, muse_int 
  * property that if two cells have different hashes,
  * they are not eq.
  */
-muse_int muse_hash( muse_cell obj )
+muse_int muse_hash( muse_env *env, muse_cell obj )
 {
 	int t = _cellt(obj);
 	
@@ -122,12 +122,10 @@ void* muse_tick()
 }
 
 /**
- * When passed the timing handle returned by \c muse_tick(),
- * it returns the time elapsed between the \c muse_tick()
- * call and this \c muse_tock() call in microseconds. The
- * handle becomes unusable after it is passed to \c muse_tock().
+ * Returns the time elapsed since the start of the given timer.
+ * The timer is the object returned by muse_tick().
  */
-muse_int muse_tock(void* arg)
+muse_int muse_elapsed_us(void *arg)
 {
 	ticktock_t *timing = (ticktock_t*)arg;
 	muse_int diff = 0;
@@ -145,7 +143,19 @@ muse_int muse_tock(void* arg)
 	diff += timing->t2.tv_usec - timing->t1.tv_usec;
 #endif
 
-	free(timing);
+	return diff;
+}
+
+/**
+ * When passed the timing handle returned by \c muse_tick(),
+ * it returns the time elapsed between the \c muse_tick()
+ * call and this \c muse_tock() call in microseconds. The
+ * handle becomes unusable after it is passed to \c muse_tock().
+ */
+muse_int muse_tock(void* arg)
+{
+	muse_int diff = muse_elapsed_us(arg);
+	free(arg);
 	return diff;
 }
 
@@ -204,7 +214,7 @@ int muse_unicode_to_utf8( char *out, int out_maxlen, const muse_char *win, int w
 	int result = (int)wcstombs( out, win, out_maxlen );
 #endif
 
-	muse_assert( win_len == 0 || result > 0 );
+	assert( win_len == 0 || result > 0 );
 
 	if ( result < out_maxlen )
 		out[result] = '\0';
@@ -233,7 +243,7 @@ int muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int 
 	int result = (int)mbstowcs( wout, in, wout_maxlen );
 #endif
 
-	muse_assert( in_len == 0 || result > 0 );
+	assert( in_len == 0 || result > 0 );
 
 	if ( result < wout_maxlen )
 		wout[result] = 0;
@@ -248,7 +258,7 @@ int muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int 
  */
 int muse_utf8_size( const muse_char *wstr, int length )
 {
-	muse_assert( length >= 0 );
+	assert( length >= 0 );
 	return (length + 1) * 2 * sizeof(muse_char);
 }
 
@@ -267,11 +277,11 @@ int	muse_unicode_size( const char *utf8, int nbytes )
 /**
  * Prints out an muse_assertion failure message in debug builds.
  */
-void muse_assert_failed( const char *file, int line, const char *condtext )
+void muse_assert_failed( muse_env *env, const char *file, int line, const char *condtext )
 {
 	static const char *k_heading = "muSE:\tASSERT failed!\n";
 
-	muse_port_t out = muse_stdport( MUSE_STDERR_PORT );
+	muse_port_t out = _stdport( MUSE_STDERR_PORT );
 	port_write( (void*)k_heading, strlen(k_heading), out );
 	port_write( "Cond:\t", 6, out );
 	port_write( (void*)condtext, strlen(condtext), out );
@@ -313,19 +323,22 @@ const muse_char *muse_typename( muse_cell thing )
 	return k_type_names[_cellt(thing)];
 }
 
-static void muse_exception(muse_cell args)
+static void muse_exception(muse_env *env, muse_cell args)
 {
-	muse_cell ehsym = muse_csymbol(L"{exception-handler}");
-	muse_cell eh = muse_symbol_value(ehsym);
+	muse_cell ehsym = _csymbol(L"{exception-handler}");
+	muse_cell eh = _symval(ehsym);
 	if ( eh != ehsym )
-		muse_apply( eh, args, MUSE_TRUE );
+		_apply( eh, args, MUSE_TRUE );
 }
 
-static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing );
-static int muse_sprintf_list( muse_char *buffer, int maxlen, muse_cell list );
-static int muse_sprintf_text( muse_char *buffer, int maxlen, muse_cell thing );
+#define _sprintf_object(buffer,maxlen,thing) muse_sprintf_object(env,buffer,maxlen,thing)
+static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing );
+#define _sprintf_list(buffer,maxlen,thing) muse_sprintf_list(env,buffer,maxlen,thing)
+static int muse_sprintf_list( muse_env *env, muse_char *buffer, int maxlen, muse_cell list );
+#define _sprintf_text(buffer,maxlen,thing) muse_sprintf_text(env,buffer,maxlen,thing)
+static int muse_sprintf_text( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing );
 
-static int muse_sprintf_list( muse_char *buffer, int maxlen, muse_cell thing )
+static int muse_sprintf_list( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
 {
 	int len = 0;
 	muse_cell thing_iter = thing;
@@ -336,7 +349,7 @@ static int muse_sprintf_list( muse_char *buffer, int maxlen, muse_cell thing )
 	{
 		if ( _cellt(thing_iter) == MUSE_CONS_CELL )
 		{
-			len += muse_sprintf_object( buffer + len, maxlen - len, _head(thing_iter) );
+			len += _sprintf_object( buffer + len, maxlen - len, _head(thing_iter) );
 			if ( maxlen > len && _tail(thing_iter) )
 			{
 				buffer[len++] = ' ';
@@ -348,7 +361,7 @@ static int muse_sprintf_list( muse_char *buffer, int maxlen, muse_cell thing )
 		else
 		{
 			len += swprintf( buffer + len, maxlen - len, L" . " );
-			len += muse_sprintf_object( buffer + len, maxlen - len, thing_iter );
+			len += _sprintf_object( buffer + len, maxlen - len, thing_iter );
 			break;
 		}
 	}
@@ -362,11 +375,11 @@ static int muse_sprintf_list( muse_char *buffer, int maxlen, muse_cell thing )
 	return len;
 }
 
-static int muse_sprintf_text( muse_char *buffer, int maxlen, muse_cell thing )
+static int muse_sprintf_text( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
 {
 	int len = 0;
 	int textlen = 0;
-	const muse_char *text = muse_text_contents( thing, &textlen );
+	const muse_char *text = _text_contents( thing, &textlen );
 	if ( textlen > maxlen - len - 2 )
 	{
 		/* Too big for buffer. Shorten it. */
@@ -408,12 +421,12 @@ static int muse_sprintf_text( muse_char *buffer, int maxlen, muse_cell thing )
 	return len;
 }
 
-static int muse_vsprintf_object( muse_char *buffer, int maxlen, va_list *argv )
+static int muse_vsprintf_object( muse_env *env, muse_char *buffer, int maxlen, va_list *argv )
 {
-	return muse_sprintf_object( buffer, maxlen, va_arg( *argv, muse_cell ) );
+	return _sprintf_object( buffer, maxlen, va_arg( *argv, muse_cell ) );
 }
 
-static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing )
+static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
 {
 	int len = 0;
 
@@ -421,7 +434,7 @@ static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing )
 	{
 	case MUSE_SYMBOL_CELL	: 
 		{
-			const muse_char *name = muse_symbol_name(thing);
+			const muse_char *name = muse_symbol_name(env,thing);
 			int name_len = (int)wcslen(name);
 			if ( name_len > maxlen - len )
 				name_len = maxlen - len;
@@ -433,13 +446,13 @@ static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing )
 		}
 		break;
 	case MUSE_TEXT_CELL		: 
-		len += muse_sprintf_text( buffer + len, maxlen - len, thing );
+		len += _sprintf_text( buffer + len, maxlen - len, thing );
 		break;
 	case MUSE_INT_CELL		: 
 		if ( maxlen - len > 16 )
 		{
 			char number[64];
-			snprintf( number, 64, MUSE_FMT_INT, muse_int_value(thing) );
+			snprintf( number, 64, MUSE_FMT_INT, _intvalue(thing) );
 			len += muse_utf8_to_unicode( buffer + len, maxlen - len, number, strlen(number) );
 		}
 		break;
@@ -447,12 +460,12 @@ static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing )
 		if ( maxlen - len > 16 )
 		{
 			char number[64];
-			snprintf( number, 64, MUSE_FMT_FLOAT, muse_float_value(thing) );
+			snprintf( number, 64, MUSE_FMT_FLOAT, _floatvalue(thing) );
 			len += muse_utf8_to_unicode( buffer + len, maxlen - len, number, strlen(number) );
 		}
 		break;
 	case MUSE_CONS_CELL		: 
-		len += muse_sprintf_list( buffer + len, maxlen - len, thing );
+		len += _sprintf_list( buffer + len, maxlen - len, thing );
 		break;
 	case MUSE_LAMBDA_CELL	: 
 		len += swprintf( buffer + len, maxlen - len, L"<fn:%x>", thing );
@@ -467,7 +480,7 @@ static int muse_sprintf_object( muse_char *buffer, int maxlen, muse_cell thing )
 	return len;
 }
 
-static int muse_vsprintf_type( muse_char *buffer, int maxlen, va_list *argv )
+static int muse_vsprintf_type( muse_env *env, muse_char *buffer, int maxlen, va_list *argv )
 {
 	muse_cell thing = va_arg( *argv, muse_cell );
 	const muse_char *tname = muse_typename( thing );
@@ -478,7 +491,7 @@ static int muse_vsprintf_type( muse_char *buffer, int maxlen, va_list *argv )
 	return tlen;
 }
 
-static int muse_vsprintf( muse_char *buffer, int maxlen, const muse_char *format, va_list *argv )
+static int muse_vsprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, va_list *argv )
 {
 	int len = 0;
 
@@ -490,11 +503,11 @@ static int muse_vsprintf( muse_char *buffer, int maxlen, const muse_char *format
 			{
 			case 'm' :
 				/* We treat "%m" as an indicator to place a muse object. */
-				len += muse_vsprintf_object( buffer + len, maxlen - len, argv );
+				len += muse_vsprintf_object( env, buffer + len, maxlen - len, argv );
 				break;
 			case 't' :
 				/* "%t" shows the type of the muse object passed. */
-				len += muse_vsprintf_type( buffer + len, maxlen - len, argv );
+				len += muse_vsprintf_type( env, buffer + len, maxlen - len, argv );
 				break;
 			case 'i' :
 				{
@@ -571,13 +584,13 @@ static int muse_vsprintf( muse_char *buffer, int maxlen, const muse_char *format
  *
  * @see muse_vsprintf
  */
-int	muse_sprintf( muse_char *buffer, int maxlen, const muse_char *format, ... )
+int	muse_sprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, ... )
 {
 	int len = 0;
 	va_list args;
 
 	va_start( args, format );
-	len = muse_vsprintf( buffer, maxlen, format, &args );
+	len = muse_vsprintf( env, buffer, maxlen, format, &args );
 	va_end( args );
 	return len;
 }
@@ -594,7 +607,7 @@ int	muse_sprintf( muse_char *buffer, int maxlen, const muse_char *format, ... )
  * @see muse_sprintf
  * @see muse_vsprintf
  */
-void muse_message( const muse_char *context, const muse_char *message, ... )
+void muse_message( muse_env *env, const muse_char *context, const muse_char *message, ... )
 {
 	enum { MAXLEN = 512 };
 	muse_char text[MAXLEN];
@@ -609,7 +622,7 @@ void muse_message( const muse_char *context, const muse_char *message, ... )
 	#endif
 
 	va_start( args, message );
-	len += muse_vsprintf( text + len, MAXLEN - len, message, &args );
+	len += muse_vsprintf( env, text + len, MAXLEN - len, message, &args );
 	va_end( args );
 
 	#if MUSE_PLATFORM_WINDOWS
@@ -620,7 +633,7 @@ void muse_message( const muse_char *context, const muse_char *message, ... )
 			#if defined(_DEBUG)
 				DebugBreak();
 			#endif
-			muse_exception(MUSE_NIL); 
+			muse_exception(env,MUSE_NIL); 
 		default:;
 		}
 	#else
@@ -629,8 +642,8 @@ void muse_message( const muse_char *context, const muse_char *message, ... )
 }
 
 
-static muse_boolean muse_test( const muse_char *context, const muse_char *spec, va_list *argv );
-static muse_boolean muse_test_one( const muse_char *context, muse_boolean force, muse_boolean invert, 
+static muse_boolean muse_test( muse_env *env, const muse_char *context, const muse_char *spec, va_list *argv );
+static muse_boolean muse_test_one( muse_env *env, const muse_char *context, muse_boolean force, muse_boolean invert, 
 								  muse_cell symbol, muse_cell value, 
 								  const muse_char *spec, va_list *argv,
 								  muse_char *failure_descr);
@@ -688,13 +701,13 @@ static int levenshtein_distance( const muse_char *s1, const muse_char *s2 );
  *			to be inverted. For example, a "not-defined" check can be encoded
  *			as "!:". The following test can be an or-block too.
  */
-muse_boolean muse_expect( const muse_char *context, const muse_char *spec, ... )
+muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... )
 {
 	va_list args;
 	muse_boolean result = MUSE_FALSE;
 
 	va_start( args, spec );
-	result = muse_test( context, spec, &args );
+	result = muse_test( env, context, spec, &args );
 	va_end( args );
 
 	return result;
@@ -715,17 +728,17 @@ muse_boolean muse_expect( const muse_char *context, const muse_char *spec, ... )
  * You can then use the distance measure to decide whether the 
  * similar symbol is worth bothering about.
  */
-muse_cell muse_similar_symbol( muse_cell symbol, int *outDistance )
+muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance )
 {
 	int distance = 0x7fffffff;
 	int result = MUSE_NIL;
 
-	const muse_char *s1 = muse_symbol_name(symbol);
+	const muse_char *s1 = muse_symbol_name(env,symbol);
 
 	/* Traverse the symbol table and find the symbol that is
 	not the given symbol, but is the least edit distance from it. */
 
-	muse_stack symbols = _env()->symbol_stack;
+	muse_stack symbols = env->symbol_stack;
 
 	int i;
 	for ( i = 0; i < symbols.size; ++i )
@@ -738,7 +751,7 @@ muse_cell muse_similar_symbol( muse_cell symbol, int *outDistance )
 		while ( symlist )
 		{
 			muse_cell s2 = _head(symlist);
-			const muse_char *s2name = muse_symbol_name(s2);
+			const muse_char *s2name = muse_symbol_name(env,s2);
 
 			/* Don't consider comparing the symbol with itself.
 			Ignore operators and special symbols. */
@@ -773,12 +786,12 @@ muse_cell muse_similar_symbol( muse_cell symbol, int *outDistance )
  * Beware that the complexity of this operation is linear w.r.t.
  * the number of symbols in the environment - defined or undefined.
  */
-muse_cell muse_symbol_with_value( muse_cell value )
+muse_cell muse_symbol_with_value( muse_env *env, muse_cell value )
 {
 	/* Traverse the symbol table and find the symbol that
 	has the given cell as its value. */
 
-	muse_stack symbols = _env()->symbol_stack;
+	muse_stack symbols = env->symbol_stack;
 	int i;
 	for ( i = 0; i < symbols.size; ++i )
 	{
@@ -796,7 +809,7 @@ muse_cell muse_symbol_with_value( muse_cell value )
 	return MUSE_NIL;
 }
 
-static muse_boolean muse_test( const muse_char *context, const muse_char *spec, va_list *argv )
+static muse_boolean muse_test( muse_env *env, const muse_char *context, const muse_char *spec, va_list *argv )
 {
 	muse_boolean or_mode = MUSE_FALSE;
 
@@ -806,7 +819,7 @@ static muse_boolean muse_test( const muse_char *context, const muse_char *spec, 
 	const muse_char *or_start = NULL;
 	muse_char *failure_descr = (muse_char*)alloca( sizeof(muse_char) * 1024 );
 	muse_char *failure_descr_append = failure_descr;
-	muse_cell symbol = muse_csymbol(L"(parameter)");
+	muse_cell symbol = _csymbol(L"(parameter)");
 	muse_cell value = MUSE_NIL;
 	failure_descr_append[0] = '\0';
 
@@ -846,12 +859,12 @@ static muse_boolean muse_test( const muse_char *context, const muse_char *spec, 
 						if ( !or_result )
 						{
 							if ( symbol == value )
-								muse_message( context, or_invert 
+								muse_message( env,context, or_invert 
 															? L"[%m] must not satisfy any of the conditions - \n%s"
 															: L"[%m] doesn't satisfy at least one of the conditions -\n%s",
 														symbol, failure_descr );
 							else
-								muse_message( context, or_invert 
+								muse_message( env,context, or_invert 
 															? L"[%m], which is [%m], must not satisfy any of the conditions - \n%s"
 															: L"[%m], which is [%m], doesn't satisfy at least one of the conditions -\n%s",
 														symbol, value, failure_descr );
@@ -862,7 +875,7 @@ static muse_boolean muse_test( const muse_char *context, const muse_char *spec, 
 					}
 					else
 					{
-						muse_boolean test_result = muse_test_one( context, MUSE_FALSE, or_invert ^ invert, symbol, value, spec, argv, failure_descr_append );
+						muse_boolean test_result = muse_test_one( env, context, MUSE_FALSE, or_invert ^ invert, symbol, value, spec, argv, failure_descr_append );
 						failure_descr_append += wcslen(failure_descr_append);
 						if ( or_invert ) 
 						{
@@ -889,7 +902,7 @@ static muse_boolean muse_test( const muse_char *context, const muse_char *spec, 
 					}
 					else
 					{
-						and_result &= muse_test_one( context, MUSE_TRUE, invert, symbol, value, spec, argv, failure_descr_append );
+						and_result &= muse_test_one( env, context, MUSE_TRUE, invert, symbol, value, spec, argv, failure_descr_append );
 						failure_descr_append += wcslen(failure_descr_append);
 						invert = MUSE_FALSE;
 						if ( !and_result )
@@ -905,7 +918,7 @@ static muse_boolean muse_test( const muse_char *context, const muse_char *spec, 
 	return and_result;
 }
 
-static muse_boolean muse_test_limit( const muse_char *context, muse_boolean force, 
+static muse_boolean muse_test_limit( muse_env *env, const muse_char *context, muse_boolean force, 
 									muse_cell symbol, muse_cell value, muse_float limit, 
 									int comparison, int invert, const muse_char *descr,
 									muse_char *failure_descr)
@@ -924,14 +937,14 @@ static muse_boolean muse_test_limit( const muse_char *context, muse_boolean forc
 
 	if ( _cellt(value) == MUSE_INT_CELL )
 	{
-		muse_int c = comparison * (muse_int_value(value) - (muse_int)limit);
+		muse_int c = comparison * (_intvalue(value) - (muse_int)limit);
 		if ( invert ? (c > 0) : (c <= 0) )
 		{
 			if ( force )
-				muse_message( context, L"[%m] must have an integer value %s %d.\nIt is [%m] instead.", 
+				muse_message( env,context, L"[%m] must have an integer value %s %d.\nIt is [%m] instead.", 
 								symbol, descr, (muse_int)limit, value );
 			else
-				muse_sprintf( failure_descr, 256, L"\t- be an integer %s %d\n", descr, (muse_int)limit );
+				muse_sprintf( env, failure_descr, 256, L"\t- be an integer %s %d\n", descr, (muse_int)limit );
 			return MUSE_FALSE;
 		}
 		else
@@ -939,14 +952,14 @@ static muse_boolean muse_test_limit( const muse_char *context, muse_boolean forc
 	}
 	else if ( _cellt(value) == MUSE_FLOAT_CELL )
 	{
-		muse_float c = comparison * (muse_float_value(value) - limit); 
+		muse_float c = comparison * (_floatvalue(value) - limit); 
 		if ( invert ? (c > 0) : (c <= 0) )
 		{
 			if ( force )
-				muse_message( context, L"[%m] must have a value %s %f.\nIt is [%m] instead.", 
+				muse_message( env,context, L"[%m] must have a value %s %f.\nIt is [%m] instead.", 
 								symbol, descr, (muse_float)limit, value );
 			else
-				muse_sprintf( failure_descr, 256, L"\t- be a number %s %f\n", descr, (muse_float)limit );
+				muse_sprintf( env, failure_descr, 256, L"\t- be a number %s %f\n", descr, (muse_float)limit );
 			return MUSE_FALSE;
 		}
 		else
@@ -955,7 +968,7 @@ static muse_boolean muse_test_limit( const muse_char *context, muse_boolean forc
 	else
 	{
 		if ( force )
-			muse_message( context, L"[%m] must have a numeric value.\nIt is [%m] instead.", symbol, value );
+			muse_message( env,context, L"[%m] must have a numeric value.\nIt is [%m] instead.", symbol, value );
 		else
 			swprintf( failure_descr, 64, L"\t- must be a number\n" );
 
@@ -964,7 +977,7 @@ static muse_boolean muse_test_limit( const muse_char *context, muse_boolean forc
 }
 
 
-static muse_boolean muse_test_one( const muse_char *context, muse_boolean force, muse_boolean invert, 
+static muse_boolean muse_test_one( muse_env *env, const muse_char *context, muse_boolean force, muse_boolean invert, 
 								  muse_cell symbol, muse_cell value, 
 								  const muse_char *spec, va_list *argv,
 								  muse_char *failure_descr)
@@ -978,13 +991,13 @@ static muse_boolean muse_test_one( const muse_char *context, muse_boolean force,
 				{
 					if ( force )
 					{
-						muse_message(	context, 
+						muse_message(	env, context, 
 										L"%m %sexpected to have a value of type %t.\nInstead it is %m.", 
 										symbol, invert ? L"not " : L"", type, value );
 					}
 					else
 					{
-						muse_sprintf( failure_descr, 32, L"\t- be of type %t\n", type );
+						muse_sprintf( env, failure_descr, 32, L"\t- be of type %t\n", type );
 					}
 
 					return MUSE_FALSE;
@@ -1001,13 +1014,13 @@ static muse_boolean muse_test_one( const muse_char *context, muse_boolean force,
 					if ( force )
 					{
 						if ( invert )
-							muse_message( context, L"[%m] expected to be undefined.\n"
+							muse_message( env,context, L"[%m] expected to be undefined.\n"
 												   L"It is currently [%m].",
 											symbol, value );
 						else
-							muse_message( context, L"[%m] is expected to be %s.\n"
+							muse_message( env,context, L"[%m] is expected to be %s.\n"
 												   L"Maybe you meant [%m] instead?",
-												   symbol, label, muse_similar_symbol(symbol,NULL) );
+												   symbol, label, muse_similar_symbol(env,symbol,NULL) );
 					}
 					else
 					{
@@ -1022,17 +1035,17 @@ static muse_boolean muse_test_one( const muse_char *context, muse_boolean force,
 		case '=' :
 			{
 				muse_cell test = va_arg( *argv, muse_cell );
-				muse_boolean eq_p = muse_equal( value, test );
+				muse_boolean eq_p = muse_equal( env,value, test );
 				if ( invert ? eq_p : !eq_p )
 				{
 					if ( force )
 					{
-						muse_message( context, L"[%m] %sexpected to have [%m] as value.\nIt is [%m] instead!", 
+						muse_message( env,context, L"[%m] %sexpected to have [%m] as value.\nIt is [%m] instead!", 
 							symbol, invert ? L"not " : L"", test, value );
 					}
 					else
 					{
-						muse_sprintf( failure_descr, 256, L"\t- have value %m\n", test );
+						muse_sprintf( env, failure_descr, 256, L"\t- have value %m\n", test );
 					}
 					return MUSE_FALSE;
 				}
@@ -1043,25 +1056,25 @@ static muse_boolean muse_test_one( const muse_char *context, muse_boolean force,
 		case '(' :
 			{
 				muse_float limit = va_arg( *argv, muse_float );
-				return muse_test_limit( context, force, symbol, value, limit, 1, invert, invert ? L"<=" : L">", failure_descr );
+				return muse_test_limit( env, context, force, symbol, value, limit, 1, invert, invert ? L"<=" : L">", failure_descr );
 			}
 			break;
 		case ')' :
 			{
 				muse_float limit = va_arg( *argv, muse_float );
-				return muse_test_limit( context, force, symbol, value, limit, -1, invert, invert ? L">=" : L"<", failure_descr );
+				return muse_test_limit( env, context, force, symbol, value, limit, -1, invert, invert ? L">=" : L"<", failure_descr );
 			}
 			break;
 		case '[' :
 			{
 				muse_float limit = va_arg( *argv, muse_float );
-				return muse_test_limit( context, force, symbol, value, limit, -1, !invert, invert ? L"<" : L">=", failure_descr );
+				return muse_test_limit( env, context, force, symbol, value, limit, -1, !invert, invert ? L"<" : L">=", failure_descr );
 			}
 			break;
 		case ']' :
 			{
 				muse_float limit = va_arg( *argv, muse_float );
-				return muse_test_limit( context, force, symbol, value, limit, 1, !invert, invert ? L">" : L"<=", failure_descr );
+				return muse_test_limit( env, context, force, symbol, value, limit, 1, !invert, invert ? L">" : L"<=", failure_descr );
 			}
 			break;
 		default :
@@ -1086,7 +1099,7 @@ static int levenshtein_distance( const muse_char *s1, const muse_char *s2 )
 	int size_bytes = rowlen * (l2 + 1) * sizeof(int);
 	int *d = (int*)alloca( size_bytes );
 
-	muse_assert( l1 < 256 && l2 < 256 && "Warning: Don't use too long strings for distance measure!" );
+	assert( l1 < 256 && l2 < 256 && "Warning: Don't use too long strings for distance measure!" );
 	memset( d, 0, size_bytes );
 
 	{

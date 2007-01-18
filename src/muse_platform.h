@@ -24,6 +24,18 @@
 
 typedef long long longlong_t;
 
+#ifdef __DARWIN_PPC__
+#	define SAVE_STACK_POINTER( var ) void *var = NULL; asm { stw r1, var; }
+
+#	define CHANGE_STACK_POINTER(sp_value) \
+        	                        do\
+                	                {\
+									void *new_sp = (void*)(sp_value);\
+									asm { lwz r1, new_sp; };\
+                                	}\
+                                	while(0)
+#endif
+
 #define MUSE_PLATFORM_POSIX 1
 
 #endif
@@ -39,8 +51,8 @@ typedef long long longlong_t;
 #include <setjmp.h>
 
 #ifdef MUSE_DEBUG_BUILD
-	void muse_assert_failed( const char *file, int line, const char *condtext );
-#	define muse_assert( cond ) do { if ( !(cond) ) muse_assert_failed( __FILE__, __LINE__, #cond ); } while(0)
+	void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
+#	define muse_assert( cond ) do { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); } while(0)
 #else
 #	define muse_assert( cond )
 #endif

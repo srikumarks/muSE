@@ -13,7 +13,7 @@
 #include "muse_builtins.h"
 #include <stdlib.h>
 
-static muse_cell list_iterator( void *self, muse_iterator_callback_t callback, void *context )
+static muse_cell list_iterator( muse_env *env, void *self, muse_iterator_callback_t callback, void *context )
 {
 	muse_cell list = (muse_cell)self;
 	int sp = _spos();
@@ -21,7 +21,7 @@ static muse_cell list_iterator( void *self, muse_iterator_callback_t callback, v
 	
 	while ( list )
 	{
-		cont = callback( self, context, _head(list) );
+		cont = callback( env, self, context, _head(list) );
 		_unwind(sp);
 		if ( !cont )
 			return list;
@@ -32,7 +32,7 @@ static muse_cell list_iterator( void *self, muse_iterator_callback_t callback, v
 	return MUSE_NIL;
 }
 
-static void *get_view( int view, muse_cell obj, muse_functional_object_t **objptr_out )
+static void *get_view( muse_env *env, int view, muse_cell obj, muse_functional_object_t **objptr_out )
 {
 	muse_functional_object_t *objptr = _fnobjdata(obj);
 	
@@ -40,12 +40,12 @@ static void *get_view( int view, muse_cell obj, muse_functional_object_t **objpt
 		(*objptr_out) = objptr;
 	
 	if ( objptr && objptr->type_info->view )
-		return (muse_iterator_t)objptr->type_info->view( view );
+		return (muse_iterator_t)objptr->type_info->view( env, view );
 	else
 		return NULL;	
 }
 
-static muse_iterator_t get_iterator_view( muse_cell obj, muse_functional_object_t **objptr_out )
+static muse_iterator_t get_iterator_view( muse_env *env, muse_cell obj, muse_functional_object_t **objptr_out )
 {
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
@@ -54,12 +54,12 @@ static muse_iterator_t get_iterator_view( muse_cell obj, muse_functional_object_
 		return list_iterator;
 	}
 	else
-		return (muse_iterator_t)get_view( 'iter', obj, objptr_out );
+		return (muse_iterator_t)get_view( env, 'iter', obj, objptr_out );
 }
 
-static muse_monad_view_t *get_monad_view( muse_cell obj, muse_functional_object_t **objptr_out )
+static muse_monad_view_t *get_monad_view( muse_env *env, muse_cell obj, muse_functional_object_t **objptr_out )
 {
-	return (muse_monad_view_t*)get_view( 'mnad', obj, objptr_out );
+	return (muse_monad_view_t*)get_view( env, 'mnad', obj, objptr_out );
 }
 
 /**
@@ -70,52 +70,52 @@ static muse_monad_view_t *get_monad_view( muse_cell obj, muse_functional_object_
  */
 muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell obj = muse_evalnext(&args);
+	muse_cell obj = _evalnext(&args);
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		/* Its a list. */
-		return muse_mk_int( muse_list_length(obj) );
+		return _mk_int( _list_length(obj) );
 	}
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
-		muse_monad_view_t *monad = get_monad_view( obj, &objptr );
+		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->size( objptr );
+			return monad->size( env, objptr );
 	}
 	
 	return MUSE_NIL;
 }
 
-static muse_cell list_map( muse_cell list, muse_cell fn, muse_cell h, muse_cell t )
+static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cell h, muse_cell t )
 {
 	if ( list )
 	{
 		{
-			int sp = muse_stack_pos();
+			int sp = _spos();
 			muse_cell val;
 			
-			muse_stack_push(h);
+			_spush(h);
 
-			val = muse_cons( muse_apply( fn, 
-										 muse_cons( muse_head(list), MUSE_NIL ),
+			val = _cons( _apply( fn, 
+										 _cons( _head(list), MUSE_NIL ),
 										 MUSE_TRUE ),
 							 MUSE_NIL );
 			
-			muse_stack_unwind(sp);
+			_unwind(sp);
 			
 			if ( t )
 			{
-				muse_set_tail( t, val );
+				_sett( t, val );
 				t = val;
 			}
 			else
 				h = t = val;
 		}
 		
-		return list_map( muse_tail(list), fn, h, t );
+		return list_map( env, _tail(list), fn, h, t );
 	}
 	else
 	{
@@ -147,21 +147,21 @@ static muse_cell list_map( muse_cell list, muse_cell fn, muse_cell h, muse_cell 
  */
 muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn = muse_evalnext(&args);
-	muse_cell obj = muse_evalnext(&args);
+	muse_cell fn = _evalnext(&args);
+	muse_cell obj = _evalnext(&args);
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		/* Map being done on a list. */
-		return list_map( obj, fn, MUSE_NIL, MUSE_NIL );
+		return list_map( env, obj, fn, MUSE_NIL, MUSE_NIL );
 	}
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
-		muse_monad_view_t *monad = get_monad_view( obj, &objptr );
+		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->map( objptr, fn );		
+			return monad->map( env, objptr, fn );		
 	}
 	
 	return MUSE_NIL;
@@ -173,12 +173,12 @@ struct list_append_generator_context_t
 	muse_cell iter;
 };
 
-muse_cell list_append_generator( struct list_append_generator_context_t *ctxt, int i, muse_boolean *eol )
+muse_cell list_append_generator( muse_env *env, struct list_append_generator_context_t *ctxt, int i, muse_boolean *eol )
 {
 	while ( ctxt->lists && !ctxt->iter )
 	{
-		ctxt->lists = muse_tail( ctxt->lists );
-		ctxt->iter = muse_head( ctxt->lists );
+		ctxt->lists = _tail( ctxt->lists );
+		ctxt->iter = _head( ctxt->lists );
 	}
 	
 	if ( ctxt->lists )
@@ -193,10 +193,10 @@ muse_cell list_append_generator( struct list_append_generator_context_t *ctxt, i
 	}
 }
 
-static muse_cell list_join( muse_cell lists )
+static muse_cell list_join( muse_env *env, muse_cell lists )
 {
-	struct list_append_generator_context_t ctxt = { lists, muse_head(lists) };
-	return muse_generate_list( (muse_list_generator_t)list_append_generator, &ctxt );
+	struct list_append_generator_context_t ctxt = { lists, _head(lists) };
+	return muse_generate_list( env, (muse_list_generator_t)list_append_generator, &ctxt );
 }
 
 /**
@@ -226,14 +226,14 @@ static muse_cell list_join( muse_cell lists )
  */
 muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell evaled_args = muse_eval_list( args );
+	muse_cell evaled_args = muse_eval_list( env, args );
 	
-	muse_cell fn = muse_head( evaled_args );
+	muse_cell fn = _head( evaled_args );
 	
 	if ( _isfn(fn) && !_fnobjdata(fn) )
 	{
 		/* We have a reduction function as the first argument. */
-		evaled_args = muse_tail( evaled_args );
+		evaled_args = _tail( evaled_args );
 	}
 	else
 	{
@@ -241,52 +241,52 @@ muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 		fn = MUSE_NIL;
 	}
 	
-	if ( _cellt( muse_head(evaled_args) ) == MUSE_CONS_CELL )
+	if ( _cellt( _head(evaled_args) ) == MUSE_CONS_CELL )
 	{
-		return list_join( evaled_args );
+		return list_join( env, evaled_args );
 	}
 	else
 	{
-		muse_cell obj = muse_head(evaled_args);
+		muse_cell obj = _head(evaled_args);
 		muse_functional_object_t *objptr = NULL;
-		muse_monad_view_t *monad = get_monad_view( obj, &objptr );
+		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->join( objptr, muse_tail(evaled_args), fn );
+			return monad->join( env, objptr, _tail(evaled_args), fn );
 	}
 	
 	return MUSE_NIL;
 	
 }
 
-static muse_cell list_collect( muse_cell list, muse_cell predicate, muse_cell mapper, muse_cell h, muse_cell t )
+static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicate, muse_cell mapper, muse_cell h, muse_cell t )
 {
 	if ( list )
 	{
-		int sp = muse_stack_pos();
-		muse_cell thing = muse_head(list);
+		int sp = _spos();
+		muse_cell thing = _head(list);
 		muse_cell args = MUSE_NIL;
 		
-		muse_stack_push(h);
-		args = muse_cons( thing, MUSE_NIL );
+		_spush(h);
+		args = _cons( thing, MUSE_NIL );
 		
-		if ( !predicate || muse_apply( predicate, args, MUSE_TRUE ) )
+		if ( !predicate || _apply( predicate, args, MUSE_TRUE ) )
 		{
 			if ( mapper )
-				muse_set_head( args, muse_apply( mapper, args, MUSE_TRUE ) );
+				_seth( args, _apply( mapper, args, MUSE_TRUE ) );
 			
 			if ( t )
 			{
-				muse_set_tail( t, args );
+				_sett( t, args );
 				t = args;
 			}
 			else
 				h = t = args;
 		}
 
-		muse_stack_unwind(sp);
+		_unwind(sp);
 		
-		return list_collect( muse_tail(list), predicate, mapper, h, t );
+		return list_collect( env, _tail(list), predicate, mapper, h, t );
 	}
 	else
 	{
@@ -326,41 +326,41 @@ static muse_cell list_collect( muse_cell list, muse_cell predicate, muse_cell ma
  */
 muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell obj = muse_evalnext(&args);
-	muse_cell predicate = muse_evalnext(&args);
-	muse_cell mapper = muse_evalnext(&args);
+	muse_cell obj = _evalnext(&args);
+	muse_cell predicate = _evalnext(&args);
+	muse_cell mapper = _evalnext(&args);
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
-		return list_collect( obj, predicate, mapper, MUSE_NIL, MUSE_NIL );
+		return list_collect( env, obj, predicate, mapper, MUSE_NIL, MUSE_NIL );
 	}
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
-		muse_monad_view_t *monad = get_monad_view( obj, &objptr );
+		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->collect( objptr, predicate, mapper, muse_evalnext(&args) );
+			return monad->collect( env, objptr, predicate, mapper, _evalnext(&args) );
 	}
 
 	return MUSE_NIL;
 }
 
-static muse_cell list_reduce( muse_cell obj, muse_cell reduction_fn, muse_cell acc )
+static muse_cell list_reduce( muse_env *env, muse_cell obj, muse_cell reduction_fn, muse_cell acc )
 {
 	if ( obj )
 	{
 		{
-			int sp = muse_stack_pos();
+			int sp = _spos();
 			
-			muse_stack_push(acc);
+			_spush(acc);
 			
-			acc = muse_apply( reduction_fn, muse_cons( acc, muse_cons( muse_head(obj), MUSE_NIL ) ), MUSE_TRUE );
+			acc = _apply( reduction_fn, _cons( acc, _cons( _head(obj), MUSE_NIL ) ), MUSE_TRUE );
 		
-			muse_stack_unwind(sp);
+			_unwind(sp);
 		}
 		
-		return list_reduce( muse_tail(obj), reduction_fn, acc );
+		return list_reduce( env, _tail(obj), reduction_fn, acc );
 	}
 	else
 		return acc;
@@ -384,57 +384,71 @@ static muse_cell list_reduce( muse_cell obj, muse_cell reduction_fn, muse_cell a
  */
 muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn		= muse_evalnext(&args);
-	muse_cell initial	= muse_evalnext(&args);
-	muse_cell obj		= muse_evalnext(&args);
+	muse_cell fn		= _evalnext(&args);
+	muse_cell initial	= _evalnext(&args);
+	muse_cell obj		= _evalnext(&args);
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
-		return list_reduce( obj, fn, initial );
+		return list_reduce( env, obj, fn, initial );
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
-		muse_monad_view_t *monad = get_monad_view( obj, &objptr );
+		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->reduce( objptr, fn, initial );
+			return monad->reduce( env, objptr, fn, initial );
 	}
 	
 	return MUSE_NIL;
 }
 
 
-static muse_boolean finder( void *self, void *what, muse_cell thing )
+static muse_boolean finder( muse_env *env, void *self, void *what, muse_cell thing )
 {
-	return muse_equal( (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
+	return muse_equal( env, (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
- * (find object list) -> list.
+ * (find item collection) -> reference.
  *
- * Finds the list position whose head is an object that is
- * "equal" to the given one. If cannot be found, it returns ().
+ * \c find can be used to locate an object in a list, vector or hashtable.
+ * It uses muse_equal() to determine whether an object is present in the
+ * collection. 
+ *
+ * When used with a list as the collection, it evaluates to
+ * the sublist with the given object at the head - or \c () if
+ * the object is not present in the list.
+ *
+ * When used with a vector, it evaluates to the index of the object
+ * in the vector if it is present in the vector, or to \c () if it isn't.
+ *
+ * When used with a hashtable, it evaluates to the key for which the
+ * object is the value in the hashtable. If the object isn't there, it
+ * evaluates to \c ()/
  * 
- * For example -
+ * List example -
  * @code
- * (print (find 5 (list 1 2 3 4 5 6 7 8)))
+ * (print "Sub list = " (find 5 (list 1 2 3 4 5 6 7 8)))
+ * (print "Vector pos = " (find 5 (vector 1 2 3 4 5 6 7 8)))
  * @endcode
  * will print
  * @code
- * (5 6 7 8)
+ * Sub list = (5 6 7 8)
+ * Vector pos = 4
  * @endcode
  */
 muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell object	= muse_evalnext(&args);
-	muse_cell coll		= muse_evalnext(&args);
+	muse_cell object	= _evalnext(&args);
+	muse_cell coll		= _evalnext(&args);
 	muse_cell result	= MUSE_NIL;
 	
 	muse_functional_object_t *collObj	= NULL;
-	muse_iterator_t iter				= get_iterator_view( coll, &collObj );
+	muse_iterator_t iter				= get_iterator_view( env, coll, &collObj );
 	
 	if ( iter )
 	{
-		result = iter( collObj, finder, (void*)object );
+		result = iter( env, collObj, finder, (void*)object );
 	}
 	
 	return result;
@@ -446,29 +460,30 @@ typedef struct
 	muse_cell temp;
 } mapinfo_t;
 
-static muse_boolean domapper( void *self, mapinfo_t *info, muse_cell thing )
+static muse_boolean domapper( muse_env *env, void *self, mapinfo_t *info, muse_cell thing )
 {
 	_seth( info->temp, thing );
-	muse_apply( info->fn, info->temp, MUSE_TRUE );
+	_apply( info->fn, info->temp, MUSE_TRUE );
 	return MUSE_TRUE;
 }
 
-static muse_boolean andmapper( void *self, mapinfo_t *info, muse_cell thing )
+static muse_boolean andmapper( muse_env *env, void *self, mapinfo_t *info, muse_cell thing )
 {
 	_seth( info->temp, thing );
-	return muse_apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_TRUE : MUSE_FALSE;
+	return _apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_TRUE : MUSE_FALSE;
 }
 
-static muse_boolean ormapper( void *self, mapinfo_t *info, muse_cell thing )
+static muse_boolean ormapper( muse_env *env, void *self, mapinfo_t *info, muse_cell thing )
 {
 	_seth( info->temp, thing );
-	return muse_apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_FALSE : MUSE_TRUE;
+	return _apply( info->fn, info->temp, MUSE_TRUE ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
- * (andmap predicate list).
+ * (andmap predicate collection).
  *
- * Evaluates the predicate on each element of the list.
+ * Evaluates the predicate on each element of the collection.
+ * The collection can be a list, vector or a hashtable.
  * Returns T if everything satisfied the predicate and ()
  * if even one element didn't satisfy the predicate. If
  * an element didn't satisfy the predicate, \c andmap 
@@ -479,24 +494,25 @@ static muse_boolean ormapper( void *self, mapinfo_t *info, muse_cell thing )
  */
 muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell predicate = muse_evalnext(&args);
-	muse_cell list = muse_evalnext(&args);
+	muse_cell predicate = _evalnext(&args);
+	muse_cell list = _evalnext(&args);
 	
-	mapinfo_t info = { predicate, muse_cons(MUSE_NIL, MUSE_NIL) };
+	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
-	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
 	if ( iter )
 	{
-		return iter( collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t();
+		return iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t();
 	}
 	
 	return MUSE_NIL;
 }
 
 /**
- * (ormap predicate list).
+ * (ormap predicate collection).
  *
- * Evaluates the predicate on each element of the list.
+ * Evaluates the predicate on each element of the collection.
+ * The collection can be a list, vector or a hashtable.
  * Returns T if anything satisfied the predicate and () if nothing
  * did. If any one element satisfied the predicate, then \c ormap
  * does not evaluate the predicate on the other elements of the list.
@@ -506,25 +522,26 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell predicate = muse_evalnext(&args);
-	muse_cell list = muse_evalnext(&args);
+	muse_cell predicate = _evalnext(&args);
+	muse_cell list = _evalnext(&args);
 	
-	mapinfo_t info = { predicate, muse_cons(MUSE_NIL, MUSE_NIL) };
+	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
-	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
 	if ( iter )
 	{
-		return iter( collObj, (muse_iterator_callback_t)ormapper, &info );
+		return iter( env, collObj, (muse_iterator_callback_t)ormapper, &info );
 	}
 	
 	return MUSE_NIL;
 }
 
-
+ 
 /**
- * (for-each fn list [result]).
+ * (for-each fn collection [result]).
  *
- * Same as fn_map(), but doesn't collect results into a list.
+ * Same as fn_map(), but doesn't collect results.
+ * The collection can be a list, vector or a hashtable.
  * You can optionally give a result expression which will be
  * used as the result of the \c for-each expression.
  *
@@ -533,18 +550,18 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn = muse_evalnext(&args);
-	muse_cell list = muse_evalnext(&args);
+	muse_cell fn = _evalnext(&args);
+	muse_cell list = _evalnext(&args);
 	
-	mapinfo_t info = { fn, muse_cons(MUSE_NIL, MUSE_NIL) };
+	mapinfo_t info = { fn, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
-	muse_iterator_t iter = get_iterator_view( list, &collObj );
+	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
 	if ( iter )
 	{
-		iter( collObj, (muse_iterator_callback_t)domapper, &info );
+		iter( env, collObj, (muse_iterator_callback_t)domapper, &info );
 	}
 	
-	return muse_evalnext(&args);
+	return _evalnext(&args);
 }
 
 /**
@@ -583,7 +600,7 @@ muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 {
 	int sp = _spos();
-	muse_cell matrix = muse_eval_list(args);
+	muse_cell matrix = muse_eval_list(env,args);
 	
 	if ( !matrix )
 	{
@@ -592,8 +609,8 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 	}
 	else
 	{
-		int rows = muse_list_length(matrix);
-		int cols = muse_list_length(_head(matrix));
+		int rows = _list_length(matrix);
+		int cols = _list_length(_head(matrix));
 		int r, c;
 		
 		muse_cell *array = (muse_cell*)malloc( rows * cols * sizeof(muse_cell) );
@@ -601,19 +618,19 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 		
 		for ( r = 0; r < rows; ++r )
 		{
-			muse_list_extract( cols, _next(&m), 1, array + cols * r, 1 );
+			muse_list_extract( env, cols, _next(&m), 1, array + cols * r, 1 );
 		}
 		
 		{
 			muse_cell h, t, *m;
-			h = t = muse_cons( MUSE_NIL, MUSE_NIL );
+			h = t = _cons( MUSE_NIL, MUSE_NIL );
 			m = array;
 			
-			_seth( t, muse_array_to_list( rows, m, cols ) );
+			_seth( t, muse_array_to_list( env, rows, m, cols ) );
 			
 			for ( c = cols-1, ++m; c > 0; --c, ++m )
 			{
-				muse_cell temp = muse_cons( muse_array_to_list( rows, m, cols ), MUSE_NIL );
+				muse_cell temp = _cons( muse_array_to_list( env, rows, m, cols ), MUSE_NIL );
 				_sett( t, temp );
 				t = temp;
 			}

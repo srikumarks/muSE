@@ -29,10 +29,14 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Supports symbols, integers, floats, strings and lists
  * 	- Main abstraction mechanism is the closure
  * 	- A simple object system for OOP
- * 	- Small code foot-print (45kB for full interpreter)
+ * 	- Small code foot-print
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
+ *	- A simple object system for adding new native object types.
  * 
+ * Version 0.2cp adds support for Erlang style processes and
+ * resumable exception handling.
+ *
  * @section Objects Basic objects
  * 
  * Everything in muSE is built from the following set of objects -
@@ -75,9 +79,10 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_StructuringCode Structuring code
  *	- \ref fn_define "define", \ref syntax_let "let", \ref syntax_do "do"
  * 	- \ref syntax_lambda "fn", \ref syntax_block "fn:"
+ *	- \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
- * 	- \ref syntax_while "while", \ref syntax_for "for"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
+ *	- \ref syntax_try "try", \ref fn_raise "raise"
  * 
  * @subsection ML_MathOps Mathematical operators
  *	- Binary operators 
@@ -92,17 +97,26 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- Other functions
  *		- \ref fn_rand "rand"
  *
+ * @subsection ML_DataStructures Data structures
+ *	- \ref Vectors "vectors"
+ *	- \ref Hashtables "hashtables"
+ *
  * @subsection ML_ObjectSystem Object system
  * 	- \ref fn_class "class"
  * 	- \ref fn_new "new"
- * 	- \ref fn_send "<-"
- * 	- \ref fn_obj_pty "->"
+ * 	- \ref fn_send "<-" (send message to object)
+ * 	- \ref fn_obj_pty "->" (get object property)
  * 
  * @subsection ML_IO Input and output
- * 	- \ref fn_print "print"
- * 	- \ref fn_write "write"
- * 	- \ref fn_read "read"
+ *	- \ref PortIO
  *	- \ref fn_open_file "open-file"
+ * 	- \ref fn_print "print", \ref fn_write "write"
+ * 	- \ref fn_read "read"
+ *	- \ref fn_close "close"
+ *
+ * @subsection ML_Processes Processes
+ *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic", \ref fn_post "post"
+ *	- \ref fn_run "run", \ref fn_this_process "this-process", \ref fn_process_p "process?"
  */
  
 /**
@@ -131,7 +145,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @section ConsCell The cons cell
  * 
  * The object that glues the above fundamental types into complex
- * structures is the "cons cell", aka a "pair" (\ref MUSE_CONS_CELL, \ref muse_cons).
+ * structures is the "cons cell", aka a "pair" (\ref MUSE_CONS_CELL, \ref _cons).
  * A cons (short for "constructor") cell is a pair of cells which
  * are referred to as the \b head and \b tail of the cons cell.
  * A cons cell may have another cons cell as its head or tail.
@@ -238,6 +252,7 @@ typedef enum
 	MUSE_DESCR,
 	MUSE_TIMEOUT,
 	MUSE_DEFINE,
+	MUSE_TRAP_POINT,
 	
 	MUSE_NUM_BUILTIN_SYMBOLS /**< Not a symbol. */
 } muse_builtin_symbol_t;
@@ -261,61 +276,59 @@ typedef enum
 	MUSE_DISCARD_DOC,			/**< Boolean parameter indicating that documentation should not be kept. Default = MUSE_FALSE. */
 	MUSE_PRETTY_PRINT,			/**< Boolean parameter indicating whether write and print should indent their output. Default = MUSE_TRUE */
 	MUSE_TAB_SIZE,				/**< Defaults to 4. Controls pretty printed output. */
+	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 10. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;
 
 muse_env	*muse_init_env( const int *parameters );
 void		muse_destroy_env( muse_env *env );
-muse_env	*muse_get_current_env();
-muse_env	*muse_set_current_env( muse_env *env );
 /*@}*/
 
 /** @name Basic memory management */
 /*@{*/
-muse_cell	muse_cons( muse_cell head, muse_cell tail );
-muse_cell	muse_mk_int( muse_int i );
-muse_cell	muse_mk_float( muse_float f );
-muse_cell	muse_mk_text( const muse_char *start, const muse_char *end );
-muse_cell	muse_mk_text_utf8( const char *start, const char *end );
-muse_cell	muse_mk_ctext( const muse_char *start );
-muse_cell	muse_mk_ctext_utf8( const char *start );
-muse_cell	muse_mk_nativefn( muse_nativefn_t fn, void *context );
-muse_cell	muse_mk_destructor( muse_nativefn_t fn, void *context );
-muse_cell	muse_mk_anon_symbol();
-muse_cell	muse_list( const char *format, ... ); // c, i, I, f, T, t, S, s
-muse_cell	muse_symbol( const muse_char *start, const muse_char *end );
-muse_cell	muse_csymbol( const muse_char *sym );
-muse_cell	muse_symbol_utf8( const char *start, const char *end );
-muse_cell	muse_csymbol_utf8( const char *sym );
-muse_cell	muse_builtin_symbol( muse_builtin_symbol_t s );
-int			muse_stack_pos();
-void		muse_stack_unwind( int stack_pos );
-muse_cell	muse_stack_push( muse_cell obj );
-void		muse_gc( int free_cells_needed );
-void		muse_mark( muse_cell cell );
-muse_boolean	muse_doing_gc( muse_env *env );
+muse_cell	muse_cons( muse_env *env, muse_cell head, muse_cell tail );
+muse_cell	muse_mk_int( muse_env *env, muse_int i );
+muse_cell	muse_mk_float( muse_env *env, muse_float f );
+muse_cell	muse_mk_text( muse_env *env, const muse_char *start, const muse_char *end );
+muse_cell	muse_mk_text_utf8( muse_env *env, const char *start, const char *end );
+muse_cell	muse_mk_ctext( muse_env *env, const muse_char *start );
+muse_cell	muse_mk_ctext_utf8( muse_env *env, const char *start );
+muse_cell	muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context );
+muse_cell	muse_mk_destructor( muse_env *env, muse_nativefn_t fn, void *context );
+muse_cell	muse_mk_anon_symbol(muse_env *env);
+muse_cell	muse_list( muse_env *env, const char *format, ... ); // c, i, I, f, T, t, S, s
+muse_cell	muse_symbol( muse_env *env, const muse_char *start, const muse_char *end );
+muse_cell	muse_csymbol( muse_env *env, const muse_char *sym );
+muse_cell	muse_symbol_utf8( muse_env *env, const char *start, const char *end );
+muse_cell	muse_csymbol_utf8( muse_env *env, const char *sym );
+muse_cell	muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s );
+int			muse_stack_pos(muse_env *env);
+void		muse_stack_unwind( muse_env *env, int stack_pos );
+muse_cell	muse_stack_push( muse_env *env, muse_cell obj );
+void		muse_gc( muse_env *env, int free_cells_needed );
+void		muse_mark( muse_env *env, muse_cell cell );
+muse_boolean muse_doing_gc( muse_env *env );
 /*@}*/
 
 /** @name Cell access */
 /*@{*/
 muse_cell_t	muse_cell_type( muse_cell cell );
 muse_boolean muse_isfn( muse_cell cell );
-muse_cell	muse_head( muse_cell cell );
-muse_cell	muse_tail( muse_cell cell );
-muse_cell	muse_tail_n( muse_cell cell, int n );
-muse_cell	muse_next( muse_cell cell );
-muse_int		muse_int_value( muse_cell cell );
-muse_float	muse_float_value( muse_cell cell );
-const muse_char *muse_text_contents( muse_cell cell, int *length );
-const muse_char *muse_symbol_name( muse_cell sym );
-muse_cell	muse_symbol_value( muse_cell sym );
-int			muse_list_length( muse_cell list );
-muse_cell	muse_list_last( muse_cell list );
-muse_cell	muse_list_append( muse_cell head, muse_cell tail );
-muse_cell	muse_array_to_list( int count, const muse_cell *array, int astep );
-muse_cell *	muse_list_to_array( muse_cell list, int *lengthptr );
-void		muse_list_extract( int count, muse_cell list, int lstep, muse_cell *array, int astep );
+muse_cell	muse_head( muse_env *env, muse_cell cell );
+muse_cell	muse_tail( muse_env *env, muse_cell cell );
+muse_cell	muse_tail_n( muse_env *env, muse_cell cell, int n );
+muse_int	muse_int_value( muse_env *env, muse_cell cell );
+muse_float	muse_float_value( muse_env *env, muse_cell cell );
+const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int *length );
+const muse_char *muse_symbol_name( muse_env *env, muse_cell sym );
+muse_cell	muse_symbol_value( muse_env *env, muse_cell sym );
+int			muse_list_length( muse_env *env, muse_cell list );
+muse_cell	muse_list_last( muse_env *env, muse_cell list );
+muse_cell	muse_list_append( muse_env *env, muse_cell head, muse_cell tail );
+muse_cell	muse_array_to_list( muse_env *env, int count, const muse_cell *array, int astep );
+muse_cell *	muse_list_to_array( muse_env *env, muse_cell list, int *lengthptr );
+void		muse_list_extract( muse_env *env, int count, muse_cell list, int lstep, muse_cell *array, int astep );
 
 /**
  * A function that is called to generate elements which are collected
@@ -332,62 +345,63 @@ void		muse_list_extract( int count, muse_cell list, int lstep, muse_cell *array,
  * If \c (*eol) is found to be \c MUSE_FALSE, then the element returned by
  * the generator function is appended to the list.
  */ 
-typedef muse_cell (*muse_list_generator_t)( void *context, int i, muse_boolean *eol );
-muse_cell	muse_generate_list( muse_list_generator_t generator, void *context );
+typedef muse_cell (*muse_list_generator_t)( muse_env *env, void *context, int i, muse_boolean *eol );
+muse_cell	muse_generate_list( muse_env *env, muse_list_generator_t generator, void *context );
 /*@}*/
 
 /** @name Cell editing */
 /*@{*/
-muse_cell	muse_set_cell( muse_cell cell, muse_cell head, muse_cell tail );
-muse_cell	muse_set_head( muse_cell cell, muse_cell head );
-muse_cell	muse_set_tail( muse_cell cell, muse_cell tail );
-muse_cell	muse_set_int( muse_cell int_cell, muse_int value );
-muse_cell	muse_set_float( muse_cell float_cell, muse_float value );
-muse_cell	muse_set_text( muse_cell text, const muse_char *start, const muse_char *end );
-muse_cell	muse_set_ctext( muse_cell text, const muse_char *start );
-muse_cell	muse_define( muse_cell symbol, muse_cell value );
-muse_cell	muse_pushdef( muse_cell symbol, muse_cell value );
-muse_cell	muse_popdef( muse_cell symbol );
-muse_cell	muse_dup( muse_cell obj );
-muse_cell	*muse_find_list_element( muse_cell *listptr, muse_cell element );
+muse_cell	muse_set_cell( muse_env *env, muse_cell cell, muse_cell head, muse_cell tail );
+muse_cell	muse_set_head( muse_env *env, muse_cell cell, muse_cell head );
+muse_cell	muse_set_tail( muse_env *env, muse_cell cell, muse_cell tail );
+muse_cell	muse_set_int( muse_env *env, muse_cell int_cell, muse_int value );
+muse_cell	muse_set_float( muse_env *env, muse_cell float_cell, muse_float value );
+muse_cell	muse_set_text( muse_env *env, muse_cell text, const muse_char *start, const muse_char *end );
+muse_cell	muse_set_ctext( muse_env *env, muse_cell text, const muse_char *start );
+muse_cell	muse_define( muse_env *env, muse_cell symbol, muse_cell value );
+muse_cell	muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value );
+muse_cell	muse_popdef( muse_env *env, muse_cell symbol );
+muse_cell	muse_dup( muse_env *env, muse_cell obj );
+muse_cell	*muse_find_list_element( muse_env *env, muse_cell *listptr, muse_cell element );
 /*@}*/
 
 /** @name Property lists */
 /*@{*/
-int			muse_eq( muse_cell a, muse_cell b );
-int			muse_equal( muse_cell a, muse_cell b );
-int			muse_compare( muse_cell a, muse_cell b );
-muse_cell	muse_symbol_plist( muse_cell sym );
-muse_cell	muse_assoc( muse_cell alist, muse_cell prop );
-muse_cell	*muse_assoc_iter( muse_cell *alist, muse_cell prop );
-muse_cell	muse_get_prop( muse_cell sym, muse_cell prop );
-muse_cell	muse_put_prop( muse_cell sym, muse_cell prop, muse_cell value );
+int			muse_eq( muse_env *env, muse_cell a, muse_cell b );
+int			muse_equal( muse_env *env, muse_cell a, muse_cell b );
+int			muse_compare( muse_env *env, muse_cell a, muse_cell b );
+muse_cell	muse_symbol_plist( muse_env *env, muse_cell sym );
+muse_cell	muse_assoc( muse_env *env, muse_cell alist, muse_cell prop );
+muse_cell	*muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop );
+muse_cell	muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop );
+muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value );
 /*@}*/
 
 /** @name I/O */
 /*@{*/
-muse_cell	muse_load( FILE *f );
+muse_cell	muse_load( muse_env *env, FILE *f );
 /*@}*/
 
 /** @name Evaluation */
 /*@{*/
-muse_cell	muse_eval( muse_cell sexpr );
-muse_cell	muse_evalnext( muse_cell *sexpr );
-muse_cell	muse_eval_list( muse_cell list );
-muse_cell	muse_apply( muse_cell fn, muse_cell args, muse_boolean args_already_evaluated );
-muse_cell	muse_do( muse_cell block );
-muse_cell	muse_quote( muse_cell args );
-muse_boolean muse_bind_formals( muse_cell formals, muse_cell values );
-muse_cell	muse_callcc( muse_cell proc );
+muse_cell	muse_eval( muse_env *env, muse_cell sexpr );
+muse_cell	muse_evalnext( muse_env *env, muse_cell *sexpr );
+muse_cell	muse_eval_list( muse_env *env, muse_cell list );
+muse_cell	muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated );
+muse_cell	muse_do( muse_env *env, muse_cell block );
+muse_cell	muse_quote( muse_env *env, muse_cell args );
+muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell values );
+muse_cell	muse_callcc( muse_env *env, muse_cell proc );
 /*@}*/
 
 /** @name Misc */
 /*@{*/
-muse_int	muse_hash( muse_cell obj );
+muse_int	muse_hash( muse_env *env, muse_cell obj );
 muse_int	muse_hash_text( const muse_char *start, const muse_char *end, muse_int initial );
 muse_int	muse_hash_data( const unsigned char *start, const unsigned char *end, muse_int initial );
 void*		muse_tick();
-muse_int	muse_tock(void*);
+muse_int	muse_elapsed_us( void *timer );
+muse_int	muse_tock( void *timer );
 void		muse_sleep( muse_int time_us );
 FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
 /*@}*/
@@ -395,11 +409,11 @@ FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
 /** @name Diagnostics */
 /*@{*/
 const muse_char *muse_typename( muse_cell thing );
-int			muse_sprintf( muse_char *buffer, int maxlen, const muse_char *format, ... );
-void		muse_message( const muse_char *context, const muse_char *format, ... );
-muse_boolean muse_expect( const muse_char *context, const muse_char *spec, ... );
-muse_cell	muse_similar_symbol( muse_cell symbol, int *distance );
-muse_cell	muse_symbol_with_value( muse_cell value );
+int			muse_sprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, ... );
+void		muse_message( muse_env *env, const muse_char *context, const muse_char *format, ... );
+muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... );
+muse_cell	muse_similar_symbol( muse_env *env, muse_cell symbol, int *distance );
+muse_cell	muse_symbol_with_value( muse_env *env, muse_cell value );
 /*@}*/
 
 /** @name Multilingual stuff */
@@ -432,12 +446,12 @@ muse_cell	muse_symbol_with_value( muse_cell value );
  * @return Any s-expression. This return value will be returned by \c muse_link_plugin.
  */
 typedef muse_cell (*muse_plugin_entry_t)( void *module, muse_env *env, muse_cell arglist );
-muse_cell muse_link_plugin( const muse_char *path, muse_cell arglist );
+muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist );
 /*@}*/
 
 /** @name REPL - Read Eval Print Loop */
 /*@{*/
-void		muse_repl();
+void		muse_repl(muse_env *env);
 /*@}*/
 
 /** @name Extending muSE with functional objects */
@@ -462,7 +476,7 @@ typedef struct
 	 * is used in the function position.
 	 */
 	
-	void *(*view)( int id );
+	void *(*view)( muse_env *env, int id );
 	/**<
 	 * A "view" is some arbitrary piece of information descriptive
 	 * of this object's type, what the object can do, or what
@@ -475,13 +489,13 @@ typedef struct
 	 * these functions can be used on lists, vectors, hashtables.
 	 */
 
-	void (*init)( void *obj, muse_cell args );
+	void (*init)( muse_env *env, void *obj, muse_cell args );
 	/**<
 	 * An initializer function that's called after object creation
 	 * to initialize its contents according to the given arguments.
 	 */
 
-	void (*mark)( void *obj );
+	void (*mark)( muse_env *env, void *obj );
 	/**<
 	 * A type specific marker function that is expected to mark
 	 * all objects referenced by this functional object using
@@ -491,7 +505,7 @@ typedef struct
 	 * muse_functional_object_t address.
 	 */
 
-	void (*destroy)( void *obj );
+	void (*destroy)( muse_env *env, void *obj );
 	/**<
 	 * The functional obnject will be kept on the specials stack.
 	 * When no references to the object are detected, the destroy
@@ -499,7 +513,7 @@ typedef struct
 	 * removed from the environment.
 	 */
 	
-	void (*write)( void *obj, void *port );
+	void (*write)( muse_env *env, void *obj, void *port );
 	/**<
 	 * The object should be written out in a textual format such that
 	 * read (with macros and braces enabled) will be able to automatically
@@ -520,8 +534,8 @@ typedef struct
 	muse_functional_object_type_t *type_info; /**< Type information that's constant for all instances. */
 } muse_functional_object_t;
 
-muse_cell muse_mk_functional_object( muse_functional_object_type_t *type_info, muse_cell init_args );
-muse_functional_object_t *muse_functional_object_data( muse_cell fobj, int type_word );
+muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
+muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word );
 /*@}*/
 
 /**
@@ -604,9 +618,9 @@ typedef enum
 
 } muse_port_mode_bits_t;
 
-muse_port_t muse_port( muse_cell p );
-muse_port_t muse_stdport( muse_stdport_t descriptor );
-muse_port_t muse_assign_port( FILE *f, int mode );
+muse_port_t muse_port( muse_env *env, muse_cell p );
+muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor );
+muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode );
 void		muse_unassign_port( muse_port_t p );
 muse_cell	muse_pread( muse_port_t port );
 void		muse_pwrite( muse_port_t port, muse_cell sexpr );
@@ -622,16 +636,16 @@ void		muse_pprint( muse_port_t port, muse_cell sexpr );
 /*@{*/
 /** @name Vectors */
 /*@{*/
-muse_cell	muse_mk_vector( int length );
-int			muse_vector_length( muse_cell vec );
-muse_cell	muse_vector_get( muse_cell vec, int index );
-muse_cell	muse_vector_put( muse_cell vec, int index, muse_cell value );
+muse_cell	muse_mk_vector( muse_env *env, int length );
+int			muse_vector_length( muse_env *env, muse_cell vec );
+muse_cell	muse_vector_get( muse_env *env, muse_cell vec, int index );
+muse_cell	muse_vector_put( muse_env *env, muse_cell vec, int index, muse_cell value );
 /*@}*/
 /** @name Hashtables */
-muse_cell	muse_mk_hashtable( int length );
-int			muse_hashtable_length( muse_cell ht );
-muse_cell	muse_hashtable_get( muse_cell ht, muse_cell key );
-muse_cell	muse_hashtable_put( muse_cell ht, muse_cell key, muse_cell value );
+muse_cell	muse_mk_hashtable( muse_env *env, int length );
+int			muse_hashtable_length( muse_env *env, muse_cell ht );
+muse_cell	muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key );
+muse_cell	muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value );
 /*@}*/
 /*@}*/
 
@@ -647,18 +661,18 @@ muse_cell	muse_hashtable_put( muse_cell ht, muse_cell key, muse_cell value );
  */
 typedef struct
 {
-	muse_cell (*size)( void *self );
+	muse_cell (*size)( muse_env *env, void *self );
 	/**<
 	 * Should return the number of elements in the data structure.
 	 */
 	
-	muse_cell (*map)( void *self, muse_cell fn );
+	muse_cell (*map)( muse_env *env, void *self, muse_cell fn );
 	/**<
 	 * Iterates the given function over all the "elements" of this object
 	 * and constructs a new object of the same type with the results.
 	 */
 	
-	muse_cell (*join)( void *self, muse_cell obj, muse_cell reduction_fn );
+	muse_cell (*join)( muse_env *env, void *self, muse_cell obj, muse_cell reduction_fn );
 	/**<
 	 * Joins two objects (must be of the same type) using the given reduction_fn
 	 * to resolve conflicts. Two vectors are joined by concatenation. Two lists are
@@ -666,7 +680,7 @@ typedef struct
 	 * key-value pairs into a single table (you can do set union using this).
 	 */
 	
-	muse_cell (*collect)( void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn );
+	muse_cell (*collect)( muse_env *env, void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn );
 	/**<
 	 * Iterates over the elements of this object, applying the \p predicate.
 	 * All the elements satisfying the predicate are collected into a new
@@ -676,7 +690,7 @@ typedef struct
 	 * MUSE_NIL, it is equivalent to an identity function.
 	 */
 	
-	muse_cell (*reduce)( void *self, muse_cell reduction_fn, muse_cell initial );	
+	muse_cell (*reduce)( muse_env *env, void *self, muse_cell reduction_fn, muse_cell initial );	
 	/**<
 	 * Applies the given reduction function, which is expected to be
 	 * commutative and associative for simplicity, and folds the
@@ -686,7 +700,7 @@ typedef struct
 } muse_monad_view_t;
 /*@}*/
  
-typedef muse_boolean (*muse_iterator_callback_t)( void *self, void *context, muse_cell entry );
+typedef muse_boolean (*muse_iterator_callback_t)( muse_env *env, void *self, void *context, muse_cell entry );
 /**<
  * An iterator function that is invoked by the "iterator" monad operator on all elements
  * of a collection.
@@ -697,7 +711,7 @@ typedef muse_boolean (*muse_iterator_callback_t)( void *self, void *context, mus
  * @return Returning MUSE_TRUE will continue the iteration. Returning MUSE_FALSE will stop it.
  */
 
-typedef muse_cell (*muse_iterator_t)( void *self, muse_iterator_callback_t callback, void *context );
+typedef muse_cell (*muse_iterator_t)( muse_env *env, void *self, muse_iterator_callback_t callback, void *context );
 /**<
  * An 'iter' view will provide this function to call that can be used to iterate over collections.
  */

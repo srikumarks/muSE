@@ -29,7 +29,11 @@ static const struct _builtins
 {		L"fn:",			syntax_block		},
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
+{		L"apply/keywords",	fn_apply_w_keywords	},
+{		L"call/keywords",	fn_call_w_keywords	},
 {		L"call/cc",		fn_callcc			},
+{		L"try",			syntax_try				},
+{		L"raise",		fn_raise			},
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
@@ -38,6 +42,7 @@ static const struct _builtins
 {		L"plist",		fn_plist			},
 {		L"symbol",		fn_symbol			},
 {		L"name",		fn_name				},
+{		L"gensym",		fn_gensym			},
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},
@@ -46,7 +51,6 @@ static const struct _builtins
 {		L"setr!",		fn_setr_M			},
 {		L"first",		fn_first			},
 {		L"rest",		fn_rest				},
-{		L"next",		fn_next				},
 {		L"nth",			fn_nth				},
 {		L"take",		fn_take				},
 {		L"drop",		fn_drop				},
@@ -134,36 +138,46 @@ static const struct _builtins
 {		L"write-xml",	fn_write_xml		},
 {		L"exit",		fn_exit				},
 
-/************** Performance measurement **************/
-{		L"format",		fn_format			},
-{		L"string-length", fn_string_length	},
-{		L"time-taken-us", fn_time_taken_us	},
-{		L"generate-documentation", fn_generate_documentation	},
-{		L"load-plugin",	fn_load_plugin		},
-{		L"list-files",	fn_list_files		},
-{		L"list-folders",	fn_list_folders	},
+/************** Ports ***************/
+{		L"spawn",		fn_spawn			},
+{		L"this-process", fn_this_process	},
+{		L"atomic",		syntax_atomic		},
+{		L"receive",		fn_receive			},
+{		L"run",			fn_run				},
+{		L"post",		fn_post				},
+{		L"process?",	fn_process_p		},
+
+/************** Miscellaneous **************/
+{		L"format",					fn_format					},
+{		L"string-length",			fn_string_length			},
+{		L"time-taken-us",			fn_time_taken_us			},
+{		L"generate-documentation",	fn_generate_documentation	},
+{		L"load-plugin",				fn_load_plugin				},
+{		L"list-files",				fn_list_files				},
+{		L"list-folders",			fn_list_folders				},
 	
 {		NULL,			NULL				}
 };
 
-void muse_load_builtin_fns()
+void muse_load_builtin_fns(muse_env *env)
 {
 	const struct _builtins *b = k_builtins;
 	int sp = _spos();
 	
 	while ( b->name )
 	{
-		muse_define( muse_csymbol(b->name), muse_mk_nativefn( b->fn, NULL ) );
+		_define( _csymbol(b->name), _mk_nativefn( b->fn, NULL ) );
 		_unwind(sp);
 		
 		++b;
 	}
 	
-	muse_math_load_common_unary_functions();
-	muse_define_builtin_type_vector();
-	muse_define_builtin_type_hashtable();
-	muse_define_builtin_fileport();
-	muse_define_builtin_networking();
+	muse_math_load_common_unary_functions(env);
+	muse_define_builtin_type_vector(env);
+	muse_define_builtin_type_hashtable(env);
+	muse_define_builtin_type_bytes(env);
+	muse_define_builtin_fileport(env);
+	muse_define_builtin_networking(env);
 }
 
 /**
@@ -181,15 +195,15 @@ muse_cell fn_quote( muse_env *env, void *context, muse_cell args )
  * Creates a new cons cell with the given head and tail.
  * If no free cells are available, invokes the garbage collector
  * and grows the heap if necessary.
- * @see muse_cons()
+ * @see _cons()
  */
 muse_cell fn_cons( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell h, t;
 	
-	h = muse_evalnext(&args);
-	t = muse_evalnext(&args);
-	return muse_cons( h, t );
+	h = _evalnext(&args);
+	t = _evalnext(&args);
+	return _cons( h, t );
 }
 
 /**
@@ -200,7 +214,7 @@ muse_cell fn_cons( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
 {
-	return muse_eval( muse_evalnext(&args) );
+	return _eval( _evalnext(&args) );
 }
 
 /**
@@ -221,15 +235,15 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell expr = muse_evalnext(&args);
+	muse_cell expr = _evalnext(&args);
 	
 	if ( expr )
-		return muse_evalnext(&args); /* then */
+		return _evalnext(&args); /* then */
 	
 	args = _tail(args); /* Skip then portion. */
 	
 	if ( args )
-		return muse_evalnext(&args); /* else */
+		return _evalnext(&args); /* else */
 	
 	return MUSE_NIL;
 }
@@ -262,10 +276,10 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
 	{
 		muse_cell clause = _head(args);
 		
-		if ( muse_eval( _head(clause) ) )
+		if ( _eval( _head(clause) ) )
 		{
 			_unwind(sp);
-			return muse_do( _tail(clause) );
+			return _do( _tail(clause) );
 		}
 		
 		args = _tail(args);
@@ -283,7 +297,7 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_do( muse_env *env, void *context, muse_cell args )
 {
-	return muse_do( args );
+	return _do( args );
 }
 
 /**
@@ -298,10 +312,10 @@ muse_cell syntax_while( muse_env *env, void *context, muse_cell args )
 	muse_cell result		= MUSE_NIL;
 	int sp = _spos();
 	
-	while ( muse_eval(bool_expr) )
+	while ( _eval(bool_expr) )
 	{
 		_unwind(sp);
-		result = muse_do(body);
+		result = _do(body);
 	}
 	
 	_unwind(sp);
@@ -339,20 +353,20 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 	}
 
 	/* Perform the initialization. */
-	muse_eval( init_expr );
+	_eval( init_expr );
 	
 	/* Evaluate the body as long as the condition holds. */
-	while ( muse_eval(cond_expr) )
+	while ( _eval(cond_expr) )
 	{
 		_unwind(sp);
-		result = muse_eval(body);
-		muse_eval(update_expr);
+		result = _eval(body);
+		_eval(update_expr);
 	}
 	
 	/* If result expression is given, use it. Otherwise
 		use the the last returned value of the body. */
 	if ( result_expr_given )
-		result = muse_eval(result_expr);
+		result = _eval(result_expr);
 	
 	_unwind(sp);
 	_spush(result);
@@ -366,14 +380,14 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
 {
-	int free_cell_count		= _env()->heap.free_cell_count;
-	int stack_size			= (int)(_env()->stack.top - _env()->stack.bottom);
-	return muse_cons( 
-					 muse_mk_int(free_cell_count),
-					 muse_cons(
-							   muse_mk_int( stack_size ),
-							   muse_cons(
-										 muse_mk_int( _env()->num_symbols ),
+	int free_cell_count		= env->heap.free_cell_count;
+	int stack_size			= (int)(_stack()->top - _stack()->bottom);
+	return _cons( 
+					 _mk_int(free_cell_count),
+					 _cons(
+							   _mk_int( stack_size ),
+							   _cons(
+										 _mk_int( env->num_symbols ),
 										 MUSE_NIL)));
 }
 
@@ -385,7 +399,7 @@ muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_int_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_INT_CELL ? arg : MUSE_NIL;
 }
@@ -396,7 +410,7 @@ muse_cell fn_int_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_float_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_FLOAT_CELL ? arg : MUSE_NIL;
 }
@@ -408,7 +422,7 @@ muse_cell fn_float_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_number_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return (_cellt(arg) == MUSE_INT_CELL || _cellt(arg) == MUSE_FLOAT_CELL) ? arg : MUSE_NIL;
 }
@@ -418,12 +432,12 @@ muse_cell fn_number_p( muse_env *env, void *context, muse_cell args )
  * Evaluates to x if x is a cons cell - i.e. a portion of a list
  * or a pair created by \c cons. If not, it evaluates to ().
  * 
- * @see muse_cons
+ * @see _cons
  * @see fn_cons
  */
 muse_cell fn_cons_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_CONS_CELL ? arg : MUSE_NIL;
 }
@@ -437,7 +451,7 @@ muse_cell fn_cons_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _isfn(arg) ? arg : MUSE_NIL;
 }
@@ -449,7 +463,7 @@ muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_SYMBOL_CELL ? arg : MUSE_NIL;
 }
@@ -460,7 +474,7 @@ muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_TEXT_CELL ? arg : MUSE_NIL;
 }
@@ -473,8 +487,8 @@ muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
 muse_cell fn_time_taken_us( muse_env *env, void *context, muse_cell args )
 {
 	void *timing = muse_tick();
-	muse_do( args );
-	return muse_mk_int( muse_tock(timing) );
+	_do( args );
+	return _mk_int( muse_tock(timing) );
 }
 
 /**
@@ -487,62 +501,62 @@ muse_cell fn_exit( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
-static void gendoc_for_symbol( muse_cell symbol, muse_port_t p )
+static void gendoc_for_symbol( muse_env *env, muse_cell symbol, muse_port_t p )
 {
-	muse_cell plist = muse_symbol_plist(symbol);
+	muse_cell plist = muse_symbol_plist(env,symbol);
 	muse_cell pty = MUSE_NIL;
 
 	if ( plist )
 	{
 		char buffer[1024];
 		int size;
-		MUSE_DIAGNOSTICS3({ fprintf( stderr, "symbol: %S\n", muse_symbol_name(symbol) ); });
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "symbol: %S\n", muse_symbol_name(env,symbol) ); });
 
 		/* Generate documentation only if there is a plist for the symbol. */
-		size = sprintf(buffer, "/**\n@defgroup g%d %S\n", symbol, muse_symbol_name(symbol) );
+		size = sprintf(buffer, "/**\n@defgroup g%d %S\n", symbol, muse_symbol_name(env,symbol) );
 		port_write( buffer, size, p );
 		
-		pty = muse_assoc( plist, muse_builtin_symbol(MUSE_SIGNATURE) );
+		pty = muse_assoc( env, plist, _builtin_symbol(MUSE_SIGNATURE) );
 		if ( pty )
 		{
 			size = sprintf(buffer, "@section Signature\n@code\n");
 			port_write( buffer, size, p );
-			muse_pwrite( p, muse_tail(pty) );
+			muse_pwrite( p, _tail(pty) );
 			size = sprintf( buffer, "\n@endcode\n\n" );
 			port_write( buffer, size, p );
 		}
 
-		pty = muse_assoc( plist, muse_builtin_symbol(MUSE_USAGE) );
+		pty = muse_assoc( env, plist, _builtin_symbol(MUSE_USAGE) );
 		if ( pty )
 		{
 			size = sprintf( buffer, "@section Usage\n@code" );
 			port_write( buffer, size, p );
-			muse_pprint( p, muse_head(muse_tail(pty)) );
+			muse_pprint( p, _head(_tail(pty)) );
 			size = sprintf( buffer, "\n@endcode\n\n" );
 			port_write( buffer, size, p );
 		}
 
-		pty = muse_assoc( plist, muse_builtin_symbol(MUSE_DESCR) );
+		pty = muse_assoc( env, plist, _builtin_symbol(MUSE_DESCR) );
 		if ( pty )
 		{
-			muse_cell text = muse_tail(pty);
+			muse_cell text = _tail(pty);
 
 			size = sprintf( buffer, "@section Description\n" );
 			port_write( buffer, size, p );
 			while ( text )
 			{
-				muse_pprint( p, muse_head(text) );
+				muse_pprint( p, _head(text) );
 				port_putc( '\n', p );
-				text = muse_tail(text);
+				text = _tail(text);
 			}
 		}
 
-		pty = muse_assoc( plist, muse_builtin_symbol(MUSE_CODE) );
+		pty = muse_assoc( env, plist, _builtin_symbol(MUSE_CODE) );
 		if ( pty )
 		{
 			size = sprintf( buffer, "@section Code\n<pre>\n" );
 			port_write( buffer, size, p );
-			muse_pwrite(p, muse_tail(pty));
+			muse_pwrite(p, _tail(pty));
 			size = sprintf( buffer, "\n</pre>\n\n");
 			port_write( buffer, size, p );
 		}
@@ -566,29 +580,29 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 	FILE *f;
 	muse_port_t p;
 
-	filename = muse_evalnext(&args);
+	filename = _evalnext(&args);
 
-	swprintf( buffer, 4096, L"%S.txt", muse_text_contents( filename, NULL ) );
+	swprintf( buffer, 4096, L"%S.txt", _text_contents( filename, NULL ) );
 
 	f = muse_fopen(buffer,L"wb");
 	if ( !f )
 		return MUSE_NIL;
-	p = muse_assign_port(f, MUSE_PORT_WRITE);
+	p = muse_assign_port(env, f, MUSE_PORT_WRITE);
 
 	/* The symbol table is a hash table where each bucket has a list
 	of symbols. */
-	size = sprintf( (char*)buffer, "/** @defgroup %S */\n/*@{*/\n", muse_text_contents( filename, NULL ) );
+	size = sprintf( (char*)buffer, "/** @defgroup %S */\n/*@{*/\n", _text_contents( filename, NULL ) );
 	port_write( buffer, size, p );
 	{
-		muse_cell *syms = _env()->symbol_stack.bottom;
-		muse_cell *syms_end = syms + _env()->symbol_stack.size;
+		muse_cell *syms = env->symbol_stack.bottom;
+		muse_cell *syms_end = syms + env->symbol_stack.size;
 
 		while ( syms < syms_end )
 		{
 			muse_cell s = *syms++;
 			while ( s )
 			{
-				gendoc_for_symbol(_next(&s), p);
+				gendoc_for_symbol( env,_next(&s), p);
 			}
 		}
 	}
@@ -608,7 +622,7 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 {
 	int sp = _spos();
-	muse_cell values = muse_eval_list(args);
+	muse_cell values = muse_eval_list(env,args);
 
 	int total_length = 0;
 	muse_cell result = MUSE_NIL;
@@ -625,12 +639,12 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 			switch ( _cellt(c) )
 			{
 			case MUSE_INT_CELL : 
-				sprintf( buffer, MUSE_FMT_INT, muse_int_value(c) );
-				replacement = muse_mk_ctext_utf8(buffer);
+				sprintf( buffer, MUSE_FMT_INT, _intvalue(c) );
+				replacement = muse_mk_ctext_utf8(env,buffer);
 				break;
 			case MUSE_FLOAT_CELL :
-				sprintf( buffer, MUSE_FMT_FLOAT, muse_float_value(c) );
-				replacement = muse_mk_ctext_utf8(buffer);
+				sprintf( buffer, MUSE_FMT_FLOAT, _floatvalue(c) );
+				replacement = muse_mk_ctext_utf8(env,buffer);
 				break;
 			case MUSE_TEXT_CELL :
 				replacement = c;
@@ -646,7 +660,7 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 			if ( replacement )
 			{
 				int length = 0;
-				muse_text_contents( replacement, &length );
+				_text_contents( replacement, &length );
 				total_length += length;
 			}
 
@@ -655,11 +669,11 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 	}
 
 	/* Create the result buffer. */
-	result = muse_mk_text( 0, ((muse_char*)0) + total_length );
+	result = muse_mk_text( env, 0, ((muse_char*)0) + total_length );
 
 	/* Copy the string pieces into the result buffer. */
 	{
-		muse_char *buffer = (muse_char*)muse_text_contents( result, NULL );
+		muse_char *buffer = (muse_char*)_text_contents( result, NULL );
 
 		muse_cell v = values;
 
@@ -670,7 +684,7 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 			if ( c )
 			{
 				int length = 0;
-				const muse_char *text = muse_text_contents( c, &length );
+				const muse_char *text = _text_contents( c, &length );
 				memcpy( buffer, text, sizeof(muse_char) * length );
 				buffer += length;
 			}
@@ -688,11 +702,11 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell s = muse_evalnext(&args);
+	muse_cell s = _evalnext(&args);
 	if ( s && _cellt(s) == MUSE_TEXT_CELL )
 	{
 		muse_text_cell t = _ptr(s)->text;
-		return muse_mk_int( t.end - t.start );
+		return _mk_int( t.end - t.start );
 	}
 	else
 	{
@@ -707,6 +721,248 @@ muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell filename = muse_evalnext(&args);
-	return muse_link_plugin( muse_text_contents( filename, NULL ), args );
+	muse_cell filename = _evalnext(&args);
+	return muse_link_plugin( env, _text_contents( filename, NULL ), args );
+}
+
+/**
+ * (this-process)
+ *
+ * Evaluates to the pid of the process in which it is evaluated.
+ */
+muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
+{
+	return process_id( env->current_process );
+}
+
+/**
+ * (spawn (fn () [body]) [attention]) -> pid
+ *
+ * Spawns a new process which will repeatedly evaluate the given thunk until
+ * it evaluates to T. The (optional) attention value is a positive integer
+ * giving the number of reductions to perform in the created process
+ * before yielding to other processes. The default value is 10.
+ *
+ * The result of the spawn expression is a pid using which you can
+ * identify the created process and send messages to it by using the
+ * pid as a normal function.
+ */
+muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thunk = _evalnext(&args);
+	int attention = args ? (int)_intvalue( _evalnext(&args) ) : env->parameters[MUSE_DEFAULT_ATTENTION];
+
+	muse_process_frame_t *p = init_process_mailbox( create_process( env, attention, thunk, NULL ) );
+	prime_process( p );
+	return process_id( p );
+}
+
+/**
+ * (atomic [body])
+ *
+ * Behaves like \ref syntax_do "do", but evaluates the entire body atomically,
+ * i.e. without switching to another process, as long as you don't use the
+ * pausing functions \ref fn_receive "receive" and \ref fn_run "run".
+ */
+muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell result = MUSE_NIL;
+	enter_atomic(env);
+	result = _do(args);
+	leave_atomic(env);
+	return result;
+}
+
+/**
+ * (receive [pid] [timeout-us])
+ *
+ * Waits for and returns the next message in the process' mailbox.
+ * It has four forms -
+ *	- (receive)
+ *	- (receive pid)
+ *	- (receive timeout-us)
+ *	- (receive pid timeout-us)
+ * 
+ * If a process-id is given as the argument, it waits until a message is 
+ * received from that specific process. If a timeout value (in microseconds) 
+ * is given, it waits until either a message is received or the timeout expires. 
+ * If the timeout expired, the receive expression evaluates to MUSE_NIL - i.e. to ().
+ */
+muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
+{
+	muse_process_frame_t *p = env->current_process;
+	muse_cell pid = MUSE_NIL;
+	muse_int timeout_us = -1;
+	muse_cell msgs = MUSE_NIL;
+
+	if ( args )
+	{
+		/* Check whether the first arg is a pid that we have to wait for. */
+		pid = _evalnext(&args);
+
+		switch ( _cellt(pid) )
+		{
+		case MUSE_NATIVEFN_CELL :
+			/* Yes it is. Check whether the next argument is a timeout value. */
+			timeout_us = args ? _intvalue( _evalnext(&args) ) : -1;
+			break;
+		case MUSE_INT_CELL :
+		case MUSE_FLOAT_CELL :
+			/* Its not. It is a timeout value. */
+			timeout_us = _intvalue( pid );
+			pid = MUSE_NIL;
+			break;
+		default:
+			muse_assert( !"Invalid argument to (receive...)" );
+		}
+	}
+
+	/* Set the pid wwe're waiting for. */
+	p->waiting_for_pid = pid;
+	msgs = p->mailbox;
+
+	if ( pid )
+	{
+		/* Search for the message. */
+		while ( _tail(msgs) && _head(_head(_tail(msgs))) != pid )
+			msgs = _tail(msgs);
+	}
+
+	if ( !_tail(msgs) )
+	{
+		/* Wait for timeout value if specified. */
+		p->state_bits = MUSE_PROCESS_WAITING;
+
+		if ( timeout_us > 0 )
+		{
+			p->state_bits |= MUSE_PROCESS_HAS_TIMEOUT;
+			p->timeout_us = muse_elapsed_us(env->timer) + timeout_us;
+		}
+
+		switch_to_process( p->next );
+	}
+
+	/* Check for message again. If there's still no message, return with MUSE_NIL. 
+	An actual message will never be MUSE_NIL because it will contain the PID of the
+	sending process at the head. */
+	msgs = p->mailbox;
+
+	if ( pid )
+	{
+		/* Search for the message. */
+		while ( _tail(msgs) && _head(_head(_tail(msgs))) != pid )
+			msgs = _tail(msgs);
+	}
+
+	if ( _tail(msgs) )
+	{
+		/* Yes! We've received a message. Remove it from the queue and return it. */
+		muse_cell msg = _tail(msgs);
+		p->waiting_for_pid = MUSE_NIL; /**< No longer waiting for a pid. */
+		_sett( msgs, _tail( msg ) );
+
+		/* After removing, check if we've reached the end of the message queue. */
+		if ( msg == p->mailbox_end )
+			p->mailbox_end = _tail(msgs);
+
+		return _head( msg );
+	}
+	else
+		return MUSE_NIL; /**< We've timed out. */
+}
+
+
+/**
+ * (run [duration-us])
+ *
+ * If the duration argument is omitted, the expression never terminates
+ * and the process becomes blocked. If a duration is given (in microseconds),
+ * the process yields time to other processes for at least that much
+ * time. There is no accuracy guarantee for the timing.
+ */
+muse_cell fn_run( muse_env *env, void *context, muse_cell args )
+{
+	muse_int timeout_us = args ? _intvalue( _evalnext(&args) ) : -1;
+	muse_int endtime_us = timeout_us + muse_elapsed_us(env->timer);
+
+	do
+	{
+		switch_to_process( env->current_process->next );
+	}
+	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
+
+	return MUSE_NIL;
+}
+
+/**
+ * Checks whether the given thing is a process id. 
+ */
+#define _is_pid(pid) is_pid(env,pid)
+static muse_cell is_pid( muse_env *env, muse_cell pid )
+{
+	if ( pid && _cellt(pid) == MUSE_NATIVEFN_CELL && _ptr(pid)->fn.fn == fn_pid )
+		return pid;
+	else
+		return MUSE_NIL;
+}
+
+/**
+ * (post msg [pid])
+ *
+ * Allows you to post an arbitrary sexpr as a message to the current process.
+ * The difference between using post and \ref fn_pid "pid" (as a function)
+ * is that when posting a message using \ref fn_pid "pid", the message consists
+ * of the argument list and the pid of the sending process is prepended to
+ * this list. If you use "post", the message is the first argument - as is.
+ * This means "post" is the only way to post, for example, a symbol or a number
+ * as the message itself.
+ *
+ * An important use for this function is to postpone the processing of
+ * a message in situations where how to process it cannot be determined at
+ * the time the message is received. If you supply an optional pid, a message can
+ * be diverted to another process without modification. In this case, the 
+ * message is not posted to the current process.
+ *
+ * Ex: Postponing the processing of a message -
+ * @code
+ * (case (receive)
+ *    (pattern-1 ....)
+ *    (pattern-2 ....)
+ *    ...
+ *    (any (post any)))
+ * @endcode
+ */
+muse_cell fn_post( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell msg = _evalnext(&args);
+
+	if ( args )
+	{
+		/* We've been given a pid to post to. */
+		muse_cell pid = _evalnext(&args);
+
+		MUSE_DIAGNOSTICS({
+			if ( !_is_pid(pid) )
+				muse_message( env,L"(post msg >>[pid]<<)", L"Expected a process id as the second argument.\nGot\n\t%m\ninstead.", pid );
+		});
+
+		post_message( (muse_process_frame_t*)(_ptr(pid)->fn.context), msg );
+	}
+	else
+	{
+		/* Post to the current process. */
+		post_message( env->current_process, msg );
+	}
+
+	return MUSE_NIL;
+}
+
+/**
+ * (process? pid)
+ *
+ * Evaluates to \p pid if it is a valid process id and to <tt>()</tt> if it isn't.
+ */
+muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
+{
+	return _is_pid( _evalnext(&args) );
 }

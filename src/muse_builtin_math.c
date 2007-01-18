@@ -28,7 +28,7 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 	
 	while ( args )
 	{
-		muse_cell arg = muse_evalnext(&args);
+		muse_cell arg = _evalnext(&args);
 		switch ( _cellt(arg) )
 		{
 			case MUSE_INT_CELL :
@@ -40,8 +40,8 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 				break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(+ ... >>arg<< ...)", L"v|??|", arg ) )
-						muse_message( L"(+ ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(+ ... >>arg<< ...)", L"v|??|", arg ) )
+						muse_message( env,L"(+ ... >>arg<< ...)", 
 										L"[+] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", arg, arg );
 				});
@@ -49,9 +49,9 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 	}
 	
 	if ( result_is_float )
-		return muse_mk_float( f + i );
+		return _mk_float( f + i );
 	else
-		return muse_mk_int(i);
+		return _mk_int(i);
 }
 
 /**
@@ -69,17 +69,17 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 	muse_cell c = MUSE_NIL;
 	
 	if ( !args )
-		return muse_mk_int(0);
+		return _mk_int(0);
 	
-	c = muse_evalnext(&args);
+	c = _evalnext(&args);
 	switch ( _cellt(c) )
 	{
 		case MUSE_INT_CELL		: i += _ptr(c)->i; break;
 		case MUSE_FLOAT_CELL	: f += _ptr(c)->f; result_is_float = MUSE_TRUE; break;
 		default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(- ... >>arg<< ...)", L"v|??|", c ) )
-						muse_message( L"(- ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c ) )
+						muse_message( env,L"(- ... >>arg<< ...)", 
 										L"[-] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
 				});
@@ -88,22 +88,22 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 	if ( !args )
 	{
 		if ( result_is_float )
-			return muse_mk_float( -f );
+			return _mk_float( -f );
 		else
-			return muse_mk_int( -i );
+			return _mk_int( -i );
 	}
 	
 	while ( args )
 	{
-		c = muse_evalnext(&args);
+		c = _evalnext(&args);
 		switch ( _cellt(c) )
 		{
 			case MUSE_INT_CELL		: i -= _ptr(c)->i; break;
 			case MUSE_FLOAT_CELL	: f -= _ptr(c)->f; result_is_float = MUSE_TRUE; break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(- ... >>arg<< ...)", L"v|??|", c ) )
-						muse_message( L"(- ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c ) )
+						muse_message( env,L"(- ... >>arg<< ...)", 
 										L"[-] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
 				});
@@ -111,9 +111,9 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 	}
 	
 	if ( result_is_float )
-		return muse_mk_float( i + f );
+		return _mk_float( i + f );
 	else
-		return muse_mk_int(i);
+		return _mk_int(i);
 }
 
 /**
@@ -130,7 +130,7 @@ muse_cell fn_mul( muse_env *env, void *context, muse_cell args )
 	
 	while ( args )
 	{
-		muse_cell arg = muse_evalnext(&args);
+		muse_cell arg = _evalnext(&args);
 		switch ( _cellt(arg) )
 		{
 			case MUSE_INT_CELL :
@@ -142,8 +142,8 @@ muse_cell fn_mul( muse_env *env, void *context, muse_cell args )
 				break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(* ... >>arg<< ...)", L"v|??|", arg ) )
-						muse_message( L"(* ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(* ... >>arg<< ...)", L"v|??|", arg ) )
+						muse_message( env,L"(* ... >>arg<< ...)", 
 										L"[*] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", arg, arg );
 				});
@@ -151,9 +151,9 @@ muse_cell fn_mul( muse_env *env, void *context, muse_cell args )
 	}
 	
 	if ( result_is_float )
-		return muse_mk_float( f * i );
+		return _mk_float( f * i );
 	else
-		return muse_mk_int(i);
+		return _mk_int(i);
 }
 
 
@@ -170,43 +170,43 @@ muse_cell fn_div( muse_env *env, void *context, muse_cell args )
 	muse_cell c = MUSE_NIL;
 	
 	if ( !args )
-		return muse_mk_int(0);
+		return _mk_int(0);
 	
-	c = muse_evalnext(&args);
+	c = _evalnext(&args);
 	switch ( _cellt(c) )
 	{
 		case MUSE_INT_CELL		: f = (muse_float)(_ptr(c)->i); break;
 		case MUSE_FLOAT_CELL	: f = _ptr(c)->f; break;
 		default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(/ ... >>arg<< ...)", L"v|??|", c ) )
-						muse_message( L"(/ ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c ) )
+						muse_message( env,L"(/ ... >>arg<< ...)", 
 										L"[/] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
 				});
 	}
 	
 	if ( !args )
-		return muse_mk_float( 1.0 / f );
+		return _mk_float( 1.0 / f );
 	
 	while ( args )
 	{
-		c = muse_evalnext(&args);
+		c = _evalnext(&args);
 		switch ( _cellt(c) )
 		{
 			case MUSE_INT_CELL		: f /= _ptr(c)->i; break;
 			case MUSE_FLOAT_CELL	: f /= _ptr(c)->f; break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( L"(/ ... >>arg<< ...)", L"v|??|", c ) )
-						muse_message( L"(/ ... >>arg<< ...)", 
+					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c ) )
+						muse_message( env,L"(/ ... >>arg<< ...)", 
 										L"[/] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
 				});
 		}
 	}
 	
-	return muse_mk_float(f);
+	return _mk_float(f);
 }
 
 /**
@@ -216,12 +216,12 @@ muse_cell fn_div( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_idiv( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell a1 = muse_evalnext(&args);
-	muse_cell a2 = muse_evalnext(&args);
+	muse_cell a1 = _evalnext(&args);
+	muse_cell a2 = _evalnext(&args);
 	
 	muse_int q = _ptr(a1)->i / _ptr(a2)->i;
 	
-	return muse_mk_int(q);;
+	return _mk_int(q);;
 }
 
 /**
@@ -231,12 +231,12 @@ muse_cell fn_idiv( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_mod( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell a1 = muse_evalnext(&args);
-	muse_cell a2 = muse_evalnext(&args);
+	muse_cell a1 = _evalnext(&args);
+	muse_cell a2 = _evalnext(&args);
 	
 	muse_int q = _ptr(a1)->i % _ptr(a2)->i;
 	
-	return muse_mk_int(q);;
+	return _mk_int(q);;
 }
 
 /**
@@ -246,7 +246,7 @@ muse_cell fn_mod( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_inc( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell c = muse_evalnext(&args);
+	muse_cell c = _evalnext(&args);
 	++(_ptr(c)->i);
 	return c;
 }
@@ -258,7 +258,7 @@ muse_cell fn_inc( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_dec( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell c = muse_evalnext(&args);
+	muse_cell c = _evalnext(&args);
 	--(_ptr(c)->i);
 	return c;
 }
@@ -270,10 +270,10 @@ muse_cell fn_dec( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_trunc( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell arg = muse_evalnext(&args);
+	muse_cell arg = _evalnext(&args);
 	switch ( _cellt(arg) )
 	{
-		case MUSE_FLOAT_CELL : return muse_mk_int((muse_int)_ptr(arg)->f);
+		case MUSE_FLOAT_CELL : return _mk_int((muse_int)_ptr(arg)->f);
 		default : return arg;
 	}
 }
@@ -288,13 +288,13 @@ muse_cell fn_trunc( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell N = muse_evalnext(&args);
+	muse_cell N = _evalnext(&args);
 	muse_cell M = MUSE_NIL;
 	
 	if ( args )
 	{
 		M = N;
-		N = muse_evalnext(&args);
+		N = _evalnext(&args);
 		muse_assert( _cellt(M) == _cellt(N) );
 	}
 	
@@ -305,7 +305,7 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 			muse_int m = 0;
 			if ( M )
 				m = _ptr(M)->i;
-			return muse_mk_int( m + rand() % (_ptr(N)->i - m) );
+			return _mk_int( m + rand() % (_ptr(N)->i - m) );
 		}
 		break;
 			
@@ -314,7 +314,7 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 			muse_float m = 0.0;
 			if ( M )
 				m = _ptr(M)->f;
-			return muse_mk_float( m + rand() * (_ptr(N)->f - m) / RAND_MAX );
+			return _mk_float( m + rand() * (_ptr(N)->f - m) / RAND_MAX );
 		}
 		break;
 			
@@ -330,10 +330,10 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_pow( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell base		= muse_evalnext(&args);
-	muse_cell exponent	= muse_evalnext(&args);
+	muse_cell base		= _evalnext(&args);
+	muse_cell exponent	= _evalnext(&args);
 
-	return muse_mk_float( pow( muse_float_value(base), muse_float_value(exponent) ) );
+	return _mk_float( pow( _floatvalue(base), _floatvalue(exponent) ) );
 }
 
 /**
@@ -369,9 +369,9 @@ muse_cell fn_unary_math( muse_env *env, void *fn, muse_cell args )
 {
 	unary_math_op_t op = (unary_math_op_t)fn;
 	
-	muse_float f = _floatvalue(muse_evalnext(&args));
+	muse_float f = _floatvalue(_evalnext(&args));
 	
-	return muse_mk_float( op(f) );
+	return _mk_float( op(f) );
 }
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400
@@ -399,7 +399,7 @@ static double muse_ceil( double x )
 /**
  * Defines log, log10, sqrt, sin, cos, tan, etc.
  */
-void muse_math_load_common_unary_functions()
+void muse_math_load_common_unary_functions( muse_env *env )
 {
 	struct _unary_op { const muse_char *name; unary_math_op_t f; };
 	
@@ -434,7 +434,7 @@ void muse_math_load_common_unary_functions()
 		while ( op->name )
 		{
 			int sp = _spos();
-			muse_define( muse_csymbol(op->name), muse_mk_nativefn( fn_unary_math, (void*)(op->f) ) );
+			_define( _csymbol(op->name), _mk_nativefn( fn_unary_math, (void*)(op->f) ) );
 			_unwind(sp);
 			++op;
 		}

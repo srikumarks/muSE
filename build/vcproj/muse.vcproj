@@ -190,6 +190,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_builtin_bytes.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_builtin_cells.c"
 				>
 			</File>
