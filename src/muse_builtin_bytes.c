@@ -280,7 +280,7 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 	return MUSE_NIL;
 }
 
-static muse_functional_object_type_t g_bytes_type =
+muse_functional_object_type_t g_bytes_type =
 {
 	'muSE',
 	'barr',
