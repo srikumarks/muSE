@@ -900,7 +900,7 @@ muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 #define _is_pid(pid) is_pid(env,pid)
 static muse_cell is_pid( muse_env *env, muse_cell pid )
 {
-	if ( pid && _cellt(pid) == MUSE_NATIVEFN_CELL && _ptr(pid)->fn.fn == fn_pid )
+	if ( pid && _cellt(pid) == MUSE_NATIVEFN_CELL && _ptr(pid)->fn.fn == (muse_nativefn_t)fn_pid )
 		return pid;
 	else
 		return MUSE_NIL;

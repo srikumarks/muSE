@@ -256,7 +256,7 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 		muse_assert( len > 0 );
 	}
 #else
-	static void get_execpath( use_env *env, const char *suggestion, char *result, int size )
+	static void get_execpath( muse_env *env, const char *suggestion, char *result, int size )
 	{
 		strcpy( result, suggestion );
 		

@@ -129,7 +129,7 @@ static muse_cell generate_files( muse_env *env, FILE *info, int i, muse_boolean 
 		}
 
 		(*eol) == MUSE_FALSE;
-		return muse_mk_text_utf8(line, line+len);
+		return muse_mk_text_utf8(env, line, line+len);
 	}
 	else
 	{
