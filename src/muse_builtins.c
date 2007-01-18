@@ -732,7 +732,7 @@ muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
 {
-	return _processid( env->current_process );
+	return process_id( env->current_process );
 }
 
 /**
@@ -752,9 +752,9 @@ muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
 	muse_cell thunk = _evalnext(&args);
 	int attention = args ? (int)_intvalue( _evalnext(&args) ) : env->parameters[MUSE_DEFAULT_ATTENTION];
 
-	muse_process_frame_t *p = init_process_mailbox( env, create_process( env, attention, thunk, NULL ) );
-	prime_process( env, p );
-	return _processid(p);
+	muse_process_frame_t *p = init_process_mailbox( create_process( env, attention, thunk, NULL ) );
+	prime_process( p );
+	return process_id( p );
 }
 
 /**
@@ -839,7 +839,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 			p->timeout_us = muse_elapsed_us(env->timer) + timeout_us;
 		}
 
-		switch_to_process( env, p->next );
+		switch_to_process( p->next );
 	}
 
 	/* Check for message again. If there's still no message, return with MUSE_NIL. 
@@ -887,7 +887,7 @@ muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 
 	do
 	{
-		switch_to_process( env, env->current_process->next );
+		switch_to_process( env->current_process->next );
 	}
 	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
 
@@ -946,12 +946,12 @@ muse_cell fn_post( muse_env *env, void *context, muse_cell args )
 				muse_message( env,L"(post msg >>[pid]<<)", L"Expected a process id as the second argument.\nGot\n\t%m\ninstead.", pid );
 		});
 
-		post_message( env, (muse_process_frame_t*)(_ptr(pid)->fn.context), msg );
+		post_message( (muse_process_frame_t*)(_ptr(pid)->fn.context), msg );
 	}
 	else
 	{
 		/* Post to the current process. */
-		post_message( env, env->current_process, msg );
+		post_message( env->current_process, msg );
 	}
 
 	return MUSE_NIL;

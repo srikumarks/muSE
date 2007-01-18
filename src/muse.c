@@ -299,8 +299,8 @@ muse_env *muse_init_env( const int *parameters )
 		{
 			muse_process_frame_t *p = create_process( env, env->parameters[MUSE_DEFAULT_ATTENTION], MUSE_NIL, saved_sp );
 			env->current_process = p;
-			init_process_mailbox(env, p);
-			prime_process( env, p );
+			init_process_mailbox( p );
+			prime_process( p );
 
 			/* Immediately switch to running state. */
 			p->state_bits = MUSE_PROCESS_RUNNING;
@@ -1071,7 +1071,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 
 				do 
 				{
-					mark_process(env,p);
+					mark_process(p);
 					p = p->next;
 				}
 				while ( p != cp );
@@ -1192,6 +1192,7 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 
 	muse_assert( attention > 0 );
 
+	p->env						= env;
 	p->attention				= attention;
 	p->remaining_attention		= attention;
 	p->state_bits				= MUSE_PROCESS_PAUSED;
@@ -1238,10 +1239,11 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
  * Messages are added to the mailbox at the tail of this linked list and popped
  * off for processing at the head.
  */
-muse_process_frame_t *init_process_mailbox( muse_env *env, muse_process_frame_t *p )
+muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p )
 {
 	/* Messages get appended at the end of the mailbox
 	and popped off at the beginning. */
+	muse_env *env = p->env;
 	int sp = _spos();
 	p->mailbox = _cons( _mk_destructor( (muse_nativefn_t)fn_pid, p ), MUSE_NIL );
 	p->mailbox_end = p->mailbox;
@@ -1254,8 +1256,9 @@ muse_process_frame_t *init_process_mailbox( muse_env *env, muse_process_frame_t 
  * process's frame structure. The process id is to be found at the
  * head of the given process's mailbox.
  */
-muse_cell process_id( muse_env *env, muse_process_frame_t *p )
+muse_cell process_id( muse_process_frame_t *p )
 {
+	muse_env *env = p->env;
 	return _head(p->mailbox);
 }
 
@@ -1266,8 +1269,10 @@ muse_cell process_id( muse_env *env, muse_process_frame_t *p )
  * is initially in the "virgin" state. When the process is first switched to
  * in switch_to_process(), it comes alive.
  */
-muse_boolean prime_process( muse_env *env, muse_process_frame_t *process )
+muse_boolean prime_process( muse_process_frame_t *process )
 {
+	muse_env *env = process->env;
+
 	if ( env->current_process && env->current_process != process )
 	{
 		muse_assert( env->current_process->next != process );
@@ -1311,7 +1316,7 @@ muse_boolean run_process( muse_env *env )
 		} while ( !result );
 
 		/* Process completed. Switch to the next one. */
-		return remove_process( env, env->current_process );
+		return remove_process( env->current_process );
 	}
 	else
 		return MUSE_TRUE;
@@ -1329,8 +1334,10 @@ muse_boolean run_process( muse_env *env )
  * - i.e. it will either block indefinitely or successfuly switch to the
  * given process.
  */
-muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
+muse_boolean switch_to_process( muse_process_frame_t *process )
 {
+	muse_env *env = process->env;
+
 	if ( env->current_process == process )
 		return MUSE_TRUE;
 
@@ -1377,11 +1384,11 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 		}
 
 		if ( process->state_bits == MUSE_PROCESS_RUNNING )
-			return switch_to_process( env, process );
+			return switch_to_process( process );
 	}
 
 	/* Can't run this one. Try the next process. */
-	return switch_to_process( env, process->next );
+	return switch_to_process( process->next );
 }
 
 /**
@@ -1392,7 +1399,7 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 muse_boolean procrastinate( muse_env *env )
 {
 	if ( env->current_process->atomicity == 0 )
-		return switch_to_process( env, env->current_process->next );
+		return switch_to_process( env->current_process->next );
 	else
 		return MUSE_TRUE;
 }
@@ -1412,7 +1419,7 @@ void yield_process( muse_env *env, int spent_attention )
 		{
 			/* Give time to the next process. */
 			p->remaining_attention = p->attention;
-			switch_to_process( env, p->next );
+			switch_to_process( p->next );
 		}
 		else
 			p->remaining_attention -= spent_attention;
@@ -1433,8 +1440,10 @@ muse_boolean is_main_process( muse_env *env )
  * as "dead". It then switches to the next process in the ring so that
  * the ring can continue.
  */
-muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
+muse_boolean remove_process( muse_process_frame_t *process )
 {
+	muse_env *env = process->env;
+
 	/* First take the process out of the ring. */
 	muse_process_frame_t 
 		*prev = process->prev,
@@ -1463,7 +1472,7 @@ muse_boolean remove_process( muse_env *env, muse_process_frame_t *process )
 			exit(0); /* All processes exited! */
 		}
 		else
-			return switch_to_process( env, next );
+			return switch_to_process( next );
 	}
 	else
 		return MUSE_TRUE;
@@ -1512,9 +1521,9 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 		/* The list of arguments is the message in its full structure.
 		To this, we prepend the pid of the sending process and append
 		the result to the message queue of our process. */
-		muse_cell msg = _cons( _processid(env->current_process), muse_eval_list(env,args) );
+		muse_cell msg = _cons( process_id(env->current_process), muse_eval_list(env,args) );
 
-		post_message( env, p, msg );
+		post_message( p, msg );
 
 		_unwind(sp);
 
@@ -1537,8 +1546,9 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
  * Marks all references held by the given process. Called prior to
  * garbage collection.
  */
-void mark_process( muse_env *env, muse_process_frame_t *p )
+void mark_process( muse_process_frame_t *p )
 {
+	muse_env *env = p->env;
 	mark_stack( env, &p->stack );
 	mark_stack( env, &p->bindings_stack );
 	mark_stack( env, &p->locals );
@@ -1575,8 +1585,10 @@ void leave_atomic(muse_env *env)
  *
  * @see fn_post
  */
-void post_message( muse_env *env, muse_process_frame_t *p, muse_cell msg )
+void post_message( muse_process_frame_t *p, muse_cell msg )
 {
+	muse_env *env = p->env;
+
 	muse_cell msg_entry = _cons( msg, MUSE_NIL );
 
 	_sett( p->mailbox_end, msg_entry );
@@ -1585,7 +1597,7 @@ void post_message( muse_env *env, muse_process_frame_t *p, muse_cell msg )
 
 	if ( p->state_bits & MUSE_PROCESS_WAITING )
 	{
-		if ( !(p->waiting_for_pid) || p->waiting_for_pid == _processid(p) )
+		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(p) )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }

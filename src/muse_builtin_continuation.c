@@ -574,8 +574,8 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 	}
 
 	/* No handler succeeded in handling the exception. */
-	muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), _processid(env->current_process) );
-	remove_process( env, env->current_process );
+	muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
+	remove_process( env->current_process );
 }
 /*@}*/
 /*@}*/

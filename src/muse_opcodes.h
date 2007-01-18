@@ -132,6 +132,7 @@ typedef struct _muse_process_frame_t
 {
 	struct _muse_process_frame_t *next, *prev;
 
+	muse_env	*env;
 	int			state_bits;
 	int			attention;
 	int			remaining_attention;
@@ -504,7 +505,6 @@ static inline muse_cell _quq( muse_cell c )
 #define _mk_destructor(fn,ctxt) muse_mk_destructor(env,fn,ctxt)
 #define _mk_functional_object(type,args) muse_mk_functional_object(env,type,args)
 #define _mk_anon_symbol() muse_mk_anon_symbol(env)
-#define _processid(p) process_id(env,p)
 #define _builtin_symbol(s) muse_builtin_symbol(env,s)
 #define _evalnext(argsptr) muse_evalnext(env,argsptr)
 #define _eval(expr) muse_eval(env,expr)
@@ -525,17 +525,17 @@ static inline muse_cell _quq( muse_cell c )
 
 /* Process functions. */
 muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell thunk, void *sp );
-muse_process_frame_t *init_process_mailbox( muse_env *env, muse_process_frame_t *p );
-muse_boolean prime_process( muse_env *env, muse_process_frame_t *process );
-muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process );
+muse_process_frame_t *init_process_mailbox( muse_process_frame_t *p );
+muse_boolean prime_process( muse_process_frame_t *process );
+muse_boolean switch_to_process( muse_process_frame_t *process );
 void yield_process( muse_env *env, int spent_attention );
 muse_boolean procrastinate( muse_env *env );
-muse_boolean remove_process( muse_env *env, muse_process_frame_t *process );
-muse_cell process_id( muse_env *env, muse_process_frame_t *process );
+muse_boolean remove_process( muse_process_frame_t *process );
+muse_cell process_id( muse_process_frame_t *process );
 muse_boolean is_main_process( muse_env *env );
-void mark_process( muse_env *env, muse_process_frame_t *p );
+void mark_process( muse_process_frame_t *p );
 muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
-void post_message( muse_env *env, muse_process_frame_t *process, muse_cell msg );
+void post_message( muse_process_frame_t *process, muse_cell msg );
 void enter_atomic(muse_env *env);
 void leave_atomic(muse_env *env);
 
