@@ -267,7 +267,6 @@ static void init_parameters( muse_env *env, const int *parameters )
 
 /**
  * Creates a new muse environment.
- * The new environment is made current.
  *
  * @param parameters is an int array of param-value pairs. The last entry 
  * should be MUSE_END_OF_LIST which need not be given a value.
