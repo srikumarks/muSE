@@ -94,6 +94,18 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 		/* Change the meaning of "define" to be specific to this module. */
 		muse_pushdef( env, _csymbol(L"define"), _mk_nativefn( (muse_nativefn_t)fn_module_define, m ) );
 
+		/* Undefine the exported symbols so that any collisions won't cause error messages.
+		Also the exported symbols can then refer to each other in a recursive way when within
+		the scope of a module. */
+		{
+			muse_cell exsyms = m->exported_symbols;
+			while ( exsyms )
+			{
+				muse_cell sym = _next(&exsyms);
+				muse_pushdef( env, sym, sym );
+			}
+		}
+
 		/* Evaluate all the expressions in the scope. */
 		_do(args);
 
