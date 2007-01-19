@@ -173,6 +173,7 @@ void muse_load_builtin_fns(muse_env *env)
 	}
 	
 	muse_math_load_common_unary_functions(env);
+	muse_define_builtin_type_module(env);
 	muse_define_builtin_type_vector(env);
 	muse_define_builtin_type_hashtable(env);
 	muse_define_builtin_type_bytes(env);
