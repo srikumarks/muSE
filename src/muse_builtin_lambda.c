@@ -470,17 +470,41 @@ muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args )
 		muse_cell f = _evalnext(&args);
 
 		/* Only works with user defined functions. */
-		muse_assert( _cellt(f) == MUSE_LAMBDA_CELL );
-
-		/* Bind all the keyword arguments to their values. */
+		switch ( _cellt(f) )
 		{
-			int bsp = bind_keys( env,args, (_head(f) < 0) ? MUSE_TRUE : MUSE_FALSE );
+		case MUSE_LAMBDA_CELL :
+			/* Bind all the keyword arguments to their values. */
+			{
+				int bsp = bind_keys( env, args, (_head(f) < 0) ? MUSE_TRUE : MUSE_FALSE );
 
-			muse_cell result = _do(_tail(f));
+				muse_cell result = _do(_tail(f));
 
-			_unwind_bindings(bsp);
+				_unwind_bindings(bsp);
 
-			return result;
+				return result;
+			}
+		case MUSE_NATIVEFN_CELL :
+			{
+				/* We're calling a native function which will do its own argument
+				evaluation. So pass the arguments without evaluating. */
+				int bsp = bind_keys( env, args, MUSE_TRUE );
+
+				/* We don't pass any arguments in the keywords case. If 
+				the function also takes positional arguments, it can use this
+				to determine whether it is being called with keywords or with
+				positional arguments. */
+				muse_cell result = _ptr(f)->fn.fn( env, _ptr(f)->fn.context, MUSE_NIL );
+
+				_unwind_bindings(bsp);
+
+				return result;
+
+			}
+		default:
+			MUSE_DIAGNOSTICS({
+				muse_message( env, L"(call/keywords >>fn<< ...)", L"Can only call functions!\nYou gave [%m].", f );
+			});
+			return MUSE_NIL;
 		}
 	}
 }
@@ -495,7 +519,7 @@ static int bind_alist( muse_env *env, muse_cell kvpairs )
 		muse_cell pair = _next(&kvpairs);
 
 		MUSE_DIAGNOSTICS({
-			muse_expect( env, L"(apply/keywords f >>alist<<)", L"v?", _head(pair), MUSE_SYMBOL_CELL );
+			muse_expect( env, L"(apply/keywords f '(... (>>key<< . value) ...))", L"v?", _head(pair), MUSE_SYMBOL_CELL );
 		});
 
 		_pushdef( _head(pair), _tail(pair) );
@@ -522,14 +546,21 @@ muse_cell fn_apply_w_keywords( muse_env *env, void *context, muse_cell args )
 	{
 		muse_cell f = _evalnext(&args);
 
-		/* Only works with user defined functions. */
-		muse_assert( _cellt(f) == MUSE_LAMBDA_CELL );
-
 		/* Bind all the keyword arguments to their values. */
 		{
 			int bsp = bind_alist( env, _evalnext(&args) );
 
-			muse_cell result = _do(_tail(f));
+			muse_cell result = MUSE_NIL;
+			
+			switch ( _cellt(f) )
+			{
+			case MUSE_LAMBDA_CELL	: result = _do(_tail(f)); break;
+			case MUSE_NATIVEFN_CELL : result = _ptr(f)->fn.fn( env, _ptr(f)->fn.context, MUSE_NIL ); break;
+			default:
+				MUSE_DIAGNOSTICS({
+					muse_message( env, L"(apply/keywords >>fn<< ...)", L"Can only apply functions!\nYou gave [%m].", f );
+				});
+			}
 
 			_unwind_bindings(bsp);
 
