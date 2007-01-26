@@ -23,22 +23,6 @@
 #endif
 
 /**
- * The muse environment contains the heap, the various stacks and symbols, and 
- * basically everything that happens in the interpreter is w.r.t. the environment.
- * There is only one global muse environment that you can change using the
- * muse_get_current_env() and muse_set_current_env() API calls. Having the muse
- * environment global simplifies the API calls. 
- * 
- * As of this implementation, the limitation is that only one muse environment
- * can be the current environment in a single process. It is possible to improve
- * this situation to allow multiple environments to be active in different
- * threads by changing the global to a thread-local variable. Then the
- * conbstraint would be that a single muse environment can be the current
- * environment in only one thread at any given time.
- */
-muse_env *g_muse_env = NULL;
-
-/**
  * String names for the various cell types, intended for
  * debugging and reporting use.
  * 
