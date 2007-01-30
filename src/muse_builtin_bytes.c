@@ -24,9 +24,12 @@
  *
  * A byte array is finite sized sequence of raw byte data. Raw data can be
  * embedded into a muSE text stream using the construct 
- * @code #11"blahblah..." @endcode. You can also read and write
- * raw byte data (without the bracketing information) using
- * \c read-bytes and \c write-bytes.
+ * @code #11[blahblah...] @endcode. You can also read and write
+ * raw byte data from any port using
+ * \ref fn_read_bytes "read-bytes" and \ref fn_write_bytes "write-bytes".
+ * You can access portions of a byte array by using the array
+ * object itself as a function (\ref fn_bytes_fn) and copy
+ * sections using \ref fn_copy_bytes "copy-bytes".
  */
 /*@{*/
 
@@ -282,18 +285,30 @@ static void put_long_LE( unsigned char *bytes, muse_int i )
 
 /**
  * (bytes-object byte-offset field-type [value])
- * (bytes-object byte-offset size)
- * (bytes-object byte-offset)
+ *
+ * Retrieves or modifies the data contents of the byte array
+ * according to a specified data type spec.
  *
  * The offset and offset + sizeof(field-type) must be within range.
- * field-type is one of - 'byte, 'short, 'int, 'long, 'float, 'double.
+ * The \p field-type is one of - \c 'byte, \c 'short, \c 'int, \c 'long, \c 'float, \c 'double.
  * The type names and sizes match the Java specification.
- * If a value is given the byte object is modified at the location.
- * If size is omitted, it is taken to be up to the end of the object.
+ * If a \p value is given the byte object is modified at the location.
+ * If given, the \p value must be of the appropriate type -
+ * integral for \c 'byte, \c 'short, \c 'int and \c 'long data types and 
+ * floating point for \c 'float and \c 'double.
  *
- * The types  'start, 'int and 'long stand for little endian
+ * The types  'short, 'int and 'long stand for little endian
  * byte order data. If you want to interpret the data as big-endian,
  * use 'Short, 'Int and 'Long instead, respectively.
+ *
+ * You can take a slice of a byte array by specifying an offset
+ * and a size as follows - @code (bytes-object offset size) @endcode.
+ * If you omit the \p size, a slice is created up to the end
+ * of the array from the given \p offset. The expression evaluates
+ * to a new slice object that refers to the original bytes object.
+ * Modifying the slice data modifies the original object.
+ * You can therefore use slicing to read data to a portion of a
+ * byte array from a port using \ref fn_read_bytes "read-bytes".
  */
 static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 {
@@ -484,7 +499,10 @@ static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t siz
 /**
  * (write-bytes [port] bytes [start-offset] [num-bytes])
  *
- * Write the raw byte sequence to the port.
+ * Write the raw byte sequence to the port. If port is omitted,
+ * the data goes to stdout. Optional start offset and size
+ * can be specified to write a portion of the byte array
+ * without having to allocate a new slice object.
  */
 static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 {
@@ -531,6 +549,9 @@ static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+/**
+ * Force read a given number of bytes or until eof.
+ */
 static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
 {
 	size_t nread = 0;
@@ -547,7 +568,7 @@ static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size
 }
 
 /**
- * (read-bytes [port] [bytes]) -> [bytes]
+ * (read-bytes [port] [bytes]) -> bytes
  *
  * Reads raw bytes from the given port or stdin. If a bytes
  * object is given, it attempts to fill it. If no bytes object
@@ -645,6 +666,7 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 
 /**
  * (bytes size)
+ *
  * Creates a new uninitialized byte array of the given size.
  */
 static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
@@ -661,6 +683,9 @@ static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
 
 /**
  * (copy-bytes size src src-offset dest dest-offset)
+ *
+ * Copies \p size bytes from \p src starting at \p src-offset
+ * to the \p dest buffer starting at \p dest-offset.
  */
 static muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
 {
