@@ -24,7 +24,7 @@
  *
  * A byte array is finite sized sequence of raw byte data. Raw data can be
  * embedded into a muSE text stream using the construct 
- * @code {bytes 11 "blahblah..."} @endcode. You can also read and write
+ * @code #11"blahblah..." @endcode. You can also read and write
  * raw byte data (without the bracketing information) using
  * \c read-bytes and \c write-bytes.
  */
@@ -170,6 +170,116 @@ static void bytes_write( muse_env *env, void *ptr, void *port )
 	port_putc( ']', p );
 }
 
+static short short_BE( const unsigned char *bytes )
+{
+	short i = bytes[0];
+	i = (i << 8) | bytes[1];
+	return i;
+}
+
+static short short_LE( const unsigned char *bytes )
+{
+	short i = bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static int int_BE( const unsigned char *bytes )
+{
+	int i = bytes[0];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[3];
+	return i;
+}
+
+static int int_LE( const unsigned char *bytes )
+{
+	int i = bytes[3];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static muse_int long_BE( const unsigned char *bytes )
+{
+	muse_int i = bytes[0];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[3];
+	i = (i << 8) | bytes[4];
+	i = (i << 8) | bytes[5];
+	i = (i << 8) | bytes[6];
+	i = (i << 8) | bytes[7];
+	return i;
+}
+
+static muse_int long_LE( const unsigned char *bytes )
+{
+	muse_int i = bytes[7];
+	i = (i << 8) | bytes[6];
+	i = (i << 8) | bytes[5];
+	i = (i << 8) | bytes[4];
+	i = (i << 8) | bytes[3];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static void put_short_BE( unsigned char *bytes, short i )
+{
+	bytes[0] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[1] = (unsigned char)(i & 0xFF);
+}
+
+static void put_short_LE( unsigned char *bytes, short i )
+{
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
+}
+
+static void put_int_BE( unsigned char *bytes, int i )
+{
+	bytes[0] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[3] = (unsigned char)(i & 0xFF);
+}
+
+static void put_int_LE( unsigned char *bytes, int i )
+{
+	bytes[3] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
+}
+
+static void put_long_BE( unsigned char *bytes, muse_int i )
+{
+	bytes[0] = (unsigned char)((i >> 56) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 48) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 40) & 0xFF);
+	bytes[3] = (unsigned char)((i >> 32) & 0xFF);
+	bytes[4] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[5] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[6] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[7] = (unsigned char)(i & 0xFF);
+}
+
+static void put_long_LE( unsigned char *bytes, muse_int i )
+{
+	bytes[7] = (unsigned char)((i >> 56) & 0xFF);
+	bytes[6] = (unsigned char)((i >> 48) & 0xFF);
+	bytes[5] = (unsigned char)((i >> 40) & 0xFF);
+	bytes[4] = (unsigned char)((i >> 32) & 0xFF);
+	bytes[3] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
+}
+
 /**
  * (bytes-object byte-offset field-type [value])
  * (bytes-object byte-offset size)
@@ -180,6 +290,10 @@ static void bytes_write( muse_env *env, void *ptr, void *port )
  * The type names and sizes match the Java specification.
  * If a value is given the byte object is modified at the location.
  * If size is omitted, it is taken to be up to the end of the object.
+ *
+ * The types  'start, 'int and 'long stand for little endian
+ * byte order data. If you want to interpret the data as big-endian,
+ * use 'Short, 'Int and 'Long instead, respectively.
  */
 static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 {
@@ -218,11 +332,18 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 			const muse_char *name = muse_symbol_name(env,field_type);
 
 			muse_assert( (wcscmp(name,L"byte") == 0 && offset+1 <= b->size)
+						|| (wcscmp(name,L"float") == 0 && offset+4 <= b->size)
+						|| (wcscmp(name,L"double") == 0 && offset+8 <= b->size)
+
+						/* Little endian */
 						|| (wcscmp(name,L"short") == 0 && offset+2 <= b->size)
 						|| (wcscmp(name,L"int") == 0 && offset+4 <= b->size)
 						|| (wcscmp(name,L"long") == 0 && offset+8 <= b->size)
-						|| (wcscmp(name,L"float") == 0 && offset+4 <= b->size)
-						|| (wcscmp(name,L"double") == 0 && offset+8 <= b->size)
+
+						/* Big endian */
+						|| (wcscmp(name,L"Short") == 0 && offset+2 <= b->size)
+						|| (wcscmp(name,L"Int") == 0 && offset+4 <= b->size)
+						|| (wcscmp(name,L"Long") == 0 && offset+8 <= b->size)
 					);
 
 			if ( value )
@@ -238,17 +359,17 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 
 				case 's':
 					muse_assert( i >= SHRT_MIN && i <= SHRT_MAX );
-					*(short*)(b->bytes + (size_t)offset) = (short)i;
+					put_short_LE( b->bytes + (size_t)offset, (short)i );
 					return value;
 
 				case 'i':
 					muse_assert( i >= INT_MIN && i <= INT_MAX );
-					*(int*)(b->bytes + (size_t)offset) = (int)i;
+					put_int_LE( b->bytes + (size_t)offset, (int)i );
 					return value;
 
 				case 'l':
 					muse_assert( i >= LLONG_MIN && i <= LLONG_MAX );
-					*(muse_int*)(b->bytes + (size_t)offset) = i;
+					put_long_LE( b->bytes + (size_t)offset, i );
 					return value;
 
 				case 'f':
@@ -258,6 +379,21 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 				case 'd':
 					*(double*)(b->bytes + (size_t)offset) = (double)_floatvalue(value);
 					return value;
+
+				case 'S':
+					muse_assert( i >= SHRT_MIN && i <= SHRT_MAX );
+					put_short_BE( b->bytes + (size_t)offset, (short)i );
+					return value;
+
+				case 'I':
+					muse_assert( i >= INT_MIN && i <= INT_MAX );
+					put_int_BE( b->bytes + (size_t)offset, (int)i );
+					return value;
+
+				case 'L':
+					muse_assert( i >= LLONG_MIN && i <= LLONG_MAX );
+					put_long_BE( b->bytes + (size_t)offset, i );
+					return value;
 				}
 			}
 			else
@@ -265,18 +401,21 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 				switch ( name[0] )
 				{
 				case 'b': return _mk_int( (char)b->bytes[(size_t)offset] );
-				case 's': return _mk_int( ((short*)(b->bytes + (size_t)offset))[0] );
-				case 'i': return _mk_int( ((int*)(b->bytes + (size_t)offset))[0] );
-				case 'l': return _mk_int( ((muse_int*)(b->bytes + (size_t)offset))[0] );
+				case 's': return _mk_int( short_LE( b->bytes + (size_t)offset ) );
+				case 'i': return _mk_int( int_LE( b->bytes + (size_t)offset ) );
+				case 'l': return _mk_int( long_LE( b->bytes + (size_t)offset ) );
 				case 'f': return _mk_float( ((float*)(b->bytes + (size_t)offset))[0] );
 				case 'd': return _mk_float( ((double*)(b->bytes + (size_t)offset))[0] );
+				case 'S': return _mk_int( short_BE( b->bytes + (size_t)offset ) );
+				case 'I': return _mk_int( int_BE( b->bytes + (size_t)offset ) );
+				case 'L': return _mk_int( long_BE( b->bytes + (size_t)offset ) );
 				}
 			}
 		}
 		break;
 	}
 
-	muse_assert( !"Field type must be one of 'byte, 'short, 'int, 'long, 'float, 'double or an integer size value!" );
+	muse_assert( !"Field type must be one of 'byte, '[s|S]hort, '[i|I]nt, '[l|L]ong, 'float, 'double or an integer size value!" );
 	return MUSE_NIL;
 }
 
