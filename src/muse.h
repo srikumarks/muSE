@@ -375,6 +375,7 @@ muse_cell	muse_assoc( muse_env *env, muse_cell alist, muse_cell prop );
 muse_cell	*muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop );
 muse_cell	muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop );
 muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value );
+muse_cell	muse_search_object( muse_env *env, muse_cell obj, muse_cell member );
 /*@}*/
 
 /** @name I/O */
