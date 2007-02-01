@@ -47,13 +47,18 @@ static bytes_t *bytes_alloc( bytes_t *b, muse_int size )
 {
 	b->size = size;
 	if ( size > 0 )
-		b->bytes = (unsigned char *)malloc( (size_t)size );
+		b->bytes = (unsigned char *)calloc( (size_t)size, 1 );
 	return b;
 }
 
 static void bytes_free( bytes_t *b )
 {
-	free(b->bytes);
+	if ( b->bytes )
+	{
+		free(b->bytes);
+		b->bytes = NULL;
+		b->size = 0;
+	}
 }
 
 #define _bytes_data(b) bytes_data(env,b)
@@ -68,9 +73,7 @@ muse_cell mk_bytes( muse_env *env, muse_int size )
 	muse_cell bytes = _mk_functional_object( &g_bytes_type, MUSE_NIL );
 	bytes_t *b = _bytes_data(bytes);
 	b->ref = bytes;
-	b->size = size;
-	if ( size > 0 )
-		b->bytes = (unsigned char *)malloc((size_t)size);
+	bytes_alloc( b, size );
 	return bytes;
 }
 
@@ -108,20 +111,13 @@ static muse_cell mk_slice( muse_env *env, muse_cell b, muse_int offset, muse_int
 }
 
 
-/**
- * (bytes size)
- * Creates an uninitialized bytes-array of the given size.
- */
 static void bytes_init( muse_env *env, void *ptr, muse_cell args )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
 	b->size = args ? _intvalue(_evalnext(&args)) : (muse_int)0;
 
-	if ( b->size > 0 )
-		b->bytes = (unsigned char *)malloc( (size_t)b->size );
-	else
-		b->size = 0;
+	bytes_alloc( b, b->size );
 }
 
 static void bytes_mark( muse_env *env, void *ptr )
@@ -133,11 +129,9 @@ static void bytes_destroy( muse_env *env, void *ptr )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
-	if ( _bytes_data(b->ref) == b && b->bytes != NULL )
+	if ( _bytes_data(b->ref) == b )
 	{
-		free(b->bytes);
-		b->size = 0;
-		b->bytes = NULL;
+		bytes_free(b);
 	}
 }
 
@@ -297,9 +291,9 @@ static void put_long_LE( unsigned char *bytes, muse_int i )
  * integral for \c 'byte, \c 'short, \c 'int and \c 'long data types and 
  * floating point for \c 'float and \c 'double.
  *
- * The types  'short, 'int and 'long stand for little endian
+ * The types \c 'short, \c 'int and \c 'long stand for little endian
  * byte order data. If you want to interpret the data as big-endian,
- * use 'Short, 'Int and 'Long instead, respectively.
+ * use \c 'Short, \c 'Int and \c 'Long instead, respectively.
  *
  * You can take a slice of a byte array by specifying an offset
  * and a size as follows - @code (bytes-object offset size) @endcode.
@@ -363,6 +357,8 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 
 			if ( value )
 			{
+				/* We're setting a value. */
+
 				muse_int i = _intvalue(value);
 
 				switch ( name[0] )
@@ -413,6 +409,8 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 			}
 			else
 			{
+				/* We're getting a value. */
+
 				switch ( name[0] )
 				{
 				case 'b': return _mk_int( (char)b->bytes[(size_t)offset] );
