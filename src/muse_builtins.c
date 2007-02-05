@@ -27,6 +27,8 @@ static const struct _builtins
 {		L"eval",		fn_eval				},
 {		L"fn",			syntax_lambda		},
 {		L"fn:",			syntax_block		},
+{		L"gfn",			syntax_generic_lambda	},
+{		L"gfn:",		syntax_generic_block	},
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
 {		L"apply/keywords",	fn_apply_w_keywords	},
@@ -46,6 +48,8 @@ static const struct _builtins
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},
+{		L"define-extension",	fn_define_extension		},
+{		L"define-override",		fn_define_override		},
 {		L"set!",		fn_set_M			},
 {		L"setf!",		fn_setf_M			},
 {		L"setr!",		fn_setr_M			},

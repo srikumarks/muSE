@@ -25,6 +25,8 @@ muse_cell fn_quote( muse_env *env, void *context, muse_cell args );
 muse_cell fn_cons( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_block( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_generic_lambda( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_generic_block( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_let( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_case( muse_env *env, void *context, muse_cell args );
 muse_cell fn_apply( muse_env *env, void *context, muse_cell args );
@@ -54,6 +56,8 @@ muse_cell fn_gensym( muse_env *env, void *context, muse_cell args );
 /** @addtogroup CellManipulation Basic cell, list and symbol manipulation */
 /*@{*/
 muse_cell fn_define( muse_env *env, void *context, muse_cell args );
+muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args );
+muse_cell fn_define_override( muse_env *env, void *context, muse_cell args );
 muse_cell fn_set_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args );

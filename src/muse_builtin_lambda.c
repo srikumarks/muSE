@@ -372,6 +372,104 @@ muse_cell syntax_block( muse_env *env, void *context, muse_cell args )
 	return _setcellt( args, MUSE_LAMBDA_CELL );
 }
 
+static muse_cell case_lambda( muse_env *env, muse_cell fn )
+{
+	muse_cell generic_args = _csymbol(L"{{generic-args}}");
+	
+	muse_cell qqopt_generic_args = _head(fn) < 0 ? _qq(generic_args) : generic_args;
+
+	muse_cell case_e = _head(fn) < 0 ? _cons( _quq(_head(fn)), _tail(fn) ) : _setcellt( fn, MUSE_CONS_CELL );
+
+	/* Construct a "case-lambda" for the generic function. */
+	{
+		muse_cell gfn = _setcellt( _cons( qqopt_generic_args,
+										  _cons( _cons( _symval(_csymbol(L"case")),
+														_cons( generic_args,
+															   _cons( case_e, 
+																	  MUSE_NIL ) ) ),
+											     MUSE_NIL ) ),
+								   MUSE_LAMBDA_CELL );
+
+		return gfn;
+	}
+}
+
+/** @addtogroup GenericFns Generic functions 
+ * A generic function is one whose definition can be augmented
+ * even after it is first created. Every function presents a
+ * "case" to the evaluator - its supplied argument may or
+ * may not match the declared argument pattern of the function.
+ * The generic function mechanism allows you to define a function
+ * in terms of a number of such cases that are incrementally
+ * specified - potentially in different source files.
+ *
+ * For example, the humble factorial can be defined in 
+ * two phases -
+ * @code
+ * (define fact (gfn (1) 1))
+ * (define fact (fn (n) (* n (fact (- n 1)))))
+ * @endcode
+ * The second function's definition is added to the existing 
+ * generic function so that you can do the following -
+ * @code
+ * > (fact 3)
+ * 6
+ * > (fact 5)
+ * 120
+ * @endcode
+ *
+ * You can use \ref fn_define_extension "define-extension" or
+ * \ref fn_define_override "define-override" to augment a generic
+ * function. When supplied with a generic function, \ref fn_define "define"
+ * itself behaves like \c define-extension which is the most common
+ * use case for generic functions.
+ *
+ * It is important to note that if a partially specified generic function
+ * is captured in a closure and then augmented with a new case, 
+ * the new case \b will influence the closure.
+ *
+ * Since macros are just functions, you can create "generic macros"
+ * the same way you create generic functions. The constraint here is
+ * that a function used to extend a generic macro must itself be
+ * a macro.
+ *
+ * There is some overhead to using generic functions
+ * versus normal functions - the overhead of dispatching a given
+ * set of arguments to the appropriate case. 
+ */
+/*@{*/
+
+/**
+ * (gfn formal-args body)
+ *
+ * \c gfn creates a generic function that can be extended or overridden using
+ * \ref fn_define_extension "define-extension" and \ref fn_define_override "define-override". 
+ * You can define generic functions as well as macros.
+ *
+ * @see \ref syntax_generic_block "gfn:"
+ */
+muse_cell syntax_generic_lambda( muse_env *env, void *context, muse_cell args ) 
+{
+	return case_lambda( env, syntax_lambda( env, context, args ) );
+}
+
+/**
+ * (gfn: formal-args body)
+ *
+ * \c gfn: creates a generic function that can be extended or overridden using
+ * \ref fn_define_extension "define-extension" and \ref fn_define_override "define-override". 
+ * This version is similar to \ref syntax_generic_lambda "gfn", but
+ * uses dynamic scoping in its body.
+ *
+ * @see \ref syntax_generic_lambda "gfn"
+ */
+muse_cell syntax_generic_block( muse_env *env, void *context, muse_cell args ) 
+{
+	return case_lambda( env, syntax_block( env, context, args ) );
+}
+
+/*@}*/
+
 /**
  * (apply fn arglist).
  * Equivalent to @code (eval (cons fn arglist)) @endcode. The \c apply function
