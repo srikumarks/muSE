@@ -47,17 +47,20 @@ static void anonymize_formals( muse_env *env, muse_cell syms )
 	}
 }
 
-static void anonymize_letvars( muse_env *env, muse_cell bindings )
-{
-	int sp = _spos();
-	while ( bindings )
-	{
-		anonymize_formals( env, _head(_next(&bindings)) );
-		_unwind(sp);
-	}
-}
-
 static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean list_start );
+
+static muse_cell anonymize_copy_letvars( muse_env *env, muse_cell bindings )
+{
+	if ( bindings )
+	{
+		muse_cell b = _head(bindings);
+		muse_cell bcopy = _cons( _head(b), bind_copy_body( env, _tail(b), MUSE_FALSE ) );
+		anonymize_formals( env, _head(b) );
+		return _cons( bcopy, anonymize_copy_letvars( env, _tail(bindings)) );
+	}
+	else
+		return MUSE_NIL;
+}
 
 static muse_cell anonymize_copy_case_body( muse_env *env, muse_cell body )
 {
@@ -141,8 +144,8 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 					{
 						muse_cell c = _cons( MUSE_NIL, MUSE_NIL );
 						int bsp = _bspos();
-						anonymize_letvars( env, _head(_tail(body)) );
-						_setht( c, h, bind_copy_body(env,_tail(body),MUSE_FALSE) );
+						muse_cell vars = anonymize_copy_letvars( env, _head(_tail(body)) );
+						_setht( c, h, _cons( vars, bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE) ) );
 						_unwind_bindings(bsp);
 						return c;
 					}
