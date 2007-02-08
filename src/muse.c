@@ -1583,7 +1583,7 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 
 	if ( p->state_bits & MUSE_PROCESS_WAITING )
 	{
-		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(p) )
+		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(env->current_process) )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }

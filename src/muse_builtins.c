@@ -867,7 +867,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 
 		/* After removing, check if we've reached the end of the message queue. */
 		if ( msg == p->mailbox_end )
-			p->mailbox_end = _tail(msgs);
+			p->mailbox_end = msgs;
 
 		return _head( msg );
 	}
