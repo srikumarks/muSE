@@ -303,8 +303,6 @@ muse_env *muse_init_env( const int *parameters )
 	return env;
 }
 
-void muse_network_shutdown( muse_env *env );
-
 /**
  * Destroys the given environment. If the given
  * environment is the current environment, then
@@ -326,7 +324,6 @@ void muse_destroy_env( muse_env *env )
 	}
 
 	muse_gc(env, 0);
-	muse_network_shutdown(env);
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
