@@ -997,20 +997,29 @@ void muse_gc_impl( muse_env *env, int free_cells_needed );
  */
 void muse_gc( muse_env *env, int free_cells_needed )
 {
-	fprintf(stderr, "Gc...");
-	fflush(stderr);
+	MUSE_DIAGNOSTICS3({
+		fprintf(stderr, "Gc...");
+		fflush(stderr);
+	});
+
 	{
+#if MUSE_DIAGNOSTICS_LEVEL >= 3
 		muse_int time_taken;
 		void *timer = muse_tick();
+#endif
+
 		env->collecting_garbage = MUSE_TRUE;
 		enter_atomic(env);
 		muse_gc_impl( env, free_cells_needed );
 		leave_atomic(env);
 		env->collecting_garbage = MUSE_FALSE;
-		time_taken = muse_tock(timer);
-		fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
-		fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
-		fflush( stderr );
+
+		MUSE_DIAGNOSTICS3({
+			time_taken = muse_tock(timer);
+			fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
+			fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
+			fflush( stderr );
+		});
 	}
 }
 
