@@ -1368,7 +1368,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 			
 			if ( l ) 
 			{
-				if ( need_line_break || (_cellt(h) == MUSE_CONS_CELL && !_isquote(_head(h))) || _cellt(h) == MUSE_TEXT_CELL )
+				if ( need_line_break || (_cellt(h) == MUSE_CONS_CELL && h >= 0 && !_isquote(_head(h))) || _cellt(h) == MUSE_TEXT_CELL )
 				{
 					pretty_printer_line_break(f);
 					need_line_break = MUSE_TRUE;
