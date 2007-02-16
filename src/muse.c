@@ -223,7 +223,7 @@ static void init_parameters( muse_env *env, const int *parameters )
 		0,		/* MUSE_DISCARD_DOC */
 		1,		/* MUSE_PRETTY_PRINT */
 		4,		/* MUSE_TAB_SIZE */
-		10		/* MUSE_DEFAULT_ATTENTION */
+		1		/* MUSE_DEFAULT_ATTENTION */
 	};
 
 	/* Initialize default values. */
@@ -1329,8 +1329,18 @@ muse_boolean run_process()
  */
 muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 {
+SWITCH_TO_PROCESS:
 	if ( env->current_process == process )
-		return MUSE_TRUE;
+	{
+		/* We reach here only on deadlock conditions. However,
+		there may be a timeout in effect, in which case we shouldn't
+		use up CPU time just looping and should sleep like a good
+		citizen. */
+		if ( process->state_bits & MUSE_PROCESS_WAITING )
+			muse_sleep( 1000 );
+		else
+			return MUSE_TRUE;
+	}
 
 	if ( process->state_bits & (MUSE_PROCESS_RUNNING | MUSE_PROCESS_VIRGIN) )
 	{
@@ -1375,12 +1385,13 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 				process->state_bits = MUSE_PROCESS_RUNNING;
 		}
 
-		if ( process->state_bits == MUSE_PROCESS_RUNNING )
-			return switch_to_process( env, process );
+		if ( process->state_bits == MUSE_PROCESS_RUNNING && env->current_process != process )
+			goto SWITCH_TO_PROCESS;
 	}
 
 	/* Can't run this one. Try the next process. */
-	return switch_to_process( env, process->next );
+	process = process->next;
+	goto SWITCH_TO_PROCESS;
 }
 
 /**

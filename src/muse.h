@@ -276,7 +276,7 @@ typedef enum
 	MUSE_DISCARD_DOC,			/**< Boolean parameter indicating that documentation should not be kept. Default = MUSE_FALSE. */
 	MUSE_PRETTY_PRINT,			/**< Boolean parameter indicating whether write and print should indent their output. Default = MUSE_TRUE */
 	MUSE_TAB_SIZE,				/**< Defaults to 4. Controls pretty printed output. */
-	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 10. */
+	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 1. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;

@@ -886,14 +886,23 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 {
+	muse_process_frame_t *p = env->current_process;
 	muse_int timeout_us = args ? _intvalue( _evalnext(&args) ) : -1;
 	muse_int endtime_us = timeout_us + muse_elapsed_us(env->timer);
 
 	do
 	{
+		p->state_bits = MUSE_PROCESS_WAITING;
+
+		if ( timeout_us >= 0 )
+		{
+			p->state_bits |= MUSE_PROCESS_HAS_TIMEOUT;
+			p->timeout_us = endtime_us;
+		}
+
 		switch_to_process( env, env->current_process->next );
 	}
-	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
+	while ( timeout_us < 0 );
 
 	return MUSE_NIL;
 }
