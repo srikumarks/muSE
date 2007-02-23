@@ -109,7 +109,7 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 						do any substitution in the body. */
 						return body;
 					}
-					else if ( fn == syntax_lambda || fn == syntax_block )
+					else if ( fn == syntax_lambda || fn == syntax_block || fn == syntax_generic_lambda || fn == syntax_generic_block )
 					{
 						/* Need to copy body for subexpressions that are
 						both lexically as well as dynamically scoped. The
