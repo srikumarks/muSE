@@ -460,6 +460,9 @@ typedef struct _trap_point_t
 	resume_point_t escape;	/**< The resume point to invoke to return from the try block. */
 	muse_cell handlers;		/**< A list of unevaluated handlers. */
 	muse_cell prev;			/**< The previous trap point. */
+	muse_cell tried_handlers; /**< The list of handlers already tried. 
+									 Used to prevent re-entry into the same handler
+									 that might result in an infinite loop and stack blow up. */
 } trap_point_t;
 
 
@@ -480,8 +483,9 @@ static void trap_point_init( muse_env *env, void *p, muse_cell args )
 static void trap_point_mark( muse_env *env, void *p )
 {
 	trap_point_t *trap = (trap_point_t*)p;
-	muse_mark(env,trap->handlers);
-	muse_mark(env,trap->prev);
+	muse_mark( env, trap->handlers );
+	muse_mark( env, trap->tried_handlers );
+	muse_mark( env, trap->prev );
 }
 
 static muse_cell fn_trap_point( muse_env *env, void *trap_point, muse_cell args )
@@ -516,22 +520,30 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 	muse_cell trapval = _symval( sym_trap_point );
 
 	trap_point_t *trap = (trap_point_t*)_functional_object_data( trapval, 'trap' );
+	
+	/* Note that the value of the "{{trap-point}}" symbol, which holds the
+	list of trap points, is not modified in the loop below. This has the
+	consequence that if a handler itself raises an exception, the exception
+	pattern is searched for again starting from the handlers in the 
+	inner-most try block from which the original exception was raised. 
+	Using the "tried_handlers" list, we prevent the exception raising handler
+	from calling itself again, but every other handler gets a second chance.
+	This facility gives us Common-Lisp like exception handling and
+	recovery without the syntactic clutter. */
 
 	if ( trap )
 	{
 		muse_cell handlers = trap->handlers;
-
-		/* The trap point state must be redefined to the previous
-		one because if an exception is raised within a handler,
-		it must evaluate it w.r.t. the try block that encloses
-		the try block in which the first exception was raised. */
-		_define( _builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 
 		while ( handlers )
 		{
 			/* Note that handlers are expected to be in-place values,
 			defined using macro braces. */
 			muse_cell h = _next(&handlers);
+			
+			/* Ignore all the handlers that are being tried now. */
+			while ( muse_find_list_element( env, &(trap->tried_handlers), h ) )
+				h = _next(&handlers);
 
 			if ( _cellt(h) == MUSE_LAMBDA_CELL )
 			{
@@ -542,7 +554,20 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 				if ( muse_bind_formals( env, formals, handler_args ) )
 				{
 					muse_cell result;
+					trap->tried_handlers = _cons(h,trap->tried_handlers);
 					result = _do(_tail(h));
+
+					/* The cons cell taken for the handlers list is a 
+					scaffolding cell taken by the runtime and not accessible
+					to the running code. So we can immediately return it to
+					the free list. This will save some unnecessary garbage 
+					build up.*/
+					{
+						muse_cell used_cell = trap->tried_handlers;
+						trap->tried_handlers = _tail(trap->tried_handlers);
+						_returncell( used_cell );
+					}
+
 					_unwind_bindings(bsp);
 					resume_invoke( env, &(trap->escape), result );
 				}
@@ -566,9 +591,6 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 				}
 
 				handlers = trap->handlers;
-
-				/* See note above on similar line. */
-				_define( _builtin_symbol( MUSE_TRAP_POINT ), trap->prev );
 			}
 		}
 	}
@@ -609,14 +631,23 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
  * tried in turn until the argument pattern of one of the handlers
  * matches the raised exception. The body of the handler whose
  * arguments matched the exception is evaluated and the result
- * is returned as the result of the try block. Handlers may themselves
- * raise exceptions in order to jump up to the enclosing try block.
+ * is returned as the result of the try block. 
  *
  * The first argument to the handler is an exception object whose
  * sole purpose is to enable the handler to resume the computation
  * with a given value as the result of the (raise...) expression that
  * raised the exception. The rest of the arguments to a handler
  * are the same arguments that were passed to \c raise.
+ *
+ * Handlers may themselves raise exceptions. The raised exceptions
+ * start \b again from the inner most set of handlers and
+ * try to find another handler to match it. This gives you the
+ * facility to decide exception handling policies at a level higher
+ * than the level that implements the policy. Note that if you raise 
+ * the same exception pattern captured by the handler, you'll
+ * \b not end up in the same handler again in an infinite loop and blow the
+ * stack. The handler invocation is protected from such re-entry.
+ * This lets you delegate the exception to an even higher level.
  *
  * If a handler is not a function object, then its value is
  * used as the value of the try block without further checks.
