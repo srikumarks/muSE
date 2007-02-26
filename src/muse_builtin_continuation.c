@@ -537,45 +537,46 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 
 		while ( handlers )
 		{
-			/* Note that handlers are expected to be in-place values,
-			defined using macro braces. */
-			muse_cell h = _next(&handlers);
-			
 			/* Ignore all the handlers that are being tried now. */
-			while ( muse_find_list_element( env, &(trap->tried_handlers), h ) )
-				h = _next(&handlers);
+			while ( handlers && muse_find_list_element( env, &(trap->tried_handlers), _head(handlers) ) )
+				_step(&handlers);
 
-			if ( _cellt(h) == MUSE_LAMBDA_CELL )
+			if ( handlers )
 			{
-				/* A handler needs to be examined. */
-				muse_cell formals = _quq(_head(h));
-				int bsp = _bspos();
+				muse_cell h = _next(&handlers);
 
-				if ( muse_bind_formals( env, formals, handler_args ) )
+				if ( _cellt(h) == MUSE_LAMBDA_CELL )
 				{
-					muse_cell result;
-					trap->tried_handlers = _cons(h,trap->tried_handlers);
-					result = _do(_tail(h));
+					/* A handler needs to be examined. */
+					muse_cell formals = _quq(_head(h));
+					int bsp = _bspos();
 
-					/* The cons cell taken for the handlers list is a 
-					scaffolding cell taken by the runtime and not accessible
-					to the running code. So we can immediately return it to
-					the free list. This will save some unnecessary garbage 
-					build up.*/
+					if ( muse_bind_formals( env, formals, handler_args ) )
 					{
-						muse_cell used_cell = trap->tried_handlers;
-						trap->tried_handlers = _tail(trap->tried_handlers);
-						_returncell( used_cell );
-					}
+						muse_cell result;
+						trap->tried_handlers = _cons(h,trap->tried_handlers);
+						result = _do(_tail(h));
 
-					_unwind_bindings(bsp);
-					resume_invoke( env, &(trap->escape), result );
+						/* The cons cell taken for the handlers list is a 
+						scaffolding cell taken by the runtime and not accessible
+						to the running code. So we can immediately return it to
+						the free list. This will save some unnecessary garbage 
+						build up.*/
+						{
+							muse_cell used_cell = trap->tried_handlers;
+							trap->tried_handlers = _tail(trap->tried_handlers);
+							_returncell( used_cell );
+						}
+
+						_unwind_bindings(bsp);
+						resume_invoke( env, &(trap->escape), result );
+					}
 				}
-			}
-			else
-			{
-				/* The "handler" itself is the result of the try block. */
-				resume_invoke( env, &(trap->escape), h );
+				else
+				{
+					/* The "handler" itself is the result of the try block. */
+					resume_invoke( env, &(trap->escape), h );
+				}
 			}
 
 			/* Switch to handlers of shallower scopes if necessary. */
