@@ -40,6 +40,7 @@ muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
 /*@{*/
 muse_cell syntax_try( muse_env *env, void *context, muse_cell args );
 muse_cell fn_raise( muse_env *env, void *context, muse_cell args );
+muse_cell fn_retry( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup PropertyLists Property lists */

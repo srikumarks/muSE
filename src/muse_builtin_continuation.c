@@ -371,6 +371,11 @@ muse_cell fn_callcc( muse_env *env, void *context, muse_cell args )
  * \c "{{trap}}".) The \c try protected expression is then evaluated. When evaluation is
  * complete, the handler stack is unwound and the set of handlers defined by the
  * enclosing \ref syntax_try "try" block take effect.
+ *
+ * If you want to try an alternative code path instead of raising a resumable
+ * exception, use \ref fn_retry "retry" instead of \ref fn_raise "raise".
+ * Alternative code paths are to be considered part of the "interface" of 
+ * a function and must be documented along with the function.
  */
 /*@{*/
 
@@ -415,7 +420,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		_unwind( rp->spos );
 		_unwind_bindings( rp->bspos );
 		_define( _builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
-		rp->result = setjmp_result-1;
+		rp->result = (setjmp_result >= 0) ? (setjmp_result-1) : setjmp_result;
 	}
 
 	return setjmp_result;
@@ -428,7 +433,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
  */
 static void resume_invoke( muse_env *env, resume_point_t *p, muse_cell result )
 {
-	longjmp( p->state, result+1 );
+	longjmp( p->state, (result >= 0) ? (result+1) : result );
 }
 
 /**
@@ -465,6 +470,11 @@ typedef struct _trap_point_t
 									 that might result in an infinite loop and stack blow up. */
 } trap_point_t;
 
+#define _tpdata(trap) trap_point_data(env,trap)
+static trap_point_t *trap_point_data( muse_env *env, muse_cell trap )
+{
+	return (trap_point_t*)_functional_object_data(trap, 'trap');
+}
 
 static void trap_point_init( muse_env *env, void *p, muse_cell args )
 {
@@ -479,9 +489,10 @@ static void trap_point_init( muse_env *env, void *p, muse_cell args )
 
 	trap->prev = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
 
-	trap->tried_handlers = trap->prev 
-								? ((trap_point_t*)_functional_object_data( _head(trap->prev), 'trap' ))->tried_handlers 
-								: MUSE_NIL;
+	{
+		trap_point_t *trap_prev = _tpdata(trap->prev);
+		trap->tried_handlers = trap_prev ? trap_prev->tried_handlers : MUSE_NIL;
+	}
 }
 
 static void trap_point_mark( muse_env *env, void *p )
@@ -523,9 +534,9 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 
 	muse_cell trapval = _symval( sym_trap_point );
 
-	trap_point_t *trap = (trap_point_t*)_functional_object_data( trapval, 'trap' );
+	trap_point_t *trap = _tpdata(trapval);
 	
-	/* Note that the value of the "{{trap-point}}" symbol, which holds the
+	/* Note that the value of the "{{trap}}" symbol, which holds the
 	list of trap points, is not modified in the loop below. This has the
 	consequence that if a handler itself raises an exception, the exception
 	pattern is searched for again starting from the handlers in the 
@@ -565,8 +576,8 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 						scaffolding cell taken by the runtime and not accessible
 						to the running code. So we can immediately return it to
 						the free list. This will save some unnecessary garbage 
-						build up.*/
-						_returncell( _next( &(trap->tried_handlers) ) );
+						build up.*/ 
+						_returncell( _step( &(trap->tried_handlers) ) );
 
 						_unwind_bindings(bsp);
 						resume_invoke( env, &(trap->escape), result );
@@ -583,7 +594,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 			while ( !handlers )
 			{
 				trapval = trap->prev;
-				trap = (trap_point_t*)_functional_object_data( trapval, 'trap' );
+				trap = _tpdata(trapval);
 
 				if ( trap == NULL )
 				{
@@ -686,7 +697,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell trapval = _mk_functional_object( &g_trap_point_type, _tail(args) );
 
-	trap_point_t *tp = (trap_point_t*)_functional_object_data( trapval, 'trap' );
+	trap_point_t *tp = _tpdata(trapval);
 
 	muse_cell result = MUSE_NIL;
 
@@ -699,10 +710,19 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 	}
 	else
 	{
-		/* Exception raised and a handler was invoked which 
-		gave us this value. Return from the try block with the
-		given result. */
-		result = tp->escape.result;
+		if ( tp->escape.result < 0 )
+		{
+			/* Something invoked "retry". Try all handlers with the given
+			argument list - which is given by -ve of the result code. */
+			try_handlers( env, _quq(tp->escape.result) );
+		}
+		else
+		{
+			/* Exception raised and a handler was invoked which 
+			gave us this value. Return from the try block with the
+			given result. */
+			result = tp->escape.result;
+		}
 	}
 
 	tp->tried_handlers = MUSE_NIL;
@@ -743,3 +763,30 @@ muse_cell fn_raise( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+/**
+ * Similar to \ref fn_raise "raise" but does not prepend a resume
+ * continuation to the trial condition. This is useful to provide
+ * alternative inner code paths that can be invoked from 
+ * an outer level. The argument pattern of an alternative should
+ * not expect a resume continuation as the first argument.
+ *
+ * While a "raise" expression may evaluate to some value, a "retry" 
+ * exception never completes evaluation, so it is not meaningful to 
+ * use its result value for anything.
+ */
+muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+	muse_cell handler_args = muse_eval_list( env, args );
+	trap_point_t *trap = _tpdata(trapval);
+
+	if ( trap )
+		resume_invoke( env, &(trap->escape), _qq(handler_args) );
+	else
+	{
+		muse_message( env, L"(retry ...)", L"No alternatives to try!\nEnclose in (try ...) block and provide alternatives." );
+		remove_process( env->current_process );
+	}
+
+	return MUSE_NIL; /* Never returns! */
+}

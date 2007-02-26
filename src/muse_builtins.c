@@ -36,6 +36,7 @@ static const struct _builtins
 {		L"call/cc",		fn_callcc			},
 {		L"try",			syntax_try				},
 {		L"raise",		fn_raise			},
+{		L"retry",		fn_retry			},
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
