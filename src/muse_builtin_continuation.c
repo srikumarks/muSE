@@ -562,11 +562,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 						to the running code. So we can immediately return it to
 						the free list. This will save some unnecessary garbage 
 						build up.*/
-						{
-							muse_cell used_cell = trap->tried_handlers;
-							trap->tried_handlers = _tail(trap->tried_handlers);
-							_returncell( used_cell );
-						}
+						_returncell( _next( &(trap->tried_handlers) ) );
 
 						_unwind_bindings(bsp);
 						resume_invoke( env, &(trap->escape), result );
