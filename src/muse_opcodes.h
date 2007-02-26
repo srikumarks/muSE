@@ -54,7 +54,7 @@ typedef struct { muse_nativefn_t fn; void *context; }	muse_nativefn_cell;
  * A string is represented in a single cell by storing
  * a pair of pointers to the start of the string and
  * the end of the string. The end pointer points to the
- * '\0' character that is stored at the end of the string.
+ * null character that is stored at the end of the string.
  * The text cell is managed by the muse environment and
  * will be de4stroyed at garbage collection time if no
  * other cells refer to it.

@@ -32,11 +32,19 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Small code foot-print
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
- *	- A simple object system for adding new native object types.
- * 
- * Version 0.2cp adds support for Erlang style processes and
- * resumable exception handling.
+ *  - Ability to add C/C++ based native functionality in the form of plugin DLLs.
+ *	- A simple native object system for adding new native object types.
  *
+ * Language features include -
+ *	- Lexically scoped closures as well as dynamically scoped blocks.
+ *	- Expressive reader macro system where macros are first class citizens 
+ *		(i.e. can be passed around as arguments to functions, assigned to variables, etc.)
+ *	- Uniform use of pattern matching for variable binding. 
+ *	- Erlang style message passing processes.
+ *	- Networking support that's process aware.
+ *	- Resumable exceptions with exception handler dispatch using pattern matching bind.
+ *	- Generic functions.
+ *  
  * @section Objects Basic objects
  * 
  * Everything in muSE is built from the following set of objects -
@@ -100,6 +108,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_DataStructures Data structures
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
+ *	- \ref ByteArray "byte arrays"
  *
  * @subsection ML_ObjectSystem Object system
  * 	- \ref fn_class "class"
