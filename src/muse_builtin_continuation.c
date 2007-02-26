@@ -478,6 +478,10 @@ static void trap_point_init( muse_env *env, void *p, muse_cell args )
 	trap->handlers = muse_eval_list(env, args);
 
 	trap->prev = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+
+	trap->tried_handlers = trap->prev 
+								? ((trap_point_t*)_functional_object_data( _head(trap->prev), 'trap' ))->tried_handlers 
+								: MUSE_NIL;
 }
 
 static void trap_point_mark( muse_env *env, void *p )
@@ -701,6 +705,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 		result = tp->escape.result;
 	}
 
+	tp->tried_handlers = MUSE_NIL;
 	_define( _builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
 	return result;
 }
