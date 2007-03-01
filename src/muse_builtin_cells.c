@@ -12,6 +12,87 @@
 
 #include "muse_builtins.h"
 
+enum
+{
+	DEFINE_NORMAL,
+	DEFINE_EXTENSION,
+	DEFINE_OVERRIDE
+};
+
+/**
+ * Does normal definition as well as extensions and overrides.
+ */
+static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell gen, muse_cell fn )
+{
+	if ( (_cellt(gen) != MUSE_LAMBDA_CELL) || (_quq(_head(gen)) != _csymbol(L"{{generic-args}}")) )
+	{
+		MUSE_DIAGNOSTICS({
+			if ( option > DEFINE_NORMAL && _cellt(gen) == MUSE_LAMBDA_CELL )
+				muse_message( env, option == DEFINE_EXTENSION 
+										? L"(define-extension >>genfn<< ...)" 
+										: L"(define-override >>genfn<< ...)",
+									L"Expecting a generic function, but got a normal function instead!" );
+
+			if ( sym != gen )
+				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined." );
+		});
+
+		/*	First mark the symbol as a fresh symbol by defining it to be itself.
+			This way, if the symbol is referred to in the body of the value,
+			it will remain unchanged so that recursive functions can be written. 
+			Note that the value is evaluated after this assignment is made in order
+			to make the self-substitution happen.
+			
+			NOTE: There is no implementation of tail-recursion. So beware of
+			stack blowup. It usually safe to use recursion for small bound
+			routines such as syntax transformers. */
+		_define( sym, sym );
+
+		fn = _eval(fn);
+
+		_define( sym, fn );
+		return fn;
+	}
+
+	/* We're working with a generic function, so
+	we don't need to worry about recursive references. 
+	Evaluate the function in the context of preceding definitions. */
+	fn = _eval(fn);
+
+	/* Check that the function is indeed a function. */
+	muse_assert( _cellt(fn) == MUSE_LAMBDA_CELL );
+
+	/* The function can't be a generic itself. */
+	muse_assert( _quq(_head(fn)) != _csymbol(L"{{generic-args}}") );
+
+	/* The generic and the extension function must both either be normal
+	functions, or macros. They can't be different. */
+	muse_assert( _head(gen) < 0 ? _head(fn) < 0 : _head(fn) >= 0 );
+
+	{
+		muse_cell case_e = _head(_tail(gen));
+		muse_cell case_arg_e = _tail(case_e);
+
+		switch ( option )
+		{
+		case DEFINE_NORMAL :
+			/* (define ...) behaves like (define-extension ...) when given a generic. */
+		case DEFINE_EXTENSION : 
+			/* Extend. */
+			muse_list_append( env, _tail(case_arg_e), _cons( _cons( _quq(_head(fn)), _tail(fn) ), MUSE_NIL ) );
+			break;
+		case DEFINE_OVERRIDE :
+			/* Override. */
+			_sett( case_arg_e, _cons( _cons( _quq(_head(fn)), _tail(fn) ), _tail(case_arg_e) ) );
+			break;
+		}
+
+		_define( sym, gen );
+	}
+
+	return fn;
+}
+
 /**
  * (define symbol value).
  * Sets the current value of the symbol. \c symbol is not evaluated, \c value is
@@ -48,24 +129,24 @@
  * If you want the documentation block to be ignored by the reader,
  * then you should call \ref muse_init_env with the \c MUSE_DISCARD_DOC
  * parameter set to \c MUSE_TRUE.
+ *
+ * \par Generic functions
+ * If the given symbol is already bound to a 
+ * \ref syntax_generic_lambda "generic function", \c define behaves like
+ * \ref fn_define_extension "define-extension" - i.e. it extends the
+ * definition of the generic function with the new function's case.
  */
 muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell sym = _next(&args);
-	
-	MUSE_DIAGNOSTICS({ muse_expect( env, L"define", L"s!:", sym, L"defined" ); });
 
-	/*	First mark the symbol as a fresh symbol by defining it to be itself.
-		This way, if the symbol is referred to in the body of the value,
-		it will remain unchanged so that recursive functions can be written. 
-		Note that the value is evaluated after this assignment is made in order
-		to make the self-substitution happen.
-		
-		NOTE: There is no implementation of tail-recursion. So beware of
-		stack blowup. It usually safe to use recursion for small bound
-		routines such as syntax transformers. */
-	_define( sym, sym );
+	muse_cell oldval = MUSE_NIL;
+
+	int sp = _spos();
 	
+	oldval = _symval(sym);
+	_spush(oldval);
+
 	/* Process documentation if specified. */
 	if ( _cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC) )
 	{
@@ -91,8 +172,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	
 	/* Define the value of the symbol. */
 	{
-		muse_cell value = _eval(_head(args));
-		_define( sym, value );
+		muse_cell value = _defgen( env, (int)context, sym, oldval, _head(args) );
 
 		MUSE_DIAGNOSTICS({
 			if ( _tail(args) )
@@ -107,9 +187,61 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 			}
 		});
 
+		_unwind(sp);
 		return value;
 	}
 }
+
+/** @addtogroup GenericFns Generic functions */
+/*@{*/
+
+/**
+ * (define-extension generic-fn-symbol fn-extension)
+ *
+ * Obeys the same syntax as \ref fn_define "define", except that
+ * the symbol for extension is expected to be bound to a 
+ * \ref syntax_generic_lambda "generic function".
+ * Only generic functions can be extended.
+ *
+ * "Extension" means that the case presented by the given function
+ * is examined \b after all the preceding cases. So if the extension function
+ * has the same argument pattern as any of the preceding cases,
+ * will not have any effect on the behaviour of the generic function.
+ *
+ * You can also use \ref fn_define "define" instead of
+ * \c define-extension.
+ *
+ * @see \ref syntax_generic_lambda "gfn", \ref syntax_generic_block "gfn:",
+ *  \ref fn_define_override "define-override"
+ */
+muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args )
+{
+	return fn_define( env, (void*)DEFINE_EXTENSION, args );
+}
+
+/**
+ * (define-override generic-fn-symbol fn-override)
+ *
+ * Obeys the same syntax as \ref fn_define "define", except that
+ * the symbol for extension is expected to be bound to a 
+ * \ref syntax_generic_lambda "generic function".
+ * Only generic functions can be overridden.
+ *
+ * "Override" means that the case presented by the given function
+ * is examined \b before all the preceding cases of the generic function.
+ * This means that if an overriding function has the same argument pattern
+ * as any preceding case, it'll completely take over and not give the
+ * preceding case a chance.
+ *
+ * @see \ref syntax_generic_lambda "gfn", \ref syntax_generic_block "gfn:",
+ *  \ref fn_define_extension "define-extension"
+ */
+muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
+{
+	return fn_define( env, (void*)DEFINE_OVERRIDE, args );
+}
+
+/*@}*/
 
 /**
  * (set! symbol value).

@@ -24,9 +24,12 @@
  *
  * A byte array is finite sized sequence of raw byte data. Raw data can be
  * embedded into a muSE text stream using the construct 
- * @code {bytes 11 "blahblah..."} @endcode. You can also read and write
- * raw byte data (without the bracketing information) using
- * \c read-bytes and \c write-bytes.
+ * @code #11[blahblah...] @endcode. You can also read and write
+ * raw byte data from any port using
+ * \ref fn_read_bytes "read-bytes" and \ref fn_write_bytes "write-bytes".
+ * You can access portions of a byte array by using the array
+ * object itself as a function (\ref fn_bytes_fn) and copy
+ * sections using \ref fn_copy_bytes "copy-bytes".
  */
 /*@{*/
 
@@ -44,13 +47,18 @@ static bytes_t *bytes_alloc( bytes_t *b, muse_int size )
 {
 	b->size = size;
 	if ( size > 0 )
-		b->bytes = (unsigned char *)malloc( (size_t)size );
+		b->bytes = (unsigned char *)calloc( (size_t)size, 1 );
 	return b;
 }
 
 static void bytes_free( bytes_t *b )
 {
-	free(b->bytes);
+	if ( b->bytes )
+	{
+		free(b->bytes);
+		b->bytes = NULL;
+		b->size = 0;
+	}
 }
 
 #define _bytes_data(b) bytes_data(env,b)
@@ -65,9 +73,7 @@ muse_cell mk_bytes( muse_env *env, muse_int size )
 	muse_cell bytes = _mk_functional_object( &g_bytes_type, MUSE_NIL );
 	bytes_t *b = _bytes_data(bytes);
 	b->ref = bytes;
-	b->size = size;
-	if ( size > 0 )
-		b->bytes = (unsigned char *)malloc((size_t)size);
+	bytes_alloc( b, size );
 	return bytes;
 }
 
@@ -105,20 +111,13 @@ static muse_cell mk_slice( muse_env *env, muse_cell b, muse_int offset, muse_int
 }
 
 
-/**
- * (bytes size)
- * Creates an uninitialized bytes-array of the given size.
- */
 static void bytes_init( muse_env *env, void *ptr, muse_cell args )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
 	b->size = args ? _intvalue(_evalnext(&args)) : (muse_int)0;
 
-	if ( b->size > 0 )
-		b->bytes = (unsigned char *)malloc( (size_t)b->size );
-	else
-		b->size = 0;
+	bytes_alloc( b, b->size );
 }
 
 static void bytes_mark( muse_env *env, void *ptr )
@@ -130,11 +129,9 @@ static void bytes_destroy( muse_env *env, void *ptr )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
-	if ( _bytes_data(b->ref) == b && b->bytes != NULL )
+	if ( _bytes_data(b->ref) == b )
 	{
-		free(b->bytes);
-		b->size = 0;
-		b->bytes = NULL;
+		bytes_free(b);
 	}
 }
 
@@ -162,24 +159,150 @@ static void bytes_write( muse_env *env, void *ptr, void *port )
 	/* Write out the byte array as a string. Quote
 	characters are allowed in the middle of the byte array
 	because we've already written out the size. */
-	port_putc( '[', p );
+	port_putc( '"', p );
 	if ( b->size > 0 )
 		port_write( b->bytes, (size_t)b->size, p );
 
 	/* Write the closing sequence. */
-	port_putc( ']', p );
+	port_putc( '"', p );
+}
+
+static short short_BE( const unsigned char *bytes )
+{
+	short i = bytes[0];
+	i = (i << 8) | bytes[1];
+	return i;
+}
+
+static short short_LE( const unsigned char *bytes )
+{
+	short i = bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static int int_BE( const unsigned char *bytes )
+{
+	int i = bytes[0];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[3];
+	return i;
+}
+
+static int int_LE( const unsigned char *bytes )
+{
+	int i = bytes[3];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static muse_int long_BE( const unsigned char *bytes )
+{
+	muse_int i = bytes[0];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[3];
+	i = (i << 8) | bytes[4];
+	i = (i << 8) | bytes[5];
+	i = (i << 8) | bytes[6];
+	i = (i << 8) | bytes[7];
+	return i;
+}
+
+static muse_int long_LE( const unsigned char *bytes )
+{
+	muse_int i = bytes[7];
+	i = (i << 8) | bytes[6];
+	i = (i << 8) | bytes[5];
+	i = (i << 8) | bytes[4];
+	i = (i << 8) | bytes[3];
+	i = (i << 8) | bytes[2];
+	i = (i << 8) | bytes[1];
+	i = (i << 8) | bytes[0];
+	return i;
+}
+
+static void put_short_BE( unsigned char *bytes, short i )
+{
+	bytes[0] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[1] = (unsigned char)(i & 0xFF);
+}
+
+static void put_short_LE( unsigned char *bytes, short i )
+{
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
+}
+
+static void put_int_BE( unsigned char *bytes, int i )
+{
+	bytes[0] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[3] = (unsigned char)(i & 0xFF);
+}
+
+static void put_int_LE( unsigned char *bytes, int i )
+{
+	bytes[3] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
+}
+
+static void put_long_BE( unsigned char *bytes, muse_int i )
+{
+	bytes[0] = (unsigned char)((i >> 56) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 48) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 40) & 0xFF);
+	bytes[3] = (unsigned char)((i >> 32) & 0xFF);
+	bytes[4] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[5] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[6] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[7] = (unsigned char)(i & 0xFF);
+}
+
+static void put_long_LE( unsigned char *bytes, muse_int i )
+{
+	bytes[7] = (unsigned char)((i >> 56) & 0xFF);
+	bytes[6] = (unsigned char)((i >> 48) & 0xFF);
+	bytes[5] = (unsigned char)((i >> 40) & 0xFF);
+	bytes[4] = (unsigned char)((i >> 32) & 0xFF);
+	bytes[3] = (unsigned char)((i >> 24) & 0xFF);
+	bytes[2] = (unsigned char)((i >> 16) & 0xFF);
+	bytes[1] = (unsigned char)((i >> 8) & 0xFF);
+	bytes[0] = (unsigned char)(i & 0xFF);
 }
 
 /**
  * (bytes-object byte-offset field-type [value])
- * (bytes-object byte-offset size)
- * (bytes-object byte-offset)
+ *
+ * Retrieves or modifies the data contents of the byte array
+ * according to a specified data type spec.
  *
  * The offset and offset + sizeof(field-type) must be within range.
- * field-type is one of - 'byte, 'short, 'int, 'long, 'float, 'double.
+ * The \p field-type is one of - \c 'byte, \c 'short, \c 'int, \c 'long, \c 'float, \c 'double.
  * The type names and sizes match the Java specification.
- * If a value is given the byte object is modified at the location.
- * If size is omitted, it is taken to be up to the end of the object.
+ * If a \p value is given the byte object is modified at the location.
+ * If given, the \p value must be of the appropriate type -
+ * integral for \c 'byte, \c 'short, \c 'int and \c 'long data types and 
+ * floating point for \c 'float and \c 'double.
+ *
+ * The types \c 'short, \c 'int and \c 'long stand for little endian
+ * byte order data. If you want to interpret the data as big-endian,
+ * use \c 'Short, \c 'Int and \c 'Long instead, respectively.
+ *
+ * You can take a slice of a byte array by specifying an offset
+ * and a size as follows - @code (bytes-object offset size) @endcode.
+ * If you omit the \p size, a slice is created up to the end
+ * of the array from the given \p offset. The expression evaluates
+ * to a new slice object that refers to the original bytes object.
+ * Modifying the slice data modifies the original object.
+ * You can therefore use slicing to read data to a portion of a
+ * byte array from a port using \ref fn_read_bytes "read-bytes".
  */
 static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 {
@@ -218,15 +341,24 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 			const muse_char *name = muse_symbol_name(env,field_type);
 
 			muse_assert( (wcscmp(name,L"byte") == 0 && offset+1 <= b->size)
+						|| (wcscmp(name,L"float") == 0 && offset+4 <= b->size)
+						|| (wcscmp(name,L"double") == 0 && offset+8 <= b->size)
+
+						/* Little endian */
 						|| (wcscmp(name,L"short") == 0 && offset+2 <= b->size)
 						|| (wcscmp(name,L"int") == 0 && offset+4 <= b->size)
 						|| (wcscmp(name,L"long") == 0 && offset+8 <= b->size)
-						|| (wcscmp(name,L"float") == 0 && offset+4 <= b->size)
-						|| (wcscmp(name,L"double") == 0 && offset+8 <= b->size)
+
+						/* Big endian */
+						|| (wcscmp(name,L"Short") == 0 && offset+2 <= b->size)
+						|| (wcscmp(name,L"Int") == 0 && offset+4 <= b->size)
+						|| (wcscmp(name,L"Long") == 0 && offset+8 <= b->size)
 					);
 
 			if ( value )
 			{
+				/* We're setting a value. */
+
 				muse_int i = _intvalue(value);
 
 				switch ( name[0] )
@@ -238,17 +370,17 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 
 				case 's':
 					muse_assert( i >= SHRT_MIN && i <= SHRT_MAX );
-					*(short*)(b->bytes + (size_t)offset) = (short)i;
+					put_short_LE( b->bytes + (size_t)offset, (short)i );
 					return value;
 
 				case 'i':
 					muse_assert( i >= INT_MIN && i <= INT_MAX );
-					*(int*)(b->bytes + (size_t)offset) = (int)i;
+					put_int_LE( b->bytes + (size_t)offset, (int)i );
 					return value;
 
 				case 'l':
 					muse_assert( i >= LLONG_MIN && i <= LLONG_MAX );
-					*(muse_int*)(b->bytes + (size_t)offset) = i;
+					put_long_LE( b->bytes + (size_t)offset, i );
 					return value;
 
 				case 'f':
@@ -258,25 +390,45 @@ static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 				case 'd':
 					*(double*)(b->bytes + (size_t)offset) = (double)_floatvalue(value);
 					return value;
+
+				case 'S':
+					muse_assert( i >= SHRT_MIN && i <= SHRT_MAX );
+					put_short_BE( b->bytes + (size_t)offset, (short)i );
+					return value;
+
+				case 'I':
+					muse_assert( i >= INT_MIN && i <= INT_MAX );
+					put_int_BE( b->bytes + (size_t)offset, (int)i );
+					return value;
+
+				case 'L':
+					muse_assert( i >= LLONG_MIN && i <= LLONG_MAX );
+					put_long_BE( b->bytes + (size_t)offset, i );
+					return value;
 				}
 			}
 			else
 			{
+				/* We're getting a value. */
+
 				switch ( name[0] )
 				{
 				case 'b': return _mk_int( (char)b->bytes[(size_t)offset] );
-				case 's': return _mk_int( ((short*)(b->bytes + (size_t)offset))[0] );
-				case 'i': return _mk_int( ((int*)(b->bytes + (size_t)offset))[0] );
-				case 'l': return _mk_int( ((muse_int*)(b->bytes + (size_t)offset))[0] );
+				case 's': return _mk_int( short_LE( b->bytes + (size_t)offset ) );
+				case 'i': return _mk_int( int_LE( b->bytes + (size_t)offset ) );
+				case 'l': return _mk_int( long_LE( b->bytes + (size_t)offset ) );
 				case 'f': return _mk_float( ((float*)(b->bytes + (size_t)offset))[0] );
 				case 'd': return _mk_float( ((double*)(b->bytes + (size_t)offset))[0] );
+				case 'S': return _mk_int( short_BE( b->bytes + (size_t)offset ) );
+				case 'I': return _mk_int( int_BE( b->bytes + (size_t)offset ) );
+				case 'L': return _mk_int( long_BE( b->bytes + (size_t)offset ) );
 				}
 			}
 		}
 		break;
 	}
 
-	muse_assert( !"Field type must be one of 'byte, 'short, 'int, 'long, 'float, 'double or an integer size value!" );
+	muse_assert( !"Field type must be one of 'byte, '[s|S]hort, '[i|I]nt, '[l|L]ong, 'float, 'double or an integer size value!" );
 	return MUSE_NIL;
 }
 
@@ -345,7 +497,10 @@ static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t siz
 /**
  * (write-bytes [port] bytes [start-offset] [num-bytes])
  *
- * Write the raw byte sequence to the port.
+ * Write the raw byte sequence to the port. If port is omitted,
+ * the data goes to stdout. Optional start offset and size
+ * can be specified to write a portion of the byte array
+ * without having to allocate a new slice object.
  */
 static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 {
@@ -392,6 +547,9 @@ static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+/**
+ * Force read a given number of bytes or until eof.
+ */
 static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
 {
 	size_t nread = 0;
@@ -408,7 +566,7 @@ static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size
 }
 
 /**
- * (read-bytes [port] [bytes]) -> [bytes]
+ * (read-bytes [port] [bytes]) -> bytes
  *
  * Reads raw bytes from the given port or stdin. If a bytes
  * object is given, it attempts to fill it. If no bytes object
@@ -506,6 +664,7 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 
 /**
  * (bytes size)
+ *
  * Creates a new uninitialized byte array of the given size.
  */
 static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
@@ -522,6 +681,9 @@ static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
 
 /**
  * (copy-bytes size src src-offset dest dest-offset)
+ *
+ * Copies \p size bytes from \p src starting at \p src-offset
+ * to the \p dest buffer starting at \p dest-offset.
  */
 static muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
 {

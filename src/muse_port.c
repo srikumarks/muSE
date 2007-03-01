@@ -63,6 +63,9 @@ void port_init( muse_env *env, muse_port_base_t *p )
 	p->pretty_print = env->parameters[MUSE_PRETTY_PRINT];
 	p->tab_size		= env->parameters[MUSE_TAB_SIZE];
 	p->pp_align_level = 0;
+
+	if ( env->parameters[MUSE_ENABLE_INDIRECTION_EXT] )
+		p->mode |= MUSE_PORT_ENABLE_INDIRECTION_EXT;
 }
 
 /**
@@ -506,12 +509,12 @@ white_space_t ez_skip_whitespace( muse_port_t f, int line, int col )
 
 static inline int _token_begin_list( int c )
 {
-	return c == '(' || c == '{';
+	return c == '(' || c == '{' || c == '[';
 }
 
 static inline int _token_end_list( int c )
 {
-	return c == ')' || c == '}';
+	return c == ')' || c == '}' || c == ']';
 }
 
 /**
@@ -1107,7 +1110,7 @@ extern void bytes_set_size( muse_env *env, muse_cell b, muse_int size );
 
 /**
  * A byte sequence has the format -
- * @code #nnnnn[data] @endcode
+ * @code #nnnnn"data" @endcode
  * where \c nnnnn gives the size of the data in bytes (decimal number)
  * and there are as many bytes between the square brackets. Note that
  * since the number of bytes is specified explicitly, the data can include 
@@ -1119,22 +1122,47 @@ static muse_cell read_bytes( muse_port_t f )
 	muse_cell bytes = MUSE_NIL;
 	muse_int size = 0;
 	int c = '0';
-	int max_digits = 24;
-	while ( c >= '0' && c <= '9' && max_digits-- > 0 )
+	int max_digits = 24, num_digits = -1;
+	while ( c >= '0' && c <= '9' && (++num_digits) < max_digits )
 	{
 		size = (size * 10) + (c - '0');
 		c = port_getc(f);
 	}
 
-	muse_assert( c == '[' );
+	muse_assert( c == '"' );
 
+	if ( num_digits == 0 )
+	{
+		/* Read until the next " character. */
+		size_t capacity = 16;
+		size_t byte_count = 0;
+		unsigned char *base_ptr= (unsigned char *)malloc(capacity);
+		unsigned char *ptr = base_ptr;
+
+		while ( !port_eof(f) && ((c = port_getc(f)) != '"') )
+		{
+			(*ptr++) = c;
+			++byte_count;
+			if ( byte_count >= capacity )
+			{
+				capacity *= 2;
+				base_ptr = (unsigned char *)realloc( base_ptr, capacity );
+				ptr = base_ptr + byte_count;
+			}
+		}
+
+		bytes = _mk_bytes(byte_count);
+		memcpy( _bytes_ptr(bytes), base_ptr, byte_count );
+		free(base_ptr);
+	}
+	else
 	{
 		bytes = _mk_bytes(size);
 		_bytes_set_size( bytes, (muse_int)port_read( _bytes_ptr(bytes), (size_t)size, f ) );
-	}
 
-	c = port_getc(f);
-	muse_assert( c == ']' );
+		c = port_getc(f);
+		muse_assert( c == '"' );
+	}
 
 	return bytes;
 }
@@ -1146,6 +1174,59 @@ static muse_cell read_special( muse_port_t f )
 {
 	/* Currently only byte data is supported. */
 	return read_bytes(f);
+}
+
+/**
+ * Converts [a b c d] to (((a b) c) d)
+ * Assumes that the first '[' character is already consumed.
+ */
+static muse_cell read_indirection_expr( muse_port_t f )
+{
+	muse_env *env = f->env;
+	if ( port_eof(f) )
+		return MUSE_NIL;
+	else
+	{
+		int c = -1;
+		muse_cell result = MUSE_NIL;
+		int term_count = 0;
+		muse_cell term = MUSE_NIL;
+		int sp = _spos();
+
+		ez_skip_whitespace(f,0,0);
+
+		c = port_getc(f);
+
+		while ( c != ']' )
+		{
+			port_ungetc( c, f );
+			term = muse_pread(f);
+			if ( term < 0 )
+			{
+				MUSE_DIAGNOSTICS({
+					muse_message( env, L"read", L"Parse error when reading indirection expression []." );
+				});
+				return MUSE_NIL;
+			}
+
+			if ( term_count == 0 )
+			{
+				result = term;
+			}
+			else
+			{
+				result = _cons( result, _cons( term, MUSE_NIL ) );
+			}
+
+			++term_count;
+			_unwind(sp);
+			_spush(result);
+			ez_skip_whitespace(f,0,0);
+			c = port_getc(f);
+		}
+			
+		return result;
+	}
 }
 
 /**
@@ -1182,7 +1263,7 @@ muse_cell muse_pread( muse_port_t f )
 		f->mode = saved_mode;
 		return muse_quote(env,expr);
 	}
-	else if ( c == '(' || c == '{' )
+	else if ( c == '(' || c == '{' || (c == '[' && !(f->mode & MUSE_PORT_ENABLE_INDIRECTION_EXT)) )
 	{
 		/* List expression. */
 		port_ungetc( c, f );
@@ -1217,6 +1298,10 @@ muse_cell muse_pread( muse_port_t f )
 			else
 				return sexpr;
 		}
+	}
+	else if ( c == '[' && (f->mode & MUSE_PORT_ENABLE_INDIRECTION_EXT) )
+	{
+		return read_indirection_expr(f);
 	}
 	else if ( c == '#' )
 	{
@@ -1368,7 +1453,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 			
 			if ( l ) 
 			{
-				if ( need_line_break || (_cellt(h) == MUSE_CONS_CELL && !_isquote(_head(h))) || _cellt(h) == MUSE_TEXT_CELL )
+				if ( need_line_break || (_cellt(h) == MUSE_CONS_CELL && h >= 0 && !_isquote(_head(h))) || _cellt(h) == MUSE_TEXT_CELL )
 				{
 					pretty_printer_line_break(f);
 					need_line_break = MUSE_TRUE;

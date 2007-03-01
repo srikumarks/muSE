@@ -32,11 +32,19 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Small code foot-print
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
- *	- A simple object system for adding new native object types.
- * 
- * Version 0.2cp adds support for Erlang style processes and
- * resumable exception handling.
+ *  - Ability to add C/C++ based native functionality in the form of plugin DLLs.
+ *	- A simple native object system for adding new native object types.
  *
+ * Language features include -
+ *	- Lexically scoped closures as well as dynamically scoped blocks.
+ *	- Expressive reader macro system where macros are first class citizens 
+ *		(i.e. can be passed around as arguments to functions, assigned to variables, etc.)
+ *	- Uniform use of pattern matching for variable binding. 
+ *	- Erlang style message passing processes.
+ *	- Networking support that's process aware.
+ *	- Resumable exceptions with exception handler dispatch using pattern matching bind.
+ *	- Generic functions.
+ *  
  * @section Objects Basic objects
  * 
  * Everything in muSE is built from the following set of objects -
@@ -82,7 +90,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
- *	- \ref syntax_try "try", \ref fn_raise "raise"
+ *	- \ref syntax_try "try", \ref fn_raise "raise", \ref fn_retry "retry"
  * 
  * @subsection ML_MathOps Mathematical operators
  *	- Binary operators 
@@ -100,6 +108,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_DataStructures Data structures
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
+ *	- \ref ByteArray "byte arrays"
  *
  * @subsection ML_ObjectSystem Object system
  * 	- \ref fn_class "class"
@@ -276,7 +285,8 @@ typedef enum
 	MUSE_DISCARD_DOC,			/**< Boolean parameter indicating that documentation should not be kept. Default = MUSE_FALSE. */
 	MUSE_PRETTY_PRINT,			/**< Boolean parameter indicating whether write and print should indent their output. Default = MUSE_TRUE */
 	MUSE_TAB_SIZE,				/**< Defaults to 4. Controls pretty printed output. */
-	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 10. */
+	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 1. */
+	MUSE_ENABLE_INDIRECTION_EXT,/**< Enables the [] notation extension. Default is MUSE_FALSE. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;
@@ -375,6 +385,7 @@ muse_cell	muse_assoc( muse_env *env, muse_cell alist, muse_cell prop );
 muse_cell	*muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop );
 muse_cell	muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop );
 muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value );
+muse_cell	muse_search_object( muse_env *env, muse_cell obj, muse_cell member );
 /*@}*/
 
 /** @name I/O */
@@ -608,12 +619,18 @@ typedef enum
 		 * expressions, though brace expansion may be active.
 		 */
 
-	MUSE_PORT_TRUSTED_INPUT			= MUSE_PORT_READ | MUSE_PORT_READ_EXPAND_BRACES | MUSE_PORT_READ_DETECT_MACROS
+	MUSE_PORT_TRUSTED_INPUT			= MUSE_PORT_READ | MUSE_PORT_READ_EXPAND_BRACES | MUSE_PORT_READ_DETECT_MACROS,
 		/**<
 		 * Convenience definition indicating that input from the given
 		 * port can be trusted, therefore enabling macro expansion.
 		 * Standard input and file ports using by muse_load() are
 		 * considered to be trusted input sources. 
+		 */
+
+	 MUSE_PORT_ENABLE_INDIRECTION_EXT	=  0x40
+		/**
+		 * Causes the port to support the translation of [a b c d] type
+		 * expressions to (((a b) c) d).
 		 */
 
 } muse_port_mode_bits_t;

@@ -390,8 +390,18 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 					In this case, apply behaves like list. */
 
 				MUSE_DIAGNOSTICS2({ 
-					if ( _cellt(fn) == MUSE_SYMBOL_CELL ) 
-						muse_message( env,L"apply", L"You tried to use the symbol [%m] as a function.\n"
+					switch ( _cellt(fn) )
+					{
+					case MUSE_INT_CELL :
+					case MUSE_FLOAT_CELL :
+						/* Allow lists beginning with integers and floats. They
+						should be interpreted as lists silently and ther eis no ambiguity
+						about the coder's intention here. This is quite useful in
+						writing out integer n-tuples as lists without having to
+						place a quote before the list. */
+						break;
+					case MUSE_SYMBOL_CELL :
+						muse_message( env, L"apply", L"You tried to use the symbol [%m] as a function.\n"
 												L"You haven't defined it to one though, so the expression\n\n"
 												L"%m\n\n"
 												L"will be considered as a list.\n"
@@ -399,11 +409,13 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 												fn,
 												_cons( fn, args ),
 												muse_similar_symbol( env, fn, NULL ) );
-					else
-						muse_message( env,L"apply", L"You're trying to use [%m] as a function\n"
+						break;
+					default:
+						muse_message( env, L"apply", L"You're trying to use [%m] as a function\n"
 												L"in the expression -\n\n%m\n\n"
 												L"It will be considered as a list.",
 												fn, _cons( fn, args ) );
+					}
 				});
 
 				result = _cons( fn, args_already_evaluated ? args : muse_eval_list(env, args) );

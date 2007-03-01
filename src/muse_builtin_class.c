@@ -156,7 +156,13 @@ static muse_cell search_class_hierarchy( muse_env *env, muse_cell classHierarchy
 	return MUSE_NIL;
 }
 
-static muse_cell search_object( muse_env *env, muse_cell obj, muse_cell member )
+/**
+ * Searches the given object and its inheritance hierarchy for 
+ * the given member property. Evaluates to the property-value
+ * cons pair if it was found anywhere in the hierarchy, or to
+ * () (= MUSE_NIL) if the member doesn't exist.
+ */
+muse_cell muse_search_object( muse_env *env, muse_cell obj, muse_cell member )
 {
 	muse_cell prop = _get_prop( obj, member );
 	
@@ -195,7 +201,7 @@ muse_cell fn_send( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj			= _evalnext(&args);
 	muse_cell memberName	= _evalnext(&args);
-	muse_cell member		= search_object( env, obj, memberName );
+	muse_cell member		= muse_search_object( env, obj, memberName );
 	muse_cell memberVal		= _tail(member);
 	
 	/* If we're calling send, the member is expected to be a function
@@ -236,7 +242,7 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
 	muse_cell methodName	= _evalnext(&args);
 	muse_cell methodEntry	= (_cellt(classes) == MUSE_CONS_CELL) 
 								? search_class_hierarchy( env, classes, methodName )
-								: search_object( env, classes, methodName );
+								: muse_search_object( env, classes, methodName );
 	muse_cell method		= _tail(methodEntry);
 	
 	if ( method )
@@ -287,6 +293,6 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 	else
 	{
 		/* Argument not given. We should get the member value. */
-		return _tail(search_object( env, obj, memberName ));
+		return _tail(muse_search_object( env, obj, memberName ));
 	}
 }

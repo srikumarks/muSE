@@ -324,7 +324,7 @@ muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode )
 
 	/* The mode bits is a constrained number. If you set bits that don't exist,
 	its a programming error. */
-	muse_assert( mode < MUSE_PORT_READ_DETECT_MACROS * 2 );
+	muse_assert( mode < MUSE_PORT_ENABLE_INDIRECTION_EXT * 2 );
 
 	port->base.mode |= mode;
 

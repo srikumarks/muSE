@@ -328,7 +328,12 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 int main( int argc, char **argv )
 {
 	char execpath[1024];
-	muse_env *env = muse_init_env(NULL);
+	const int envvars[] = 
+	{ 
+		MUSE_ENABLE_INDIRECTION_EXT, MUSE_TRUE, 
+		MUSE_END_OF_LIST 
+	};
+	muse_env *env = muse_init_env(envvars);
 	
 	get_execpath( env, argv[0], execpath, 1024 );
 

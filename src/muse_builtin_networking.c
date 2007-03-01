@@ -399,7 +399,7 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
 		goto UNDO_CONN;
 	}
 	
-	port->base.mode = MUSE_PORT_READ_WRITE;
+	port->base.mode |= MUSE_PORT_READ_WRITE;
 
 	/* Connection succeeded. Call the service function. */
 	{
@@ -527,7 +527,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 			client_port = (socketport_t*)_port( client_port_cell );
 	
 			client_port->socket = client;
-			client_port->base.mode = MUSE_PORT_READ_WRITE;
+			client_port->base.mode |= MUSE_PORT_READ_WRITE;
 			client_port->base.eof = 0;
 			client_port->base.error = 0;
 
@@ -638,7 +638,7 @@ static void multicast_socket_init( muse_env *env, void *p, muse_cell args )
 	port_init( env,&s->base);
 
 	/* Set to read/write mode. All sockets support this. */
-	s->base.mode = MUSE_PORT_READ_WRITE;
+	s->base.mode |= MUSE_PORT_READ_WRITE;
 
 	/* Disable pretty printing. Has adverse effects on flushing operation. */
 	s->base.pretty_print = 0;

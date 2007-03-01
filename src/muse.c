@@ -223,7 +223,8 @@ static void init_parameters( muse_env *env, const int *parameters )
 		0,		/* MUSE_DISCARD_DOC */
 		1,		/* MUSE_PRETTY_PRINT */
 		4,		/* MUSE_TAB_SIZE */
-		10		/* MUSE_DEFAULT_ATTENTION */
+		1,		/* MUSE_DEFAULT_ATTENTION */
+		0		/* MUSE_ENABLE_INDIRECTION_EXT */
 	};
 
 	/* Initialize default values. */
@@ -303,8 +304,6 @@ muse_env *muse_init_env( const int *parameters )
 	return env;
 }
 
-void muse_network_shutdown( muse_env *env );
-
 /**
  * Destroys the given environment. If the given
  * environment is the current environment, then
@@ -326,7 +325,6 @@ void muse_destroy_env( muse_env *env )
 	}
 
 	muse_gc(env, 0);
-	muse_network_shutdown(env);
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
@@ -1000,20 +998,29 @@ void muse_gc_impl( muse_env *env, int free_cells_needed );
  */
 void muse_gc( muse_env *env, int free_cells_needed )
 {
-	fprintf(stderr, "Gc...");
-	fflush(stderr);
+	MUSE_DIAGNOSTICS3({
+		fprintf(stderr, "Gc...");
+		fflush(stderr);
+	});
+
 	{
+#if MUSE_DIAGNOSTICS_LEVEL >= 3
 		muse_int time_taken;
 		void *timer = muse_tick();
+#endif
+
 		env->collecting_garbage = MUSE_TRUE;
 		enter_atomic(env);
 		muse_gc_impl( env, free_cells_needed );
 		leave_atomic(env);
 		env->collecting_garbage = MUSE_FALSE;
-		time_taken = muse_tock(timer);
-		fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
-		fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
-		fflush( stderr );
+
+		MUSE_DIAGNOSTICS3({
+			time_taken = muse_tock(timer);
+			fprintf(stderr, "done. (free cells = %d)\n", _heap()->free_cell_count);		
+			fprintf( stderr, "(time taken = " MUSE_FMT_INT " microseconds)\n", time_taken );
+			fflush( stderr );
+		});
 	}
 }
 
@@ -1323,8 +1330,18 @@ muse_boolean run_process()
  */
 muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 {
+SWITCH_TO_PROCESS:
 	if ( env->current_process == process )
-		return MUSE_TRUE;
+	{
+		/* We reach here only on deadlock conditions. However,
+		there may be a timeout in effect, in which case we shouldn't
+		use up CPU time just looping and should sleep like a good
+		citizen. */
+		if ( process->state_bits & MUSE_PROCESS_WAITING )
+			muse_sleep( 1000 );
+		else
+			return MUSE_TRUE;
+	}
 
 	if ( process->state_bits & (MUSE_PROCESS_RUNNING | MUSE_PROCESS_VIRGIN) )
 	{
@@ -1369,12 +1386,13 @@ muse_boolean switch_to_process( muse_env *env, muse_process_frame_t *process )
 				process->state_bits = MUSE_PROCESS_RUNNING;
 		}
 
-		if ( process->state_bits == MUSE_PROCESS_RUNNING )
-			return switch_to_process( env, process );
+		if ( process->state_bits == MUSE_PROCESS_RUNNING && env->current_process != process )
+			goto SWITCH_TO_PROCESS;
 	}
 
 	/* Can't run this one. Try the next process. */
-	return switch_to_process( env, process->next );
+	process = process->next;
+	goto SWITCH_TO_PROCESS;
 }
 
 /**
@@ -1583,7 +1601,7 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 
 	if ( p->state_bits & MUSE_PROCESS_WAITING )
 	{
-		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(p) )
+		if ( !(p->waiting_for_pid) || p->waiting_for_pid == process_id(env->current_process) )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }

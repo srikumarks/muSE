@@ -27,6 +27,8 @@ static const struct _builtins
 {		L"eval",		fn_eval				},
 {		L"fn",			syntax_lambda		},
 {		L"fn:",			syntax_block		},
+{		L"gfn",			syntax_generic_lambda	},
+{		L"gfn:",		syntax_generic_block	},
 {		L"let",			syntax_let			},
 {		L"apply",		fn_apply			},
 {		L"apply/keywords",	fn_apply_w_keywords	},
@@ -34,6 +36,7 @@ static const struct _builtins
 {		L"call/cc",		fn_callcc			},
 {		L"try",			syntax_try				},
 {		L"raise",		fn_raise			},
+{		L"retry",		fn_retry			},
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
@@ -46,6 +49,8 @@ static const struct _builtins
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},
+{		L"define-extension",	fn_define_extension		},
+{		L"define-override",		fn_define_override		},
 {		L"set!",		fn_set_M			},
 {		L"setf!",		fn_setf_M			},
 {		L"setr!",		fn_setr_M			},
@@ -863,7 +868,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 
 		/* After removing, check if we've reached the end of the message queue. */
 		if ( msg == p->mailbox_end )
-			p->mailbox_end = _tail(msgs);
+			p->mailbox_end = msgs;
 
 		return _head( msg );
 	}
@@ -882,14 +887,23 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_run( muse_env *env, void *context, muse_cell args )
 {
+	muse_process_frame_t *p = env->current_process;
 	muse_int timeout_us = args ? _intvalue( _evalnext(&args) ) : -1;
 	muse_int endtime_us = timeout_us + muse_elapsed_us(env->timer);
 
 	do
 	{
+		p->state_bits = MUSE_PROCESS_WAITING;
+
+		if ( timeout_us >= 0 )
+		{
+			p->state_bits |= MUSE_PROCESS_HAS_TIMEOUT;
+			p->timeout_us = endtime_us;
+		}
+
 		switch_to_process( env, env->current_process->next );
 	}
-	while ( timeout_us < 0 || muse_elapsed_us(env->timer) < endtime_us );
+	while ( timeout_us < 0 );
 
 	return MUSE_NIL;
 }

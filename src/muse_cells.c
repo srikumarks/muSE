@@ -558,7 +558,7 @@ muse_cell muse_list( muse_env *env, const char *format, ... )
  * @param list The list in which to search for the element. The first cell
  * of the list is \c *list.
  *
- * @param element The element to remove. The list item removed is one that
+ * @param element The element to find. The list item found is first one that
  * satisfies muse_equal().
  *
  * @return If the element was found at the head of the list, it will
