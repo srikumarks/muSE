@@ -1,0 +1,5 @@
+#!/bin/sh
+echo Building muSE ...
+gcc -o muse -arch i386 -arch ppc -O3 -DNDEBUG -fasm-blocks -I../../src/ ../../src/muse_*.c ../../src/muse.c ../../src/*.m -framework Foundation
+echo ... done
+echo Output file - muse
