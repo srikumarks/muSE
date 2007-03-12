@@ -29,6 +29,8 @@ muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell arg
 id muse2obj( muse_env *env, muse_cell arg );
 muse_cell obj2muse( muse_env *env, id obj );
 muse_cell mk_objc_obj( muse_env *env, id obj );
+Class objc_class( muse_env *env, muse_cell obj );
+id objc_object( muse_env *env, muse_cell obj );
 
 @interface MuseObject : NSObject
 {
@@ -390,40 +392,24 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 	{
 		// The first argument is the object.
 		muse_cell objcell = _evalnext(&args);
-
-		if ( _cellt(objcell) == MUSE_SYMBOL_CELL ) {
-			// Undefined symbol at head. Check if it is an objc class.
-			muse_cell c = resolve_objc_class( env, objcell );
-			if ( c ) {
-				// The reference is to an objc class.
-				// send the appropriate selector to the object.
-				objcell = c;
-				muse_assert( _cellt(objcell) == MUSE_NATIVEFN_CELL );
-				
-				id obj = (id)_ptr(objcell)->fn.context;
-				muse_assert( obj != NULL );
-				
-				if ( !sel->compiled )
-					compile_sel( env, obj, sel );
-				
-				return muse_objc_msgSend( env, obj, sel, muse_eval_list( env, args ) );
-			} else if ( objcell == muse_builtin_symbol( env, MUSE_SUPER ) ) {
-				// Not an objc symbol and refers to the super tree.
-				muse_cell obj = _symval(sel->sym_self);
-				return fn_send_super( env, NULL, _cons( _qq(_tail(muse_get_prop(env,obj,objcell))), 
-														_cons( obj,
-															   _cons( _qq(objcell), args ) ) ) );																	  
-			} else {
-				// Not an objc class symbol.
-				// Send the message to the muSE object.
-				return fn_send( env, NULL, _cons( _qq(objcell), _cons( _qq(sel->sym), args ) ) );
-			}
-		} else if ( _cellt(objcell) == MUSE_NATIVEFN_CELL && _ptr(objcell)->fn.fn == (muse_nativefn_t)fn_objc_obj ) {
-			// The reference is to a MuseWrapper or some other object.
-			// Send the appropriate selector to the object.			
-			id obj = (id)_ptr(objcell)->fn.context;
-			muse_assert( obj != NULL );
+		id obj = objc_object(env,objcell);
+		Class c = objc_class(env,objcell);
+		
+		// The head can be an already resolved class or an
+		// unresolved class symbol. Try to resolve it.
+		if ( !c && _cellt(objcell) == MUSE_SYMBOL_CELL )
+			c = objc_class( env, resolve_objc_class( env, objcell ) );
+		
+		if ( c ) {
+			// The reference is resolved to an objc class.
+			// send the appropriate selector to the class.			
+			if ( !sel->compiled )
+				compile_sel( env, c, sel );
 			
+			return muse_objc_msgSend( env, c, sel, muse_eval_list( env, args ) );
+		} else if ( obj ) {
+			// The reference is to a MuseWrapper or some other object.
+			// Send the appropriate selector to the object.						
 			if ( [obj isKindOfClass:[MuseObject class]] ) {
 				MuseObject *mo = (MuseObject*)obj;
 				return [mo sendMuseMessage: sel->sym withArgs: muse_eval_list(env,args)];
@@ -433,6 +419,16 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 				
 				return muse_objc_msgSend( env, obj, sel, muse_eval_list( env, args ) );
 			}
+		} else if ( objcell == muse_builtin_symbol( env, MUSE_SUPER ) ) {
+			// Not an objc symbol and refers to the super tree.
+			muse_cell obj = _symval(sel->sym_self);
+			return fn_send_super( env, NULL, _cons( _qq(_tail(muse_get_prop(env,obj,objcell))), 
+													_cons( obj,
+														   _cons( _qq(objcell), args ) ) ) );																	  
+		} else if ( _cellt(objcell) == MUSE_SYMBOL_CELL ) {
+			// Not an objc class symbol.
+			// Send the message to the muSE object.
+			return fn_send( env, NULL, _cons( _qq(objcell), _cons( _qq(sel->sym), args ) ) );
 		}
 	}
 	
@@ -445,13 +441,23 @@ muse_cell mk_sel( muse_env *env, const muse_char *wname )
 	w2n( wname, nname );
 	
 	SEL s = sel_getUid(nname);
-	compiled_sel_t *cs = (compiled_sel_t*)calloc( 1, sizeof(compiled_sel_t) );
-	cs->sel = s;
-	cs->sym = _csymbol(wname);
-	if ( s )
-		return muse_mk_nativefn( env, (muse_nativefn_t)fn_objc_sel, cs );
-	else
-		return MUSE_NIL;
+	muse_cell sym = _csymbol(wname);
+	muse_cell val = _symval(sym);
+
+	if ( _cellt(val) == MUSE_NATIVEFN_CELL && _ptr(val)->fn.fn == (muse_nativefn_t)fn_objc_sel ) {
+		/* Already compiled selector. */
+		return val;
+	} else {
+		muse_assert( val == sym );
+		
+		compiled_sel_t *cs = (compiled_sel_t*)calloc( 1, sizeof(compiled_sel_t) );
+		cs->sel = s;
+		cs->sym = sym;
+		if ( s )
+			return _define( sym, _mk_nativefn( (muse_nativefn_t)fn_objc_sel, cs ) );
+		else
+			return MUSE_NIL;
+	}
 }
 
 muse_cell parse_sel( muse_env *env, muse_cell args )
@@ -548,6 +554,22 @@ muse_cell resolve_objc_class( muse_env *env, muse_cell className )
 	} else {
 		return MUSE_NIL;
 	}
+}
+
+Class objc_class( muse_env *env, muse_cell obj )
+{
+	if ( _cellt(obj) == MUSE_NATIVEFN_CELL && _ptr(obj)->fn.fn == (muse_nativefn_t)fn_objc_class )
+		return (Class)(_ptr(obj)->fn.context);
+	else
+		return NULL;
+}
+
+id objc_object( muse_env *env, muse_cell obj )
+{
+	if ( _cellt(obj) == MUSE_NATIVEFN_CELL && _ptr(obj)->fn.fn == (muse_nativefn_t)fn_objc_obj )
+		return (id)(_ptr(obj)->fn.context);
+	else
+		return nil;
 }
 
 muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell args ) 

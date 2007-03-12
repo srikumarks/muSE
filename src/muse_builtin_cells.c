@@ -34,7 +34,7 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 									L"Expecting a generic function, but got a normal function instead!" );
 
 			if ( sym != gen )
-				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined." );
+				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined.", sym );
 		});
 
 		/*	First mark the symbol as a fresh symbol by defining it to be itself.
