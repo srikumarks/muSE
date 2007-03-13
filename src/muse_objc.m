@@ -448,12 +448,24 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 
 muse_cell mk_sel( muse_env *env, const muse_char *wname )
 {
-	char nname[256];
-	w2n( wname, nname );
+	SEL s = nil;
+	muse_cell sym = MUSE_NIL, val = MUSE_NIL;
+
+	/* Get the selector id. */
+	{
+		char nname[256];
+		w2n( wname, nname );
+		s = sel_getUid(nname);
+	}
 	
-	SEL s = sel_getUid(nname);
-	muse_cell sym = _csymbol(wname);
-	muse_cell val = _symval(sym);
+	/* Decorate the selector symbol with a "[@:]" prefix so that it lands 
+		in a different namespace. */
+	{
+		muse_char selname[256];
+		swprintf( selname, 255, L"[@:]%ls", wname );		
+		sym = _csymbol(selname);
+		val = _symval(sym);
+	}
 
 	if ( _cellt(val) == MUSE_NATIVEFN_CELL && _ptr(val)->fn.fn == (muse_nativefn_t)fn_objc_sel ) {
 		/* Already compiled selector. */
