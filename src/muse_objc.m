@@ -449,7 +449,7 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 muse_cell mk_sel( muse_env *env, const muse_char *wname )
 {
 	SEL s = nil;
-	muse_cell sym = MUSE_NIL, val = MUSE_NIL;
+	muse_cell origsym = MUSE_NIL, sym = MUSE_NIL, val = MUSE_NIL;
 
 	/* Get the selector id. */
 	{
@@ -462,7 +462,8 @@ muse_cell mk_sel( muse_env *env, const muse_char *wname )
 		in a different namespace. */
 	{
 		muse_char selname[256];
-		swprintf( selname, 255, L"[@:]%ls", wname );		
+		swprintf( selname, 255, L"[@:]%ls", wname );	
+		origsym = _csymbol(wname);
 		sym = _csymbol(selname);
 		val = _symval(sym);
 	}
@@ -475,7 +476,8 @@ muse_cell mk_sel( muse_env *env, const muse_char *wname )
 		
 		compiled_sel_t *cs = (compiled_sel_t*)calloc( 1, sizeof(compiled_sel_t) );
 		cs->sel = s;
-		cs->sym = sym;
+		cs->sym = origsym; 	///< Save the uncontaminated symbol here so that it
+							///< can be used to pass messages to muSE objects as well.
 		if ( s )
 			return _define( sym, _mk_nativefn( (muse_nativefn_t)fn_objc_sel, cs ) );
 		else
