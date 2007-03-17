@@ -225,9 +225,11 @@ static void init_parameters( muse_env *env, const int *parameters )
 		4,		/* MUSE_TAB_SIZE */
 		1,		/* MUSE_DEFAULT_ATTENTION */
 #if __APPLE__	
-		1		/* MUSE_ENABLE_OBJC */
+		1,		/* MUSE_ENABLE_OBJC */
+		1		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
 #else
-		0		/* MUSE_ENABLE_OBJC */
+		0,		/* MUSE_ENABLE_OBJC */
+		0		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
 #endif
 	};
 

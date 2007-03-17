@@ -287,8 +287,9 @@ typedef enum
 	MUSE_TAB_SIZE,				/**< Defaults to 4. Controls pretty printed output. */
 	MUSE_DEFAULT_ATTENTION,		/**< The default attention with which a process is spawned. Defaults to 1. */
 	MUSE_ENABLE_OBJC,			/**< Sets up objective C support in muSE using [] expressions. Also allocates 
-								 *   its own auto-release pool. Default is MUSE_FALSE. 
-								 */
+								 *   its own auto-release pool. Default is MUSE_FALSE. */
+	MUSE_OWN_OBJC_AUTORELEASE_POOL, /**< Creates a keeps a reference to an independent auto-release pool, which is 
+									 * released when the muSE environment is destroyed. Default is MUSE_TRUE. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;

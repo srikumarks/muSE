@@ -34,7 +34,6 @@ typedef struct
 muse_cell fn_send( muse_env *env, void *context, muse_cell args );
 muse_cell fn_send_super( muse_env *env, void *context, muse_cell args );
 muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args );
-muse_cell fn_objc_obj( muse_env *env, id obj, muse_cell args );
 muse_cell fn_objc_class( muse_env *env, Class c, muse_cell args );
 muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell args );
 id muse2obj( muse_env *env, muse_cell arg );
@@ -45,10 +44,13 @@ id objc_object( muse_env *env, muse_cell obj );
 
 @interface MuseObject : NSObject
 {
+	@public
 	muse_env *env;
 	muse_cell obj;
+	@protected
 	muse_cell sendfn;
 	muse_cell vec2listfn;
+	muse_cell dependenciesSym;
 }
 - (id)initWithMuseEnv:(muse_env*)env object:(muse_cell)obj;
 - (void)museMark;
@@ -56,7 +58,89 @@ id objc_object( muse_env *env, muse_cell obj );
 - (muse_cell)invocation2arglist: (NSInvocation*)invocation;
 - (muse_cell) sendMuseMessage:(muse_cell)msg withArgs:(muse_cell)args;
 - (id)typicalUIMessage:(id)arg;
+
+// Key-value coding.
++ (BOOL)accessInstanceVariablesDirectly;
+- (id) valueForKey: (NSString*)key;
+- (id) valueForUndefinedKey: (NSString*)key;
+- (void) setValue: (id)val forKey: (NSString*)key;
+- (void) setValue: (id)val forUndefinedKey: (NSString*)key;
 @end
+
+typedef struct 
+{
+	muse_functional_object_t base;
+	id obj;
+} objc_obj_t;
+
+muse_cell fn_objc_obj( muse_env *env, objc_obj_t *obj, muse_cell args );
+
+static void objcobj_init( muse_env *env, void *ptr, muse_cell args )
+{
+	objc_obj_t *obj = (objc_obj_t*)ptr;
+	if ( args ) {		
+		muse_cell museobj = _evalnext(&args);
+		muse_assert( _cellt(museobj) == MUSE_SYMBOL_CELL );
+		obj->obj = [[MuseObject alloc] initWithMuseEnv: env object: museobj];
+	} else {
+		obj->obj = nil;
+	}
+}
+
+static void objcobj_mark( muse_env *env, void *ptr )
+{
+	objc_obj_t *obj = (objc_obj_t*)ptr;
+	if ( obj->obj && [obj->obj respondsToSelector:@selector(museMark)]) {
+		[obj->obj museMark];
+	}
+}
+
+static void objcobj_destroy( muse_env *env, void *ptr )
+{
+	objc_obj_t *obj = (objc_obj_t*)ptr;
+	if ( obj->obj ) {
+		[obj->obj release];
+		obj->obj = nil;
+	}
+}
+
+static void objcobj_write( muse_env *env, void *ptr, void *port )
+{
+	objc_obj_t *obj = (objc_obj_t*)ptr;
+
+	port_putc( '{', port );
+	port_write( "@object", 7, port );
+	if ( obj->obj ) {
+		if ( [obj->obj isKindOfClass:[MuseObject class]]) {
+			port_putc( ' ', port );
+			muse_pwrite( port, ((MuseObject*)obj->obj)->obj );
+		} else {
+			NSString *desc = [obj->obj description];
+			port_putc( ' ', port );
+			port_write( [desc cString], [desc cStringLength], port );
+		}
+	}
+	port_putc( '}', port );
+}
+
+static muse_functional_object_type_t g_muse_objcobj_type =
+{
+	'muSE',
+	'objc',
+	sizeof(objc_obj_t),
+	(muse_nativefn_t)fn_objc_obj,
+	NULL,
+	objcobj_init,
+	objcobj_mark,
+	objcobj_destroy,
+	objcobj_write
+};
+
+muse_cell fn_object( muse_env *env, void *context, muse_cell args ) 
+{
+	return muse_mk_functional_object(env, &g_muse_objcobj_type, args );
+}
+
 
 void compile_sel( muse_env *env, id obj, compiled_sel_t *sel )
 {
@@ -102,6 +186,9 @@ muse_cell objs2list_iter( muse_env *env, NSEnumerator *objs, int i, muse_boolean
 
 id muse2obj( muse_env *env, muse_cell arg )
 {
+	if ( !arg )
+		return nil;
+	
 	switch ( _cellt(arg) ) {
 		case MUSE_TEXT_CELL : {
 			// Convert to NSString.
@@ -113,7 +200,7 @@ id muse2obj( muse_env *env, muse_cell arg )
 			for ( i = 0; i < length; ++i ) {
 				buffer[i] = (unichar)text[i];
 			}
-			id result = [NSString stringWithCharacters:buffer length:length];
+			NSString *result = [NSString stringWithCharacters:buffer length:length];
 			free(buffer);
 			return result;
 		}
@@ -123,7 +210,7 @@ id muse2obj( muse_env *env, muse_cell arg )
 			if ( _cellt(name) == MUSE_TEXT_CELL )
 				return muse2obj(env,name);
 			else
-				return nil;
+				return [[[MuseObject alloc] initWithMuseEnv:env object:arg] autorelease];
 		}
 		case MUSE_INT_CELL : {
 			// Convert to NSNumber
@@ -138,7 +225,10 @@ id muse2obj( muse_env *env, muse_cell arg )
 			muse_nativefn_t fn = _ptr(arg)->fn.fn;
 			void *ctxt = _ptr(arg)->fn.context;
 			
-			if ( fn == (muse_nativefn_t)fn_objc_obj || fn == (muse_nativefn_t)fn_objc_class )
+			if ( fn == (muse_nativefn_t)fn_objc_obj )
+				return (id)(((objc_obj_t*)ctxt)->obj);
+			
+			if ( fn == (muse_nativefn_t)fn_objc_class )
 				return (id)ctxt;
 			
 			if ( fn == (muse_nativefn_t)fn_objc_sel )
@@ -184,6 +274,14 @@ id muse2obj( muse_env *env, muse_cell arg )
 }
 
 muse_cell obj2muse( muse_env *env, id obj ) {
+	if ( obj == nil )
+		return MUSE_NIL;
+	
+	if ( [obj isKindOfClass:[MuseObject class]] ) {
+		MuseObject *m = (MuseObject*)obj;
+		return m->obj;
+	}
+	
 	if ( [obj isKindOfClass:[NSNumber class]] ) {
 		NSNumber *num = (NSNumber*)obj;
 		muse_int i = [num longLongValue];
@@ -282,7 +380,7 @@ muse_cell muse_objc_msgSend( muse_env *env, id obj, compiled_sel_t *sel, muse_ce
 					// return value, or you can create a temp object that will be
 					// filled in with the returned object using @code (@object) @endcode.
 					muse_assert( !arg || (_cellt(arg) == MUSE_NATIVEFN_CELL && _ptr(arg)->fn.fn == (muse_nativefn_t)fn_objc_obj && _ptr(arg)->fn.context == NULL) );
-					void *p = arg ? &(_ptr(arg)->fn.context) : NULL;
+					void *p = arg ? &(((objc_obj_t*)_ptr(arg)->fn.context)->obj) : NULL;
 					muse_assert( numptrargs+1 < 8 );
 					ptrargs[numptrargs++] = (id*)p;
 					[sel->invoc setArgument:&p atIndex:argIndex];
@@ -456,6 +554,10 @@ muse_cell mk_sel( muse_env *env, const muse_char *wname )
 		char nname[256];
 		w2n( wname, nname );
 		s = sel_getUid(nname);
+		
+		if ( s == nil ) {
+			muse_message( env, wname, L"%s is not an Objective-C selector. Treating it as a muSE selector.", wname );
+		}
 	}
 	
 	/* Decorate the selector symbol with a "[@:]" prefix so that it lands 
@@ -492,7 +594,7 @@ muse_cell parse_sel( muse_env *env, muse_cell args )
 	
 	selname[selname_len] = '\0';
 	
-	while ( args ) 
+	while ( args && _cellt(args) == MUSE_CONS_CELL ) 
 	{
 		muse_cell selpart = _head(args);
 		args = _tail(_tail(args));
@@ -541,28 +643,18 @@ muse_cell fn_objc_class( muse_env *env, Class c, muse_cell args )
 	return MUSE_NIL;
 }
 
-muse_cell fn_objc_obj( muse_env *env, id obj, muse_cell args )
+muse_cell fn_objc_obj( muse_env *env, objc_obj_t *obj, muse_cell args )
 {
-	if ( muse_doing_gc(env) ) 
-	{
-		[obj release];
-	}
-	else if ( !args ) 
-	{
-		// When an objc object is used in the function position
-		// in a normal schame expression, it is taken as a forced
-		// conversion to a corresponding scheme object.
-		return obj2muse( env, obj );
-	}
-	
-	return MUSE_NIL;
+	// When an objc object is used in the function position
+	// in a normal scheme expression, it is taken as a forced
+	// conversion to a corresponding scheme object.
+	return obj2muse( env, obj->obj );
 }
 
 muse_cell mk_objc_obj( muse_env *env, id obj )
 {
-	muse_cell objcell = muse_mk_destructor( env, (muse_nativefn_t)fn_objc_obj, obj );
-	if ( obj )
-		[obj retain];
+	muse_cell objcell = muse_mk_functional_object(env, &g_muse_objcobj_type, MUSE_NIL);
+	((objc_obj_t*)_ptr(objcell)->fn.context)->obj = [obj retain];
 	return objcell;
 }
 
@@ -592,7 +684,7 @@ Class objc_class( muse_env *env, muse_cell obj )
 id objc_object( muse_env *env, muse_cell obj )
 {
 	if ( _cellt(obj) == MUSE_NATIVEFN_CELL && _ptr(obj)->fn.fn == (muse_nativefn_t)fn_objc_obj )
-		return (id)(_ptr(obj)->fn.context);
+		return ((objc_obj_t*)_ptr(obj)->fn.context)->obj;
 	else
 		return nil;
 }
@@ -620,7 +712,10 @@ muse_cell fn_object( muse_env *env, void *context, muse_cell args );
 
 void init_objc_bridge( muse_env *env )
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	NSAutoreleasePool *pool = nil;
+	
+	if ( env->parameters[MUSE_OWN_OBJC_AUTORELEASE_POOL] )
+		pool = [[NSAutoreleasePool alloc] init];
 
 	int sp = _spos();
 	muse_define( env, _csymbol(L"@selector"), muse_mk_nativefn( env, fn_selector, NULL ) );
@@ -649,6 +744,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	obj = _obj;
 	sendfn = _symval(_csymbol(L"<-"));
 	vec2listfn = _symval(_csymbol(L"vector->list"));
+	dependenciesSym = _csymbol(L"@dependencies");
 	return self;
 }
 
@@ -751,16 +847,90 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	return muse_apply( env, vec2listfn, _cons( vec, MUSE_NIL ), MUSE_TRUE );
 }
 
-@end
-
-muse_cell fn_object( muse_env *env, void *context, muse_cell args ) 
++ (BOOL)accessInstanceVariablesDirectly
 {
-	if ( args ) {
-		muse_cell museobj = _evalnext(&args);
-		muse_assert( _cellt(museobj) == MUSE_SYMBOL_CELL );
-		MuseObject *it = [[MuseObject alloc] initWithMuseEnv: env object: museobj];
-		return mk_objc_obj(env,it);
-	} else {
-		return mk_objc_obj(env,nil);
+	return NO;
+}
+
++ (BOOL)automaticallyNotifiesObserversForKey:(NSString *)theKey
+{
+	return NO;
+}
+
+
+- (id) valueForKey: (NSString*)key
+{
+	int sp = _spos();
+	muse_cell sym = muse_csymbol_utf8( env, [key UTF8String] );
+	
+	muse_cell kvpair = muse_search_object( env, obj, sym );
+	
+	muse_cell val = _tail(kvpair);
+	
+	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
+		// Call method with no arguments.
+		val = muse_apply( env, val, _cons(obj,MUSE_NIL), MUSE_TRUE );
+	}
+	
+	id result = muse2obj( env, val );
+	_unwind(sp);
+	return result;
+}
+
+- (id) valueForUndefinedKey: (NSString*)key
+{
+	return nil;
+}
+
+- (void)notifyWithSel:(SEL)sel changedKey:(NSString*)key museKey:(muse_cell)sym
+{
+	char name[256];
+	[self performSelector:sel withObject:key];
+	muse_cell affected = _tail(muse_search_object( env, obj, dependenciesSym ));
+	switch ( _cellt(affected) ) {
+		case MUSE_CONS_CELL : // Assoc list.
+			affected = _tail(muse_assoc(env,affected,sym));
+			break;
+		case MUSE_SYMBOL_CELL : // Object
+			affected = _tail(muse_search_object(env,affected,sym));
+			break;
+		case MUSE_LAMBDA_CELL : // fn(self,key) returning list of affected keys.
+			affected = muse_apply( env, affected, _cons(obj,_cons(sym,MUSE_NIL)), MUSE_TRUE );
+			break;
+	}
+	muse_assert( _cellt(affected) == MUSE_CONS_CELL ); // A list of affected cells.
+	while ( affected ) {
+		muse_cell aff = _next(&affected);
+		w2n( muse_symbol_name(env, aff), name );
+		
+		[self performSelector:sel withObject:[NSString stringWithUTF8String:name]];
 	}
 }
+
+- (void) setValue: (id)val forKey: (NSString*)key
+{
+	int sp = _spos();
+	muse_cell sym = muse_csymbol_utf8( env, [key UTF8String] );
+	
+	muse_cell kvpair = muse_search_object( env, obj, sym );
+	
+	muse_cell oldval = _tail(kvpair);
+	
+	[self notifyWithSel:@selector(willChangeValueForKey:) changedKey:key museKey:sym];
+	if ( _cellt(oldval) == MUSE_LAMBDA_CELL ) {
+		// Have to call method with new value as argument.
+		muse_apply( env, oldval, _cons(obj,_cons(obj2muse(env,val),MUSE_NIL)), MUSE_TRUE );
+	} else {
+		muse_put_prop( env, obj, sym, obj2muse(env,val) );
+	}
+	[self notifyWithSel:@selector(didChangeValueForKey:) changedKey:key museKey:sym];
+	_unwind(sp);
+}
+
+- (void) setValue: (id)val forUndefinedKey: (NSString*)key
+{
+	[self setValue:val forKey:key];
+}
+
+@end
+
