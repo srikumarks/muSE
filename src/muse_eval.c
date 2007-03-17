@@ -37,7 +37,7 @@ muse_cell muse_quote( muse_env *env, muse_cell args )
  * The result of the evaluation is usually protected
  * by the stack if it is a newly allocated cell.
  */
-muse_cell muse_eval( muse_env *env, muse_cell sexpr )
+muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean tail_term )
 {	
 	/* A -ve cell number is used as an indicator that the 
 	object being referred to is "quick-quoted". So in this
@@ -53,7 +53,17 @@ muse_cell muse_eval( muse_env *env, muse_cell sexpr )
 			return _symval(sexpr);
 		case MUSE_CONS_CELL		:
 			/* Function application */
-			return _apply( _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE );
+			{
+				int sp = _spos();
+				muse_cell result = muse_apply( env, _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE, tail_term );
+				while ( !tail_term && _cellt(result) == MUSE_TAILCALL_CELL ) {
+					// Force evaluation of the tail term.
+					// This while loop turns tail recursive functions into loops.
+					_unwind(sp);
+					result = muse_apply( env, _head(result), _tail(result), MUSE_TRUE, tail_term );
+				}
+				return result;
+			}
 		default					:
 			/* Self evaluation. */
 			return sexpr;
@@ -352,7 +362,7 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
  * 
  * @see muse_apply_lambda
  */
-muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
+muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean tail_term )
 {
 	/* Check whether we've devoted enough attention to this process. */
 	yield_process(env,1);
@@ -383,7 +393,11 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 				arguments in list order. 
 				
 				See also syntax_lambda and muse_apply_lambda implementation. */
-				result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				if ( tail_term ) {
+					result = _setcellt( _cons(fn,(args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args)), MUSE_TAILCALL_CELL );
+				} else {
+					result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				}
 				break;
 			case MUSE_SYMBOL_CELL		:
 				/* The thing in the function position can be an "object" - i.e. a symbol to which
@@ -459,7 +473,8 @@ muse_cell muse_do( muse_env *env, muse_cell block )
 	while ( block )
 	{
 		_unwind(sp); /* Discard previous result on stack. */
-		result = _eval( _next(&block) );
+		result = _next(&block);
+		result = muse_eval( env, result, block == MUSE_NIL ? MUSE_TRUE : MUSE_FALSE  );
 	}
 	
 	return result;

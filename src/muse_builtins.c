@@ -243,12 +243,12 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 	muse_cell expr = _evalnext(&args);
 	
 	if ( expr )
-		return _evalnext(&args); /* then */
+		return muse_eval( env, _head(args), MUSE_TRUE ); /* then */
 	
 	args = _tail(args); /* Skip then portion. */
 	
 	if ( args )
-		return _evalnext(&args); /* else */
+		return muse_eval( env, _head(args), MUSE_TRUE ); /* else */
 	
 	return MUSE_NIL;
 }

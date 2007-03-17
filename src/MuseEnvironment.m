@@ -91,7 +91,7 @@ static muse_cell getval( muse_env *env, muse_cell obj, muse_cell key )
 {
 	muse_cell val = obj ? _tail(muse_search_object(env,obj,key)) : _symval(key);
 	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
-		val = muse_apply( env, val, obj ? _cons(obj,MUSE_NIL) : MUSE_NIL, MUSE_TRUE );
+		val = muse_apply( env, val, obj ? _cons(obj,MUSE_NIL) : MUSE_NIL, MUSE_TRUE, MUSE_FALSE );
 	}
 	return val;
 }
@@ -100,7 +100,7 @@ static void setval( muse_env *env, muse_cell obj, muse_cell key, muse_cell oldva
 {
 	muse_cell val = oldval ? oldval : (obj ? _tail(muse_search_object(env,obj,key)) : _symval(key));
 	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
-		val = muse_apply( env, val, (obj ? _cons(obj,_cons(newval,MUSE_NIL)) : _cons(newval,MUSE_NIL)), MUSE_TRUE );
+		val = muse_apply( env, val, (obj ? _cons(obj,_cons(newval,MUSE_NIL)) : _cons(newval,MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
 	} else if ( obj ) {
 		muse_put_prop( env, obj, key, newval );
 	} else {
@@ -121,7 +121,7 @@ static void notify( muse_env *env, muse_cell key, NSString *keyStr, id obj, SEL 
 			deps = _tail(muse_search_object(env,deps,key));
 			break;
 		case MUSE_LAMBDA_CELL : // fn(key) that returns a list of keys to update when key changes.
-			deps = muse_apply( env, deps, _cons(key,MUSE_NIL), MUSE_TRUE );
+			deps = muse_apply( env, deps, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_FALSE );
 			break;
 	}
 	muse_assert( _cellt(deps) == MUSE_CONS_CELL );

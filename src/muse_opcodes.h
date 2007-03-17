@@ -345,13 +345,13 @@ static inline muse_stack *op_symstack(muse_env *env)
 #define _head(c) op_head(env,c)
 static inline muse_cell op_head( muse_env *env, muse_cell c )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
 	return _ptr(c)->cons.head;
 }
 #define _tail(c) op_tail(env,c)
 static inline muse_cell op_tail( muse_env *env, muse_cell c )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
 	return _ptr(c)->cons.tail;
 }
 #define _symname(sym) op_symname(env,sym)
@@ -508,10 +508,10 @@ static inline muse_cell _quq( muse_cell c )
 #define _mk_anon_symbol() muse_mk_anon_symbol(env)
 #define _builtin_symbol(s) muse_builtin_symbol(env,s)
 #define _evalnext(argsptr) muse_evalnext(env,argsptr)
-#define _eval(expr) muse_eval(env,expr)
+#define _eval(expr) muse_eval(env,expr,MUSE_FALSE)
 #define _compare(a,b) muse_compare(env,a,b)
 #define _list_length(l) muse_list_length(env,l)
-#define _apply(f,args,evalp) muse_apply(env,f,args,evalp)
+#define _apply(f,args,evalp) muse_apply(env,f,args,evalp,MUSE_FALSE)
 #define _text_contents(c,lengthptr) muse_text_contents(env,c,lengthptr)
 #define _csymbol(c) muse_csymbol(env,c)
 #define _put_prop(s,p,v) muse_put_prop(env,s,p,v)

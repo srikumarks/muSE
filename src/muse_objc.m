@@ -755,7 +755,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 
 - (muse_cell) sendMuseMessage:(muse_cell)msg withArgs:(muse_cell)args
 {
-	return muse_apply( env, sendfn, _cons(obj,_cons(msg,args)), MUSE_TRUE );
+	return muse_apply( env, sendfn, _cons(obj,_cons(msg,args)), MUSE_TRUE, MUSE_FALSE );
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
@@ -769,7 +769,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	int sp = _spos();
 	SEL sel = [invocation selector];
 	muse_cell museSel = muse_csymbol_utf8(env,sel_getName(sel));
-	muse_cell result = muse_apply( env, sendfn, _cons(obj,_cons(museSel,[self invocation2arglist:invocation])), MUSE_TRUE );
+	muse_cell result = muse_apply( env, sendfn, _cons(obj,_cons(museSel,[self invocation2arglist:invocation])), MUSE_TRUE, MUSE_FALSE );
 	id resultObj = nil;
 	resultObj = muse2obj(env,result);
 	muse_assert( [[invocation methodSignature] methodReturnType][0] == '@' );
@@ -844,7 +844,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 		_unwind(sp);
 	}
 	
-	return muse_apply( env, vec2listfn, _cons( vec, MUSE_NIL ), MUSE_TRUE );
+	return muse_apply( env, vec2listfn, _cons( vec, MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
 }
 
 + (BOOL)accessInstanceVariablesDirectly
@@ -869,7 +869,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	
 	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
 		// Call method with no arguments.
-		val = muse_apply( env, val, _cons(obj,MUSE_NIL), MUSE_TRUE );
+		val = muse_apply( env, val, _cons(obj,MUSE_NIL), MUSE_TRUE, MUSE_FALSE );
 	}
 	
 	id result = muse2obj( env, val );
@@ -895,7 +895,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 			affected = _tail(muse_search_object(env,affected,sym));
 			break;
 		case MUSE_LAMBDA_CELL : // fn(self,key) returning list of affected keys.
-			affected = muse_apply( env, affected, _cons(obj,_cons(sym,MUSE_NIL)), MUSE_TRUE );
+			affected = muse_apply( env, affected, _cons(obj,_cons(sym,MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
 			break;
 	}
 	muse_assert( _cellt(affected) == MUSE_CONS_CELL ); // A list of affected cells.
@@ -919,7 +919,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	[self notifyWithSel:@selector(willChangeValueForKey:) changedKey:key museKey:sym];
 	if ( _cellt(oldval) == MUSE_LAMBDA_CELL ) {
 		// Have to call method with new value as argument.
-		muse_apply( env, oldval, _cons(obj,_cons(obj2muse(env,val),MUSE_NIL)), MUSE_TRUE );
+		muse_apply( env, oldval, _cons(obj,_cons(obj2muse(env,val),MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
 	} else {
 		muse_put_prop( env, obj, sym, obj2muse(env,val) );
 	}
