@@ -57,10 +57,15 @@ muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean tail_term )
 				int sp = _spos();
 				muse_cell result = muse_apply( env, _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE, tail_term );
 				while ( !tail_term && _cellt(result) == MUSE_TAILCALL_CELL ) {
-					// Force evaluation of the tail term.
-					// This while loop turns tail recursive functions into loops.
+					/* Force evaluation of the tail term.
+					This while loop turns tail recursive functions into loops. */
+					muse_cell f = _head(result);
+					muse_cell a = _tail(result);
 					_unwind(sp);
-					result = muse_apply( env, _head(result), _tail(result), MUSE_TRUE, tail_term );
+					/* The tail recursion capture cons cell will never escape an eval,
+						so we can safely return it to the free list to reduce garbage. */
+					_returncell(result); 
+					result = muse_apply( env, f, a, MUSE_TRUE, tail_term );
 				}
 				return result;
 			}
