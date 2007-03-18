@@ -380,14 +380,14 @@ static inline void op_lpush( muse_env *env, muse_cell h, muse_cell *l )
 #define _seth(c,h) op_seth(env,c,h)
 static inline void op_seth( muse_env *env, muse_cell c, muse_cell h )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
 	muse_assert( h < 0 || _celli(h) < env->heap.size_cells );
 	_ptr(c)->cons.head = h;
 }
 #define _sett(c,t) op_sett(env,c,t)
 static inline void op_sett( muse_env *env, muse_cell c, muse_cell t )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
 	muse_assert( t < 0 || _celli(t) < env->heap.size_cells );
 	_ptr(c)->cons.tail = t;
 }
@@ -395,7 +395,7 @@ static inline void op_sett( muse_env *env, muse_cell c, muse_cell t )
 static inline void op_setht( muse_env *env, muse_cell c, muse_cell h, muse_cell t )
 {
 	muse_cell_data *p = _ptr(c);
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
 	muse_assert( h < 0 || _celli(h) < env->heap.size_cells );
 	muse_assert( t < 0 || _celli(t) < env->heap.size_cells );
 	p->cons.head = h;

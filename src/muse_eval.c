@@ -62,9 +62,6 @@ muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean tail_term )
 					muse_cell f = _head(result);
 					muse_cell a = _tail(result);
 					_unwind(sp);
-					/* The tail recursion capture cons cell will never escape an eval,
-						so we can safely return it to the free list to reduce garbage. */
-					_returncell(result); 
 					result = muse_apply( env, f, a, MUSE_TRUE, tail_term );
 				}
 				return result;

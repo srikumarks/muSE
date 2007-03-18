@@ -318,7 +318,8 @@ const muse_char *muse_typename( muse_cell thing )
 		L"primitive",
 		L"integer",
 		L"fractional",
-		L"string"
+		L"string",
+		L"INTERNAL"
 	};
 
 	return k_type_names[_cellt(thing)];
