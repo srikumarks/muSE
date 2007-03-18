@@ -67,7 +67,27 @@ static void vector_init_with_length( void *ptr, int length )
 
 static void vector_init( muse_env *env, void *ptr, muse_cell args )
 {
-	vector_init_with_length( ptr, args ? (int)_intvalue(_evalnext(&args)) : 0 );
+	int length = args ? (int)_intvalue(_evalnext(&args)) : 0;
+	vector_init_with_length( ptr, length );
+	
+	/* Apply the generator function if given. */
+	if ( args ) {
+		muse_cell genfn = _evalnext(&args);
+		muse_assert( _isfn(genfn) );
+		{
+			vector_t *v = (vector_t*)ptr;
+			muse_cell ci = _mk_int(0);
+			muse_cell c = _cons(ci,MUSE_NIL);
+			muse_int *cip = &(_ptr(ci)->i);
+			int i = 0;
+			int sp = _spos();
+			for ( i = 0; i < v->length; ++i ) {
+				(*cip) = i;
+				v->slots[i] = _apply(genfn,c,MUSE_TRUE);
+				_unwind(sp);
+			}
+		}
+	}
 }
 
 static void vector_mark( muse_env *env, void *ptr )
