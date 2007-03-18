@@ -398,10 +398,13 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 				arguments in list order. 
 				
 				See also syntax_lambda and muse_apply_lambda implementation. */
-				if ( tail_term ) {
-					result = _setcellt( _cons(fn,(args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args)), MUSE_TAILCALL_CELL );
-				} else {
-					result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				{
+					muse_cell final_args = (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args);
+					if ( tail_term ) {
+						result = _setcellt( _cons(fn,final_args), MUSE_TAILCALL_CELL );
+					} else {
+						result = muse_apply_lambda( env, fn, final_args );
+					}
 				}
 				break;
 			case MUSE_SYMBOL_CELL		:
@@ -416,11 +419,12 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 					muse_cell pty = args_already_evaluated ? _next(&args) : _evalnext(&args);
 					if ( args ) {
 						muse_cell val = args_already_evaluated ? _next(&args) : _evalnext(&args);
-						return _tail( muse_put_prop( env, fn, pty, val ) );
+						result = _tail( muse_put_prop( env, fn, pty, val ) );
 					} else {
-						return _tail( muse_search_object( env, fn, pty ) );
+						result =_tail( muse_search_object( env, fn, pty ) );
 					}
 				}
+				break;
 				
 			default						:
 				/*	If the first argument is not a function, simply return the sexpr. 
