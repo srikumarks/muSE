@@ -54,7 +54,7 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 		muse_cell flag = _evalnext(&args);
 		if ( flag == _csymbol(L"for-reading") )
 			read_flag = MUSE_TRUE;
-		else if ( flag == _csymbol(L"for-reading") )
+		else if ( flag == _csymbol(L"for-writing") )
 			write_flag = MUSE_TRUE;
 	}
 
