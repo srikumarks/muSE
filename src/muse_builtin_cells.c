@@ -149,6 +149,17 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 
 	int sp = _spos();
 	
+	if ( _cellt(sym) == MUSE_CONS_CELL ) 
+	{
+		/* Syntax used is (define (sym args..) body). Transform the arguments
+		into the canonical form before further processing. */
+		return fn_define( env, context, 
+				_cons( _head(sym), 
+						(_cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC))
+							? _cons( _head(args), _cons( _cons( _csymbol(L"fn"), _cons( _tail(sym), _tail(args) ) ), MUSE_NIL ) )
+							: _cons( _cons( _csymbol(L"fn"), _cons( _tail(sym), args ) ), MUSE_NIL ) ) );
+	}
+
 	oldval = _symval(sym);
 	_spush(oldval);
 
