@@ -154,6 +154,16 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 						muse_cell obj = bind_copy_body(env,_head(_tail(body)), MUSE_FALSE);
 						return _cons( h, _cons( obj, anonymize_copy_case_body(env,_tail(_tail(body))) ) );
 					}
+					else if ( fn == fn_define )
+					{
+						/* Note that in the case of fn_define, we don't unwind the bindings
+						stack because the new definition should be in effect for the 
+						rest of the body that contains the definition. */
+						muse_cell c = MUSE_NIL;
+						muse_cell name = _head(_tail(body));
+						anonymize_formals( env, name );
+						return _cons( h, _cons( name, bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE ) ) );
+					}
 				}
 			}
 			else
