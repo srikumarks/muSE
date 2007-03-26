@@ -24,7 +24,9 @@ enum
  */
 static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell gen, muse_cell fn )
 {
-	if ( (_cellt(gen) != MUSE_LAMBDA_CELL) || (_quq(_head(gen)) != _csymbol(L"{{generic-args}}")) )
+	if ( (env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom)
+		|| (_cellt(gen) != MUSE_LAMBDA_CELL) 
+		|| (_quq(_head(gen)) != _csymbol(L"{{generic-args}}")) )
 	{
 		MUSE_DIAGNOSTICS({
 			if ( option > DEFINE_NORMAL && _cellt(gen) == MUSE_LAMBDA_CELL )
@@ -46,7 +48,10 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 			NOTE: There is no implementation of tail-recursion. So beware of
 			stack blowup. It usually safe to use recursion for small bound
 			routines such as syntax transformers. */
-		_define( sym, sym );
+		if ( env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom )
+			_pushdef( sym, sym ); /* Make the definition local in scope. */
+		else
+			_define( sym, sym );
 
 		fn = _eval(fn);
 
