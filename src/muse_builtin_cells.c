@@ -35,8 +35,8 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 										: L"(define-override >>genfn<< ...)",
 									L"Expecting a generic function, but got a normal function instead!" );
 
-			if ( sym != gen )
-				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined." );
+			if ( env->current_process->bindings_stack.top == env->current_process->bindings_stack.bottom && sym != gen )
+				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined.", sym );
 		});
 
 		/*	First mark the symbol as a fresh symbol by defining it to be itself.
@@ -155,6 +155,14 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	/* Process documentation if specified. */
 	if ( _cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC) )
 	{
+		MUSE_DIAGNOSTICS({
+			if ( env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom )
+			{
+				muse_message( env,	L"(define name >>(doc...)<< ...)", 
+									L"define cannot be used to add documentation within a local scope!" );
+			}
+		});
+
 		/* We have some documentation. We process documentation only if we've
 		been asked to. */
 		if ( env->parameters[MUSE_DISCARD_DOC] )
