@@ -54,7 +54,9 @@ typedef long long longlong_t;
 #include <setjmp.h>
 
 #ifdef MUSE_DEBUG_BUILD
+BEGIN_MUSE_C_FUNCTIONS
 	void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
+END_MUSE_C_FUNCTIONS
 #	define muse_assert( cond ) do { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); } while(0)
 #else
 #	define muse_assert( cond )

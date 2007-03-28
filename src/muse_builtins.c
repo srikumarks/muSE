@@ -164,6 +164,8 @@ static const struct _builtins
 {		NULL,			NULL				}
 };
 
+void muse_define_builtin_memport(muse_env *env);
+
 void muse_load_builtin_fns(muse_env *env)
 {
 	const struct _builtins *b = k_builtins;
@@ -182,6 +184,7 @@ void muse_load_builtin_fns(muse_env *env)
 	muse_define_builtin_type_hashtable(env);
 	muse_define_builtin_type_bytes(env);
 	muse_define_builtin_fileport(env);
+	muse_define_builtin_memport(env);
 	muse_define_builtin_networking(env);
 }
 
