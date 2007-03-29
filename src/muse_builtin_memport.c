@@ -82,9 +82,9 @@ static size_t memport_read( void *buffer, size_t nbytes, void *port )
 {
 	memport_t *p = (memport_t*)port;
 	unsigned char *b = (unsigned char *)buffer;
+	size_t bytes_read = 0;
 
 	/* Read the requested number of bytes into the given target buffer. */
-	size_t bytes_read = 0;
 	while ( p->first && bytes_read < nbytes )
 	{
 		size_t n = p->first->size - p->read_offset;
@@ -133,6 +133,7 @@ static size_t memport_write(void *buffer, size_t nbytes, void *port )
 			p->last = ch;
 		}
 
+		p->base.eof = 0;
 		return nbytes;
 	}
 
@@ -141,7 +142,12 @@ static size_t memport_write(void *buffer, size_t nbytes, void *port )
 
 static int memport_flush( void *port )
 {
-	return 0;
+	memport_t *p = (memport_t*)port;
+
+	if ( p->first )
+		p->base.eof = 0;
+
+	return p->base.eof;
 }
 
 /**

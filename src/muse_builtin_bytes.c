@@ -479,7 +479,7 @@ static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t siz
 {
 	size_t total = 0;
 
-	while ( p->error == 0 && !port_eof(p) && size > 0 )
+	while ( p->error == 0 && size > 0 )
 	{
 		size_t nwritten = port_write( buffer, size, p );
 
