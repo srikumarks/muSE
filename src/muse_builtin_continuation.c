@@ -392,6 +392,7 @@ typedef struct _resume_point_t
 	int bspos;			/**< Captures the state of the muSE bindings stack. */
 	int atomicity;		/**< Captures the atomicity to return to. */
 	muse_cell trapval;	/**< Captures the state of the trap stack that we should restore to. */
+	muse_cell resumingtrap; /**< The trap one of whose handlers resumed the exception. */
 	muse_cell result;	/**< Holds the result of the resume invocation. */
 } resume_point_t;
 
@@ -412,6 +413,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		rp->bspos = _bspos();
 		rp->atomicity = env->current_process->atomicity;
 		rp->trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+		rp->resumingtrap = MUSE_NIL;
 		rp->result = 0;
 	}
 	else
@@ -437,21 +439,6 @@ static void resume_invoke( muse_env *env, resume_point_t *p, muse_cell result )
 }
 
 /**
- * The function that gets called to resume a particular exception.
- * At exception raise time, a resume point is captured and passed
- * on to the handlers. A handler may choose to resume the computation
- * by calling the resume function with a particular result value.
- */
-static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
-{
-	resume_point_t *rp = (resume_point_t*)context;
-
-	resume_invoke( env, rp, _evalnext(&args) );
-
-	return MUSE_NIL;
-}
-
-/**
  * A trap point is a marker for the beginning of a
  * (try...) block. When you return to a trap point,
  * you return with a value that is supposed to be the
@@ -474,6 +461,28 @@ typedef struct _trap_point_t
 static trap_point_t *trap_point_data( muse_env *env, muse_cell trap )
 {
 	return (trap_point_t*)_functional_object_data(trap, 'trap');
+}
+
+/**
+* The function that gets called to resume a particular exception.
+ * At exception raise time, a resume point is captured and passed
+ * on to the handlers. A handler may choose to resume the computation
+ * by calling the resume function with a particular result value.
+ */
+static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
+{
+	resume_point_t *rp = (resume_point_t*)context;
+	
+	if ( rp->resumingtrap ) {
+		trap_point_t *tp = _tpdata(rp->resumingtrap);
+		if ( tp ) {
+			_step(&(tp->tried_handlers));
+		}
+	}
+	
+	resume_invoke( env, rp, _evalnext(&args) );
+	
+	return MUSE_NIL;
 }
 
 static void trap_point_init( muse_env *env, void *p, muse_cell args )
@@ -570,6 +579,18 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 					{
 						muse_cell result;
 						trap->tried_handlers = _cons(h,trap->tried_handlers);
+						
+						/* If the first value in the handlers list is a resume point,
+							then save the trap that might invoke the resume point in it. */
+						if ( handler_args && _cellt(handler_args) == MUSE_CONS_CELL ) 
+						{
+							muse_cell rpc = _head(handler_args);
+							if ( _cellt(rpc) == MUSE_NATIVEFN_CELL && _ptr(rpc)->fn.fn == fn_resume ) {
+								resume_point_t *rp = (resume_point_t*)_ptr(rpc)->fn.context;
+								rp->resumingtrap = trapval;
+							}
+						}
+						
 						result = _do(_tail(h));
 
 						/* The cons cell taken for the handlers list is a 
