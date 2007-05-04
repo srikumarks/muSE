@@ -37,7 +37,7 @@ muse_cell muse_quote( muse_env *env, muse_cell args )
  * The result of the evaluation is usually protected
  * by the stack if it is a newly allocated cell.
  */
-muse_cell muse_eval( muse_env *env, muse_cell sexpr )
+muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean lazy )
 {	
 	/* A -ve cell number is used as an indicator that the 
 	object being referred to is "quick-quoted". So in this
@@ -53,7 +53,10 @@ muse_cell muse_eval( muse_env *env, muse_cell sexpr )
 			return _symval(sexpr);
 		case MUSE_CONS_CELL		:
 			/* Function application */
-			return _apply( _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE );
+			{
+				muse_cell result = muse_apply( env, _eval(_head(sexpr)), _tail(sexpr), MUSE_FALSE, lazy );
+				return lazy ? result : _force(result);
+			}
 		default					:
 			/* Self evaluation. */
 			return sexpr;
@@ -184,7 +187,11 @@ muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args
 				we have to use eq to compare. */
 				return muse_equal( env, _tail(formals), args );
 			}
-			else if ( _cellt(args) != MUSE_CONS_CELL )
+
+			if ( _cellt(args) == MUSE_LAZY_CELL )
+				args = _force(args);
+
+			if ( _cellt(args) != MUSE_CONS_CELL )
 			{
 				return MUSE_FALSE; /* We cannot match a cons cell against something that's not one. */
 			}
@@ -196,9 +203,9 @@ muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args
 				 * to () simply because () can be infinitely decomposed
 				 * as for example, @code (().(().(().()))) @endcode. */
 				int bsp = _bspos();
-				if ( muse_bind_formals( env, _head(formals), _head(args) ) )
+				if ( muse_bind_formals( env, _head(formals), muse_head(env,args) ) )
 				{
-					if ( muse_bind_formals( env, _tail(formals), _tail(args) ) )
+					if ( muse_bind_formals( env, _tail(formals), muse_tail(env,args) ) )
 					{
 						return MUSE_TRUE; /* Both head and tail matched. */
 					}
@@ -234,7 +241,7 @@ muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args
 					/*	Evaluate the body. If the body evaluates to a non-NIL
 					value, then leave the bindings as is and continue. */
 					int sp = _spos();
-					muse_cell result = _do( _tail(fn) );
+					muse_cell result = _force(_do( _tail(fn) ));
 					_unwind(sp);
 					if ( !result )
 					{
@@ -352,7 +359,7 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
  * 
  * @see muse_apply_lambda
  */
-muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated )
+muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean lazy )
 {
 	/* Check whether we've devoted enough attention to this process. */
 	yield_process(env,1);
@@ -383,7 +390,14 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 				arguments in list order. 
 				
 				See also syntax_lambda and muse_apply_lambda implementation. */
-				result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				if ( lazy )
+				{
+					result = _setcellt(_cons(fn,args_already_evaluated ? args : muse_eval_list(env, args)), MUSE_LAZY_CELL);
+				}
+				else
+				{
+					result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
+				}
 				break;
 			default						:
 				/*	If the first argument is not a function, simply return the sexpr. 
@@ -440,10 +454,39 @@ muse_cell muse_do( muse_env *env, muse_cell block )
 	
 	while ( block )
 	{
+		muse_cell term = _next(&block);
+
 		_unwind(sp); /* Discard previous result on stack. */
-		result = _eval( _next(&block) );
+
+		result = muse_eval( env, term, block ? MUSE_FALSE : MUSE_TRUE );
 	}
 	
 	return result;
 }
 
+
+/**
+ * Forces evaluation of a lazy cell.
+ */
+muse_cell muse_force( muse_env *env, muse_cell cell )
+{
+	int sp = _spos();
+	while ( _cellt(cell) == MUSE_LAZY_CELL )
+	{
+		_unwind(sp);
+
+		{
+			muse_cell h = _head(cell);
+			if ( h )
+				/* When the head of a lazy cell is not MUSE_NIL, it should
+				be a function that is applied to the tail of the cell. */
+				cell = muse_apply( env, h, _tail(cell), MUSE_TRUE, MUSE_FALSE );
+			else
+				/* When the head of a lazy cell is MUSE_NIL, then
+				the forced value of the cell is the value of the tail. */
+				cell = muse_eval( env, _tail(cell), MUSE_FALSE );
+		}
+	}
+
+	return cell;
+}

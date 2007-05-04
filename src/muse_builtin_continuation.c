@@ -591,7 +591,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 							}
 						}
 						
-						result = _do(_tail(h));
+						result = _force(_do(_tail(h)));
 
 						/* The cons cell taken for the handlers list is a 
 						scaffolding cell taken by the runtime and not accessible
