@@ -729,9 +729,10 @@ int muse_hashtable_length( muse_env *env, muse_cell ht )
  */
 muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
 {
-	return fn_hashtable( env, 
-						(hashtable_t*)_functional_object_data( ht, 'hash' ), 
-						_cons( key, MUSE_NIL ) );
+	int sp = _spos();
+	muse_cell result = muse_apply( env, ht, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_FALSE );
+	_unwind(sp);
+	return result;
 }
 
 /**
@@ -742,10 +743,7 @@ muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
 muse_cell muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value )
 {
 	int sp = _spos();
-	muse_cell result =
-		fn_hashtable( env, 
-						(hashtable_t*)_functional_object_data( ht, 'hash' ), 
-						_cons( key, _cons( value, MUSE_NIL ) ) );
+	muse_cell result = muse_apply( env, ht, _cons(key,_cons(value,MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
 	_unwind(sp);
 	return result;
 }
