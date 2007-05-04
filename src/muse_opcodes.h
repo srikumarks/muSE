@@ -345,13 +345,16 @@ static inline muse_stack *op_symstack(muse_env *env)
 #define _head(c) op_head(env,c)
 static inline muse_cell op_head( muse_env *env, muse_cell c )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
-	return _ptr(c)->cons.head;
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_LAZY_CELL );
+	if ( _cellt(c) == MUSE_SYMBOL_CELL )
+		return 	env->current_process->locals.bottom[_ptr(c)->cons.head >> 3];
+	else
+		return _ptr(c)->cons.head;
 }
 #define _tail(c) op_tail(env,c)
 static inline muse_cell op_tail( muse_env *env, muse_cell c )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_LAZY_CELL );
 	return _ptr(c)->cons.tail;
 }
 #define _symname(sym) op_symname(env,sym)
@@ -363,13 +366,13 @@ static inline muse_cell op_symname( muse_env *env, muse_cell sym )
 static inline muse_cell op_step( muse_env *env, muse_cell *c )
 {
 	muse_cell _c = *c;
-	(*c) = _tail(*c);
+	(*c) = muse_tail(env,*c);
 	return _c;
 }
 #define _next(c) op_next(env,c)
 static inline muse_cell op_next( muse_env *env, muse_cell *c )
 {
-	return _head(_step(c));
+	return muse_head(env,_step(c));
 }
 #define _lpush(h,l) op_lpush(env,h,l)
 static inline void op_lpush( muse_env *env, muse_cell h, muse_cell *l )
@@ -380,14 +383,14 @@ static inline void op_lpush( muse_env *env, muse_cell h, muse_cell *l )
 #define _seth(c,h) op_seth(env,c,h)
 static inline void op_seth( muse_env *env, muse_cell c, muse_cell h )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
 	muse_assert( h < 0 || _celli(h) < env->heap.size_cells );
 	_ptr(c)->cons.head = h;
 }
 #define _sett(c,t) op_sett(env,c,t)
 static inline void op_sett( muse_env *env, muse_cell c, muse_cell t )
 {
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
 	muse_assert( t < 0 || _celli(t) < env->heap.size_cells );
 	_ptr(c)->cons.tail = t;
 }
@@ -395,7 +398,7 @@ static inline void op_sett( muse_env *env, muse_cell c, muse_cell t )
 static inline void op_setht( muse_env *env, muse_cell c, muse_cell h, muse_cell t )
 {
 	muse_cell_data *p = _ptr(c);
-	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_TAILCALL_CELL );
+	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL );
 	muse_assert( h < 0 || _celli(h) < env->heap.size_cells );
 	muse_assert( t < 0 || _celli(t) < env->heap.size_cells );
 	p->cons.head = h;
@@ -404,13 +407,13 @@ static inline void op_setht( muse_env *env, muse_cell c, muse_cell h, muse_cell 
 #define _define(symbol,value) op_define(env,symbol,value)
 static inline muse_cell op_define( muse_env *env, muse_cell symbol, muse_cell value )
 {
-	env->current_process->locals.bottom[_head(symbol)>>3] = value;
+	env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3] = value;
 	return value;
 }
 #define _symval(symbol) op_symval(env,symbol)
 static inline muse_cell op_symval( muse_env *env, muse_cell symbol )
 {
-	return env->current_process->locals.bottom[_head(symbol)>>3];
+	return env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3];
 }
 #define _bspos() op_bspos(env)
 static inline int op_bspos(muse_env *env)
@@ -459,19 +462,15 @@ static inline void op_unmark( muse_env *env, muse_cell c )
 #define _ismarked(c) op_ismarked(env,c)
 static inline int op_ismarked( muse_env *env, muse_cell c )
 {
-	if ( (c & 7) == 7 ) 
-		return 7; /**< TLS is always considered marked. */
-	else
-	{
-		int ci = _celli(c);
-		const unsigned char *m = _heap()->marks + (ci >> 3);
-		muse_assert( ci >= 0 && ci < _heap()->size_cells );
-		return (*m) & (1 << (ci & 7));
-	}
+	int ci = _celli(c);
+	const unsigned char *m = _heap()->marks + (ci >> 3);
+	muse_assert( ci >= 0 && ci < _heap()->size_cells );
+	return (*m) & (1 << (ci & 7));
 }
 static inline int _iscompound( muse_cell c )
 {
-	return _cellt(c) < MUSE_NATIVEFN_CELL;
+	int t = _cellt(c);
+	return t < MUSE_NATIVEFN_CELL || t > MUSE_TEXT_CELL;
 }
 #define _takefreecell() op_takefreecell(env)
 static inline muse_cell op_takefreecell(muse_env *env)
@@ -511,7 +510,8 @@ static inline muse_cell _quq( muse_cell c )
 #define _eval(expr) muse_eval(env,expr,MUSE_FALSE)
 #define _compare(a,b) muse_compare(env,a,b)
 #define _list_length(l) muse_list_length(env,l)
-#define _apply(f,args,evalp) muse_apply(env,f,args,evalp,MUSE_FALSE)
+#define _apply(f,args,evalp) _force(muse_apply(env,f,args,evalp,MUSE_FALSE))
+#define _lapply(f,args,evalp) muse_apply(env,f,args,evalp,MUSE_TRUE)
 #define _text_contents(c,lengthptr) muse_text_contents(env,c,lengthptr)
 #define _csymbol(c) muse_csymbol(env,c)
 #define _put_prop(s,p,v) muse_put_prop(env,s,p,v)
@@ -519,6 +519,7 @@ static inline muse_cell _quq( muse_cell c )
 #define _do(stmts) muse_do(env,stmts)
 #define _functional_object_data(f,type) muse_functional_object_data(env,f,type)
 #define _pushdef(s,v) muse_pushdef(env,s,v)
+#define _force(c) muse_force(env,c)
 
 #define _port(p) muse_port(env,p)
 #define _stdport(d) muse_stdport(env,d)

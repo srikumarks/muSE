@@ -207,7 +207,7 @@ muse_cell fn_send( muse_env *env, void *context, muse_cell args )
 	/* If we're calling send, the member is expected to be a function
 	   we can call. */
 	if ( memberVal )
-		return _apply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
+		return _lapply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
 	else
 		return MUSE_NIL;
 }
@@ -246,7 +246,7 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
 	muse_cell method		= _tail(methodEntry);
 	
 	if ( method )
-		return _apply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
+		return _lapply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
 	else
 		return MUSE_NIL;
 }

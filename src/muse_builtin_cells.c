@@ -319,7 +319,7 @@ muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_first( muse_env *env, void *context, muse_cell args )
 {
-	return _head( _eval(_head(args)) );
+	return muse_head( env, _eval(_head(args)) );
 }
 
 /**
@@ -330,7 +330,7 @@ muse_cell fn_first( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_rest( muse_env *env, void *context, muse_cell args )
 {
-	return _tail( _eval(_head(args)) );
+	return muse_tail( env, _eval(_head(args)) );
 }
 
 /**
@@ -346,9 +346,9 @@ muse_cell fn_nth( muse_env *env, void *context, muse_cell args )
 	muse_cell c = _evalnext(&args);
 	
 	while ( N-- > 0 )
-		c = _tail(c);
+		c = muse_tail(env,c);
 
-	return _head(c);
+	return muse_head(env,c);
 }
 
 /**

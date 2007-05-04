@@ -215,7 +215,7 @@ typedef enum
 	MUSE_INT_CELL,			/**< Holds a single 64-bit signed integer. */
 	MUSE_FLOAT_CELL,		/**< Holds a single 64-bit floating point number - i.e. a "double". */
 	MUSE_TEXT_CELL,			/**< Holds an immutable copy of a wide character string - as ptrs to beginning and end. */
-	MUSE_TAILCALL_CELL		/**< A cell whose head a function and whose tail is the list of arguments to pass to it. */
+	MUSE_LAZY_CELL			/**< A cell whose head is a function and whose tail is its argument list. */
 } muse_cell_t;
 
 typedef struct _muse_env		muse_env;	/**< Identifies a particular muse instance. */
@@ -400,14 +400,15 @@ muse_cell	muse_load( muse_env *env, FILE *f );
 
 /** @name Evaluation */
 /*@{*/
-muse_cell	muse_eval( muse_env *env, muse_cell sexpr, muse_boolean tail_term );
+muse_cell	muse_eval( muse_env *env, muse_cell sexpr, muse_boolean lazy );
 muse_cell	muse_evalnext( muse_env *env, muse_cell *sexpr );
 muse_cell	muse_eval_list( muse_env *env, muse_cell list );
-muse_cell	muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean tail_term );
+muse_cell	muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean lazy );
 muse_cell	muse_do( muse_env *env, muse_cell block );
 muse_cell	muse_quote( muse_env *env, muse_cell args );
 muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell values );
 muse_cell	muse_callcc( muse_env *env, muse_cell proc );
+muse_cell	muse_force( muse_env *env, muse_cell cell );
 /*@}*/
 
 /** @name Misc */

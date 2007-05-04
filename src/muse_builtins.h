@@ -23,6 +23,7 @@
 /*@{*/
 muse_cell fn_quote( muse_env *env, void *context, muse_cell args );
 muse_cell fn_cons( muse_env *env, void *context, muse_cell args );
+muse_cell fn_lcons( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_block( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_generic_lambda( muse_env *env, void *context, muse_cell args );

@@ -24,6 +24,7 @@ static const struct _builtins
 {
 {		L"quote",		fn_quote			},
 {		L"cons",		fn_cons				},
+{		L"lcons",		fn_lcons			},
 {		L"eval",		fn_eval				},
 {		L"fn",			syntax_lambda		},
 {		L"fn:",			syntax_block		},
@@ -219,7 +220,7 @@ muse_cell fn_cons( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
 {
-	return _eval( _evalnext(&args) );
+	return muse_eval( env, _evalnext(&args), MUSE_TRUE );
 }
 
 /**
@@ -324,12 +325,7 @@ muse_cell syntax_while( muse_env *env, void *context, muse_cell args )
 	while ( _eval(bool_expr) )
 	{
 		_unwind(sp);
-		result = _do(body);
-		if ( _cellt(result) == MUSE_TAILCALL_CELL ) {
-			muse_cell f = _head(result), a = _tail(result);
-			_returncell(result);
-			result = _apply(f,a,MUSE_TRUE);
-		}
+		result = _force(_do(body));
 	}
 	
 	_unwind(sp);
@@ -378,11 +374,6 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 	{
 		_unwind(sp);
 		result = _eval(body);
-		if ( _cellt(result) == MUSE_TAILCALL_CELL ) {
-			muse_cell f = _head(result), a = _tail(result);
-			_returncell(result);
-			result = _apply(f,a,MUSE_TRUE);
-		}
 		_eval(update_expr);
 	}
 	
@@ -510,7 +501,7 @@ muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
 muse_cell fn_time_taken_us( muse_env *env, void *context, muse_cell args )
 {
 	void *timing = muse_tick();
-	_do( args );
+	_force(_do( args ));
 	return _mk_int( muse_tock(timing) );
 }
 
@@ -791,7 +782,7 @@ muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell result = MUSE_NIL;
 	enter_atomic(env);
-	result = _do(args);
+	result = _force(_do(args));
 	leave_atomic(env);
 	return result;
 }

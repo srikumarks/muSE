@@ -893,3 +893,27 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+static muse_cell delay_expr( muse_env *env, muse_cell expr )
+{
+	muse_cell e = bind_copy_body(env,expr,MUSE_TRUE);
+	if ( _isquote(e) )
+		return e;
+	else
+		return _setcellt( _cons( MUSE_NIL, e ), MUSE_LAZY_CELL );
+}
+
+/**
+ * (lcons a b)
+ *
+ * A "lazy" version of (cons a b) where the a and b are expressions
+ * that are not immediately evaluated. They'll be evaluated when their
+ * values are required - i.e. when you do a (first ...) or (rest ...)
+ * invocation on the resultant cons cell.
+ */
+muse_cell fn_lcons( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell h = delay_expr(env,_next(&args));
+	muse_cell t = delay_expr(env,_next(&args));
+
+	return _cons( h, t );
+}

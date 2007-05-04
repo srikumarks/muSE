@@ -49,7 +49,12 @@ muse_boolean muse_isfn( muse_cell cell )
  */
 muse_cell muse_head( muse_env *env, muse_cell cell )
 {
-	return _head(cell);
+	muse_cell h = _head(cell);
+
+	if ( _cellt(h) == MUSE_LAZY_CELL )
+		_seth( cell, h = _force(h) );
+
+	return h;
 }
 
 /**
@@ -64,7 +69,12 @@ muse_cell muse_head( muse_env *env, muse_cell cell )
  */
 muse_cell muse_tail( muse_env *env, muse_cell cell )
 {
-	return _tail(cell);
+	muse_cell t = _tail(cell);
+
+	if ( _cellt(t) == MUSE_LAZY_CELL )
+		_sett( cell, t = _force(t) );
+
+	return t;
 }
 
 /**
