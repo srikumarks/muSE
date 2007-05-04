@@ -318,7 +318,8 @@ const muse_char *muse_typename( muse_cell thing )
 		L"primitive",
 		L"integer",
 		L"fractional",
-		L"string"
+		L"string",
+		L"INTERNAL"
 	};
 
 	return k_type_names[_cellt(thing)];
@@ -436,13 +437,21 @@ static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, mu
 	case MUSE_SYMBOL_CELL	: 
 		{
 			const muse_char *name = muse_symbol_name(env,thing);
-			int name_len = (int)wcslen(name);
-			if ( name_len > maxlen - len )
-				name_len = maxlen - len;
-			if ( name_len >= 1 )
-			{
-				memcpy( buffer + len, name, sizeof(muse_char) * name_len );
-				len += name_len;
+			if ( name ) {
+				int name_len = (int)wcslen(name);
+				if ( name_len > maxlen - len )
+					name_len = maxlen - len;
+				if ( name_len >= 1 )
+				{
+					memcpy( buffer + len, name, sizeof(muse_char) * name_len );
+					len += name_len;
+				}
+			} else {
+				/* Anonymous object. */
+				char obj[64];
+				obj[63] = '\0';
+				snprintf( obj, 64, "<obj:%x>", thing );
+				len += muse_utf8_to_unicode( buffer + len, maxlen - len, obj, strlen(obj) );
 			}
 		}
 		break;
@@ -619,7 +628,7 @@ void muse_message( muse_env *env, const muse_char *context, const muse_char *mes
 	#if MUSE_PLATFORM_WINDOWS
 		len += swprintf( text, MAXLEN, L"Context:    %s\n\n", context );
 	#else
-		len += swprintf( text, MAXLEN, L"%s\n\n", context );
+		len += swprintf( text, MAXLEN, L"%ls\n\n", context );
 	#endif
 
 	va_start( args, message );
@@ -638,7 +647,7 @@ void muse_message( muse_env *env, const muse_char *context, const muse_char *mes
 		default:;
 		}
 	#else
-		fprintf( stderr, "===========================\nmuSE diagnostics:\n%S\n===========================\n", text );
+		fprintf( stderr, "===========================\nmuSE diagnostics:\n%ls\n===========================\n", text );
 	#endif
 }
 
