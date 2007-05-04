@@ -277,18 +277,7 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 	if ( args )
 	{
 		/* Argument given. We should set the member value. */
-		muse_cell pty = _get_prop( obj, memberName );
-		if ( pty )
-		{
-			_sett( pty, _evalnext(&args) );
-			return pty;
-		}
-		else
-		{
-			pty = _cons(memberName, _evalnext(&args));
-			_sett( _tail(obj), _cons( pty, _tail(_tail(obj)) ) );
-			return pty;
-		}
+		return _tail( muse_put_prop( env, obj, memberName, _evalnext(&args) ) );
 	}
 	else
 	{
