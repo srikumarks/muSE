@@ -76,6 +76,7 @@ static const struct _builtins
 {		L"ormap",		fn_ormap			},
 {		L"for-each",	fn_for_each			},
 {		L"transpose",	fn_transpose		},
+{		L"funcspec",	fn_funcspec			},
 
 /************** Math ***************/
 {		L"+",			fn_add				},

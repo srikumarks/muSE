@@ -728,6 +728,14 @@ typedef muse_cell (*muse_iterator_t)( muse_env *env, void *self, muse_iterator_c
  * An 'iter' view will provide this function to call that can be used to iterate over collections.
  */
 
+typedef muse_cell (*muse_funcspec_t)( muse_env *env, void *self, muse_cell funcspec );
+/**<
+ * A 'spec' view will return this function which you can call to set the behaviour
+ * of a data structure to be that of a function. Whenever a value is not found in the
+ * data structure (such as vector or hashtable), the function \p funcspec will be invoked
+ * to determine the value. The result of the function should be cached for future accesses.
+ */
+
 END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_H__ */

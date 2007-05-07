@@ -53,6 +53,7 @@ typedef struct
 	muse_functional_object_t base;
 	int length;
 	muse_cell *slots;
+	muse_cell funcspec;
 } vector_t;
 
 static void vector_init_with_length( void *ptr, int length )
@@ -80,6 +81,8 @@ static void vector_mark( muse_env *env, void *ptr )
 	{
 		muse_mark( env, *cptr++ );
 	}
+
+	muse_mark( env, v->funcspec );
 }
 
 static void vector_destroy( muse_env *env, void *ptr )
@@ -115,44 +118,6 @@ static void vector_write( muse_env *env, void *ptr, void *port )
 	port_putc( '}', p );
 }
 
-/**
- * The function that implements vector slot access.
- */
-muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
-{
-	if ( args )
-	{
-		int index = (int)_intvalue(_evalnext(&args));
-
-		muse_assert( index >= 0 && index < v->length );
-		
-		MUSE_DIAGNOSTICS({
-    		if ( index < 0 || index >= v->length )
-    		{
-        		muse_message( env,L"vector", 
-        		              L"DANGER: Given index %d is not in the range [0,%d).",
-        		              (muse_int)index, 
-        		              (muse_int)v->length );
-    		}
-		});
-
-		if ( args )
-		{
-			/* We're setting a slot. */
-			muse_cell result = _evalnext(&args);
-			v->slots[index] = result;
-			return result;
-		}
-		else
-		{
-			/* We're getting a slot. */
-			return v->slots[index];
-		}
-	}
-
-	return MUSE_NIL;
-}
-
 static muse_cell vector_size( muse_env *env, void *self )
 {
 	return _mk_int( ((vector_t*)self)->length );
@@ -167,6 +132,65 @@ static void vector_resize( vector_t *self, int new_size )
 	memset( self->slots + self->length, 0, sizeof(muse_cell) * (new_size - self->length) );
 	self->length = new_size;
 }
+
+/**
+ * The function that implements vector slot access.
+ */
+muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
+{
+	int indexcell = _evalnext(&args);
+	int index = (int)_intvalue(indexcell);
+	muse_cell *slot = NULL;
+
+	muse_assert( index >= 0 );
+
+	if ( index < v->length )
+	{
+		slot = v->slots + index;
+	}
+
+	if ( args )
+	{
+		/* Set value. */
+		muse_cell newval = _evalnext(&args);
+
+		if ( newval )
+		{
+			if ( !slot )
+			{
+				vector_resize( v, index+1 );
+				slot = v->slots + index;
+			}
+
+			muse_assert( slot != NULL );
+			(*slot) = newval;
+		}
+		
+		return newval;
+	}
+	else
+	{
+		/* Get value. */
+		if ( slot && *slot )
+			return *slot;
+		else
+		{
+			muse_cell val = MUSE_NIL;
+
+			if ( v->funcspec )
+			{
+				val = _force(muse_apply( env, v->funcspec, _cons(indexcell,MUSE_NIL), MUSE_TRUE, MUSE_TRUE )); 
+			}
+
+			if ( !slot && val )
+				vector_resize( v, index+1 );
+
+			v->slots[index] = val;
+			return val;
+		}
+	}
+}
+
 
 static void vector_merge_one( muse_env *env, vector_t *v, int i, muse_cell new_value, muse_cell reduction_fn )
 {
@@ -351,6 +375,12 @@ static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_c
 	return MUSE_NIL;
 }
 
+static void vector_funcspec( muse_env *env, void *self, muse_cell funcspec )
+{
+	vector_t *v = (vector_t*)self;
+	v->funcspec = funcspec;
+}
+
 static muse_monad_view_t g_vector_monad_view =
 {
 	vector_size,
@@ -366,6 +396,7 @@ static void *vector_view( muse_env *env, int id )
 	{
 		case 'mnad' : return &g_vector_monad_view;
 		case 'iter' : return vector_iterator;
+		case 'spec' : return vector_funcspec;
 		default : return NULL;
 	}
 }
