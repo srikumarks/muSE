@@ -54,10 +54,14 @@ id objc_object( muse_env *env, muse_cell obj );
 }
 - (id)initWithMuseEnv:(muse_env*)env object:(muse_cell)obj;
 - (void)museMark;
+- (BOOL)respondsToSelector:(SEL)aSelector;
 - (void)forwardInvocation: (NSInvocation*)invocation;
 - (muse_cell)invocation2arglist: (NSInvocation*)invocation;
 - (muse_cell) sendMuseMessage:(muse_cell)msg withArgs:(muse_cell)args;
 - (id)typicalUIMessage:(id)arg;
+- (id)twoArgMsgArg1:(id)arg1 arg2:(id)arg2;
+- (id)threeArgMsgArg1:(id)arg1 arg2:(id)arg2 arg3:(id)arg3;
+- (id)fourArgMsgArg1:(id)arg1 arg2:(id)arg2 arg3:(id)arg3 arg4:(id)arg4;
 
 // Key-value coding.
 + (BOOL)accessInstanceVariablesDirectly;
@@ -738,6 +742,21 @@ void destroy_objc_bridge( muse_env *env )
 muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 
 @implementation MuseObject
+
+// In here, we find out whether a method corresponding to a particular
+// selector has been specified or not.
+- (BOOL)respondsToSelector:(SEL)aSelector
+{
+	int sp = _spos();
+	muse_cell museSel = muse_csymbol_utf8(env,sel_getName(aSelector));
+	_unwind(sp);
+	
+	{
+		muse_cell impl = muse_search_object( env, obj, museSel );
+		return impl ? YES : NO;
+	}
+}
+
 - (id)initWithMuseEnv:(muse_env*)_env object:(muse_cell)_obj
 {
 	env = _env;
@@ -760,8 +779,35 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
+	int nargs = 1;
+	{
+		int sp = _spos();
+		muse_cell museSel = muse_csymbol_utf8(env,sel_getName(aSelector));
+		_unwind(sp);
+		
+		{
+			muse_cell impl = muse_search_object( env, obj, museSel );
+			if ( impl )
+				nargs = muse_list_length(env,_head(_tail(impl))) - 1;
+		}
+	}
+	
 	NSMethodSignature *sig = [super methodSignatureForSelector:aSelector];
-	return sig ? sig : [super methodSignatureForSelector:@selector(typicalUIMessage:)];
+	if ( sig ) 
+		return sig;
+	else
+	{
+		// A simple work around to not having to hand generate signatures
+		// for all method types. We support a few typical cases.
+		switch (nargs)
+		{
+			case 1: return [super methodSignatureForSelector:@selector(typicalUIMessage:)];
+			case 2: return [super methodSignatureForSelector:@selector(twoArgMsgArg1:arg2:)];
+			case 3: return [super methodSignatureForSelector:@selector(threeArgMsgArg1:arg2:arg3:)];
+			case 4: return [super methodSignatureForSelector:@selector(fourArgMsgArg1:arg2:arg3:arg4:)];
+			default: return nil;
+		}
+	}
 }
 
 - (void)forwardInvocation: (NSInvocation*)invocation
@@ -769,7 +815,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	int sp = _spos();
 	SEL sel = [invocation selector];
 	muse_cell museSel = muse_csymbol_utf8(env,sel_getName(sel));
-	muse_cell result = muse_apply( env, sendfn, _cons(obj,_cons(museSel,[self invocation2arglist:invocation])), MUSE_TRUE, MUSE_FALSE );
+	muse_cell result = muse_force(env,muse_apply( env, sendfn, _cons(obj,_cons(museSel,[self invocation2arglist:invocation])), MUSE_TRUE, MUSE_FALSE ));
 	id resultObj = nil;
 	resultObj = muse2obj(env,result);
 	muse_assert( [[invocation methodSignature] methodReturnType][0] == '@' );
@@ -778,6 +824,21 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 }
 
 - (id)typicalUIMessage:(id)arg
+{
+	return nil;
+}
+
+- (id)twoArgMsgArg1:(id)arg1 arg2:(id)arg2
+{
+	return nil;
+}
+
+- (id)threeArgMsgArg1:(id)arg1 arg2:(id)arg2 arg3:(id)arg3
+{
+	return nil;
+}
+
+- (id)fourArgMsgArg1:(id)arg1 arg2:(id)arg2 arg3:(id)arg3 arg4:(id)arg4
 {
 	return nil;
 }
