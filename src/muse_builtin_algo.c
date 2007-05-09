@@ -25,6 +25,63 @@ static int pty_compare( const void *cell1, const void *cell2 )
 	return _compare( ((const sort_property_t *)cell1)->pty, ((const sort_property_t *)cell2)->pty );
 }
 
+static muse_cell listiter( muse_env *env, muse_cell *listptr, int i, muse_boolean *eol )
+{
+	muse_cell c = *listptr;
+	muse_cell result = _head(c);
+
+	(*eol) = c ? MUSE_FALSE : MUSE_TRUE;
+
+	(*listptr) = _tail(c);
+	return result;
+}
+
+typedef struct 
+{
+	muse_cell propertyFn;
+	muse_cell argcell;
+	muse_cell domain;
+} propmapper_t;
+
+static muse_cell propiter( muse_env *env, propmapper_t *prop, int i, muse_boolean *eol )
+{
+	if ( prop->domain )
+	{
+		_seth( prop->argcell, _head(prop->domain) );
+		(*eol) = MUSE_FALSE;
+		prop->domain = _tail(prop->domain);
+		return _apply( prop->propertyFn, prop->argcell, MUSE_TRUE );
+	}
+	else
+	{
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+
+/** 
+ * Creates another list with the same objects as in the given list.
+ */
+static muse_cell listdup( muse_env *env, muse_cell list )
+{
+	if ( !list )
+		return MUSE_NIL;
+
+
+	return muse_generate_list( env, (muse_list_generator_t)listiter, &list );
+}
+
+static muse_cell sortproplist( muse_env *env, muse_cell propfn, muse_cell list )
+{
+	propmapper_t pm;
+	pm.argcell = _cons( MUSE_NIL, MUSE_NIL );
+	pm.domain = list;
+	pm.propertyFn = propfn;
+
+	return muse_generate_list( env, (muse_list_generator_t)propiter, &pm );
+};
+
 static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_cell propertyFn )
 {
 	int	sp				= _spos();
@@ -41,27 +98,14 @@ static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_c
 	{
 		int			i		= 0;
 		muse_cell	c		= list; 
-		int			sp		= _spos();
-		muse_cell	argcell = _cons( MUSE_NIL, MUSE_NIL );
+		muse_cell	p		= sortproplist( env, propertyFn, list );
 
-		/* TODO: Danger of exceeding stack limit! We should use
-		a vector to do the sorting. */
-		for ( ; i < length; ++i, c = _tail(c) )
+		for ( ; i < length; ++i, c = _tail(c), p = _tail(p) )
 		{
-			muse_cell h		= _head(c);
-			
-			_seth( argcell, h );
 			vec[i].env		= env;
-			vec[i].cell		= h;
-			vec[i].pty		= _apply( propertyFn, argcell, MUSE_TRUE );
+			vec[i].cell		= _head(c);
+			vec[i].pty		= _head(p);
 		}
-
-		_unwind(sp);
-		_returncell( argcell ); /*	We can return it immediately 'cos 
-			its only a scaffolding cell. This is
-			a constraint on the propertyFn -
-			that it should not keep its argument
-			list for later use. */
 	}
 	else
 	{
@@ -71,6 +115,7 @@ static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_c
 		muse_cell	c = list; 
 		for ( ; i < length; ++i, c = _tail(c) )
 		{
+			vec[i].env = env;
 			vec[i].cell	= vec[i].pty = _head(c);
 		}
 	}
@@ -134,7 +179,7 @@ muse_cell fn_sort_inplace( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_sort( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell	list			= muse_dup( env, _evalnext(&args) );
+	muse_cell	list			= listdup( env, _evalnext(&args) );
 	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
 	return sort_by_property_inplace( env, list, propertyFn );
 }
