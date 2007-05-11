@@ -260,8 +260,11 @@ static inline muse_boolean op_isquote( muse_env *env, muse_cell cell )
 {
 	return (cell == env->builtin_symbols[MUSE_QUOTE]) ? MUSE_TRUE : MUSE_FALSE;
 }
-static inline muse_cell _setcellt( muse_cell cell, muse_cell_t t ) 
+static inline int _iscompound( muse_cell c );
+#define _setcellt(cell,t) op_setcellt(env,cell,t)
+static inline muse_cell op_setcellt( muse_env *env, muse_cell cell, muse_cell_t t ) 
 { 
+	muse_assert( _iscompound(cell) && _iscompound(t) );
 	return (muse_cell)((cell & ~7) | t); 
 }
 #define _ptr(cell) op_ptr(env,cell)
@@ -335,6 +338,14 @@ static inline int op_spos(muse_env *env)
 static inline void op_unwind( muse_env *env, int stack_pos )
 {
 	_stack()->top = _stack()->bottom + stack_pos;
+}
+#define _setcellnct(cell,t) op_setcellnct(env,cell,t)
+static inline muse_cell op_setcellnct( muse_env *env, muse_cell cell, muse_cell_t t ) 
+{
+	// _setcellnct should be used like
+	// _setcellnct( muse_cons(0,0), MUSE_INT_CELL )
+	muse_assert( _spos() > 0 && _stack()->top[-1] == cell && _cellt(cell) == MUSE_CONS_CELL && !_iscompound(t) );
+	return _stack()->top[-1] = (muse_cell)(cell | t);
 }
 #define _symstack() op_symstack(env)
 static inline muse_stack *op_symstack(muse_env *env)

@@ -390,7 +390,7 @@ muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
  */
 muse_cell muse_mk_int( muse_env *env, muse_int i )
 {
-	muse_cell c = _setcellt( _cons( 0, 0 ), MUSE_INT_CELL );
+	muse_cell c = _setcellnct( _cons( 0, 0 ), MUSE_INT_CELL );
 	_ptr(c)->i = i;
 	return c;
 }
@@ -401,7 +401,7 @@ muse_cell muse_mk_int( muse_env *env, muse_int i )
  */
 muse_cell muse_mk_float( muse_env *env, muse_float f )
 {
-	muse_cell c = _setcellt( _cons( 0, 0 ), MUSE_FLOAT_CELL );
+	muse_cell c = _setcellnct( _cons( 0, 0 ), MUSE_FLOAT_CELL );
 	_ptr(c)->f = f;
 	return c;
 }
@@ -511,7 +511,7 @@ static void add_special( muse_env *env, muse_cell special )
  */ 
 muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *end )
 {
-	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_TEXT_CELL );
+	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_cell_data *d	= _ptr(c);
 	
 	d->text.start		= (muse_char *)malloc( (end - start + 1) * sizeof(muse_char) );
@@ -536,7 +536,7 @@ muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *
  */
 muse_cell muse_mk_text_utf8( muse_env *env, const char *start, const char *end )
 {
-	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_TEXT_CELL );
+	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_text_cell *t	= &_ptr(c)->text;
 	int len				= (int)(end - start);
 
@@ -577,7 +577,7 @@ muse_cell muse_mk_ctext_utf8( muse_env *env, const char *start )
  */
 muse_cell muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context )
 {
-	muse_cell c			= _setcellt( _cons( 0, 0 ), MUSE_NATIVEFN_CELL );
+	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_NATIVEFN_CELL );
 	muse_cell_data *p	= _ptr(c);
 	
 	p->fn.fn			= fn;
