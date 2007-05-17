@@ -56,6 +56,9 @@ typedef struct
 	muse_cell funcspec;
 } vector_t;
 
+static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell val );
+static void vector_forceall( muse_env *env, vector_t *v );
+
 static void vector_init_with_length( void *ptr, int length )
 {
 	vector_t *v = (vector_t*)ptr;
@@ -111,7 +114,7 @@ static void vector_write( muse_env *env, void *ptr, void *port )
 		for ( i = 0; i < v->length; ++i )
 		{
 			port_putc( ' ', p );
-			muse_pwrite( p, v->slots[i] );
+			muse_pwrite( p, vector_force( env, v, i, v->slots[i] ) );
 		}
 	}
 	
@@ -131,6 +134,47 @@ static void vector_resize( vector_t *self, int new_size )
 	self->slots = (muse_cell*)realloc( self->slots, sizeof(muse_cell) * new_size );
 	memset( self->slots + self->length, 0, sizeof(muse_cell) * (new_size - self->length) );
 	self->length = new_size;
+}
+
+/**
+ * Forces the slot at the given index. If the vector is specified functionally,
+ * and the slot doesn't have a value yet, the function is used to compute the value.
+ * 
+ * @param index The index of a slot in the vector to force the value.
+ * @param val The current value of the slot or MUSE_NIL if slot doesn't exist.
+ */
+static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell val )
+{
+	if ( !val )
+	{
+		if ( v->funcspec )
+		{
+			int sp = _spos();
+			val = _force(muse_apply( env, v->funcspec, _cons(_mk_int(index),MUSE_NIL), MUSE_TRUE, MUSE_TRUE )); 
+			_unwind(sp);
+		}
+
+		if ( index >= v->length && val )
+			vector_resize( v, index+1 );
+	}
+
+	return v->slots[index] = val;
+}
+
+
+/**
+ * Forces all the slots of the vector in index order.
+ */
+static void vector_forceall( muse_env *env, vector_t *v )
+{
+	if ( v->funcspec )
+	{
+		int i = 0;
+		for ( i = 0; i < v->length; ++i )
+		{
+			vector_force( env, v, i, v->slots[i] );
+		}
+	}
 }
 
 /**
@@ -174,20 +218,7 @@ muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 		if ( slot && *slot )
 			return *slot;
 		else
-		{
-			muse_cell val = MUSE_NIL;
-
-			if ( v->funcspec )
-			{
-				val = _force(muse_apply( env, v->funcspec, _cons(indexcell,MUSE_NIL), MUSE_TRUE, MUSE_TRUE )); 
-			}
-
-			if ( !slot && val )
-				vector_resize( v, index+1 );
-
-			v->slots[index] = val;
-			return val;
-		}
+			return vector_force( env, v, index, MUSE_NIL );
 	}
 }
 
@@ -231,7 +262,7 @@ static muse_cell vector_map( muse_env *env, void *self, muse_cell fn )
 	for ( i = 0; i < v->length; ++i )
 	{
 		/* Initialize the arguments to the mapper function. */
-		_seth( args, v->slots[i] );
+		_seth( args, vector_force( env, v, i, v->slots[i] ) );
 		
 		result_ptr->slots[i] = _apply( fn, args, MUSE_TRUE );
 		
@@ -262,6 +293,7 @@ static muse_cell vector_join( muse_env *env, void *self, muse_cell objlist, muse
 	{
 		result = muse_mk_vector( env, total_length );
 		result_ptr = (vector_t*)_functional_object_data( result, 'vect' );
+		vector_forceall( env, v1 );
 		
 		memcpy( result_ptr->slots, v1->slots, sizeof(muse_cell) * v1->length );
 		
@@ -271,6 +303,7 @@ static muse_cell vector_join( muse_env *env, void *self, muse_cell objlist, muse
 			{
 				muse_cell obj = _next(&objlist);
 				vector_t *v2 = (vector_t*)_functional_object_data( obj, 'vect' );
+				vector_forceall( env, v2 );
 				memcpy( result_ptr->slots + offset, v2->slots, sizeof(muse_cell) * v2->length );
 				offset += v2->length;
 			}
@@ -339,6 +372,8 @@ static muse_cell vector_reduce( muse_env *env, void *self, muse_cell reduction_f
 	
 	muse_cell result = initial;
 	
+	vector_forceall( env, v );
+
 	{
 		int sp = _spos();
 		int i;
@@ -364,12 +399,25 @@ static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_c
 	int i;
 	muse_boolean cont = MUSE_TRUE;
 	
-	for ( i = 0; i < self->length; ++i )
+	if ( self->funcspec )
 	{
-		cont = callback( env, self, context, self->slots[i] );
-		_unwind(sp);
-		if ( !cont )
-			return _mk_int(i); /**< Return the current index. */
+		for ( i = 0; i < self->length; ++i )
+		{
+			cont = callback( env, self, context, vector_force( env, self, i, self->slots[i] ) );
+			_unwind(sp);
+			if ( !cont )
+				return _mk_int(i); /**< Return the current index. */
+		}
+	}
+	else
+	{
+		for ( i = 0; i < self->length; ++i )
+		{
+			cont = callback( env, self, context, self->slots[i] );
+			_unwind(sp);
+			if ( !cont )
+				return _mk_int(i); /**< Return the current index. */
+		}
 	}
 	
 	return MUSE_NIL;
@@ -507,6 +555,8 @@ muse_cell fn_vector_to_list( muse_env *env, void *context, muse_cell args )
 	vector_t *v = (vector_t*)_functional_object_data(fv,'vect');
 	muse_assert( v != NULL && "First argument must be a functional vector!" );
 
+	vector_forceall( env, v );
+
 	{
 		int from	= 0;
 		int count	= v->length;
@@ -586,7 +636,7 @@ muse_cell muse_vector_get( muse_env *env, muse_cell vec, int index )
 	if ( v )
 	{
 		muse_assert( index >= 0 && index < v->length );
-		return v->slots[index];
+		return vector_force( env, v, index, v->slots[index] );
 	}
 	else
 		return MUSE_NIL;
