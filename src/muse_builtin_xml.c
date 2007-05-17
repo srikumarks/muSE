@@ -104,35 +104,47 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
 	if ( xmlnode )
 	{
 		muse_cell tag		= _head(xmlnode);
-		muse_cell attrs		= _head(_tail(xmlnode));
-		muse_cell children	= _tail(_tail(xmlnode));
 
-		indent( env,port,depth);
-		port_putc( '<', port );
-		muse_pwrite( port, tag ); 
-
-		if ( attrs )
-			port_putc( ' ', port );
-
-		write_tag_attrs( env, port, attrs );
-
-		if ( children )
+		if ( _cellt(tag) == MUSE_CONS_CELL )
 		{
-			port_putc( '>', port );
-			while ( children )
+			while ( xmlnode )
 			{
-				write_xml_child_node( env, port, _next(&children), depth+1 );
+				write_xml_node( env, port, _head(xmlnode), depth );
+				xmlnode = _tail(xmlnode);
 			}
-			indent( env,port,depth);
-			port_putc( '<', port );
-			port_putc( '/', port );
-			muse_pwrite( port, tag );
-			port_putc( '>', port );
 		}
 		else
 		{
-			port_putc( '/', port );
-			port_putc( '>', port );
+			muse_cell attrs		= _head(_tail(xmlnode));
+			muse_cell children	= _tail(_tail(xmlnode));
+
+			indent( env,port,depth);
+			port_putc( '<', port );
+			muse_pwrite( port, tag ); 
+
+			if ( attrs )
+				port_putc( ' ', port );
+
+			write_tag_attrs( env, port, attrs );
+
+			if ( children )
+			{
+				port_putc( '>', port );
+				while ( children )
+				{
+					write_xml_child_node( env, port, _next(&children), depth+1 );
+				}
+				indent( env,port,depth);
+				port_putc( '<', port );
+				port_putc( '/', port );
+				muse_pwrite( port, tag );
+				port_putc( '>', port );
+			}
+			else
+			{
+				port_putc( '/', port );
+				port_putc( '>', port );
+			}
 		}
 	}
 }
