@@ -405,7 +405,7 @@ muse_cell fn_drop( muse_env *env, void *context, muse_cell args )
 	muse_cell c = _evalnext(&args);
 	
 	while ( N-- > 0 )
-		c = _tail(c);
+		c = muse_tail(env,c);
 
 	return c;
 }

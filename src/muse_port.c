@@ -85,8 +85,14 @@ int	port_getc( muse_port_base_t *p )
 	muse_port_buffer_t *b	= &p->in;
 	
 	muse_assert( b->bytes );
+
+	if ( p->error )
+		return EOF;
 	
-	if ( p->error || p->eof )
+	if ( p->out.avail > 0 )
+		port_flush(p);
+
+	if ( p->eof )
 		return EOF;
 	
 	/* First check if we have anything in the buffer. */
@@ -223,6 +229,9 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
 	
 	muse_assert( buffer && port && (nbytes > 0) );
 	
+	if ( port->error == 0 && port->out.avail > 0 )
+		port_flush(port);
+
 	if ( port->error || port->eof )
 		return 0;
 	
@@ -286,7 +295,7 @@ size_t port_write( void *buffer, size_t nbytes, muse_port_base_t *port )
 	
 	muse_assert( buffer && port && (nbytes > 0) );
 	
-	if ( port->error || port->eof )
+	if ( port->error )
 		return 0;
 	
 	/* First write out whatever we've accumulated in the buffer. */

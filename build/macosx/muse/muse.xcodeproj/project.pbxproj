@@ -46,7 +46,25 @@
 		C420F6FF0BA53CB900FAF5C4 /* muse_port.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = C420F6D90BA53CB900FAF5C4 /* muse_port.h */; };
 		C420F7000BA53CB900FAF5C4 /* muse_repl.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */; };
 		C420F7010BA53CB900FAF5C4 /* muse_win32.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = C420F6DB0BA53CB900FAF5C4 /* muse_win32.h */; };
+		C4EC539B0BFECE09007981F5 /* muse_builtin_memport.c in Sources */ = {isa = PBXBuildFile; fileRef = C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXBuildStyle section */
+		C4EC53410BFECDBB007981F5 /* Development */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Development;
+		};
+		C4EC53420BFECDBB007981F5 /* Deployment */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Deployment;
+		};
+/* End PBXBuildStyle section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		8DD76F9E0486AA7600D96B5E /* CopyFiles */ = {
@@ -111,6 +129,7 @@
 		C420F6D90BA53CB900FAF5C4 /* muse_port.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = muse_port.h; sourceTree = "<group>"; };
 		C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = muse_repl.c; sourceTree = "<group>"; };
 		C420F6DB0BA53CB900FAF5C4 /* muse_win32.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = muse_win32.h; sourceTree = "<group>"; };
+		C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = muse_builtin_memport.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +192,7 @@
 				C420F6BE0BA53CB900FAF5C4 /* muse_builtin_comparisons.c */,
 				C420F6BF0BA53CB900FAF5C4 /* muse_builtin_continuation.c */,
 				C420F6C00BA53CB900FAF5C4 /* muse_builtin_fileport.c */,
+				C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */,
 				C420F6C10BA53CB900FAF5C4 /* muse_builtin_hashtable.c */,
 				C420F6C20BA53CB900FAF5C4 /* muse_builtin_HOF.c */,
 				C420F6C30BA53CB900FAF5C4 /* muse_builtin_io.c */,
@@ -233,6 +253,12 @@
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 1DEB927808733DD40010E9CD /* Build configuration list for PBXProject "muse" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				C4EC53410BFECDBB007981F5 /* Development */,
+				C4EC53420BFECDBB007981F5 /* Deployment */,
+			);
 			hasScannedForEncodings = 1;
 			mainGroup = 08FB7794FE84155DC02AAC07 /* muse */;
 			projectDirPath = "";
@@ -276,6 +302,7 @@
 				C420F6FE0BA53CB900FAF5C4 /* muse_port.c in Sources */,
 				C420F7000BA53CB900FAF5C4 /* muse_repl.c in Sources */,
 				A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */,
+				C4EC539B0BFECE09007981F5 /* muse_builtin_memport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -909,6 +909,17 @@ static muse_cell delay_expr( muse_env *env, muse_cell expr )
  * that are not immediately evaluated. They'll be evaluated when their
  * values are required - i.e. when you do a (first ...) or (rest ...)
  * invocation on the resultant cons cell.
+ *
+ * Any operation that accesses the head or tail of a lazy cons cell
+ * will force the evaluation. Such operations include printing out
+ * the list, calling nth, take, drop, etc.
+ *
+ * For example -
+ * @code
+ * > (define (numsfrom N) (lcons N (numsfrom (+ N 1))))
+ * > (take 10 (numsfrom 100))
+ * (100 101 102 103 104 105 106 107 108 109)
+ * @endcode
  */
 muse_cell fn_lcons( muse_env *env, void *context, muse_cell args )
 {

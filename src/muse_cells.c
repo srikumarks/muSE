@@ -303,8 +303,116 @@ int	muse_list_length( muse_env *env, muse_cell list )
 	return length;
 }
 
+static void duph( muse_env *env, muse_cell h, muse_cell c, muse_cell save );
+static void dupt( muse_env *env, muse_cell h, muse_cell c, muse_cell save );
+
 /**
- * Deep copies the given object.
+ * A stack efficient deep duplication helper.
+ * Duplicates the object given by \p h and places it in
+ * the head slot of the cell given by \p c. If any new
+ * cells need to be created, it makes sure that \p save
+ * is protected by placing it on the stack.
+ *
+ * This function leaves the muSE stack unaltered upon return.
+ */
+static void duph( muse_env *env, muse_cell h, muse_cell c, muse_cell save )
+{
+	if ( h <= 0 )
+	{
+		_seth( c, h );
+	}
+	else
+	{
+		switch ( _cellt(h) )
+		{
+		case MUSE_INT_CELL : 
+			{
+				int sp = _spos();
+				_spush(save);
+				_seth( c, _mk_int(_ptr(h)->i) );
+				_unwind(sp);
+			}
+			break;
+		case MUSE_FLOAT_CELL :
+			{
+				int sp = _spos();
+				_spush(save);
+				_seth( c, _mk_float(_ptr(h)->f) );
+				_unwind(sp);
+			}
+			break;
+		case MUSE_CONS_CELL :
+			{
+				int sp = _spos();
+				_spush(save);
+				_seth(c,_cons(MUSE_NIL,MUSE_NIL));
+				_unwind(sp);
+			}
+			duph( env, _head(h), _head(c), save );
+			dupt( env, _tail(h), _head(c), save );
+			break;
+
+		default:
+			_seth( c, h );
+		}
+	}
+}
+
+/**
+ * A stack efficient deep duplication helper.
+ * Duplicates the object given by \p t and places it in
+ * the tail slot of the cell given by \p c. If any new
+ * cells need to be created, it makes sure that \p save
+ * is protected by placing it on the stack.
+ *
+ * This function leaves the muSE stack unaltered upon return.
+ */
+static void dupt( muse_env *env, muse_cell t, muse_cell c, muse_cell save )
+{
+	if ( t <= 0 )
+	{
+		_sett( c, t );
+	}
+	else
+	{
+		switch ( _cellt(t) )
+		{
+		case MUSE_INT_CELL : 
+			{ 
+				int sp = _spos();
+				_spush(save);
+				_sett( c, _mk_int(_ptr(t)->i) );
+				_unwind(sp);
+			}
+			break;
+		case MUSE_FLOAT_CELL :
+			{
+				int sp = _spos();
+				_spush(save);
+				_sett( c, _mk_float(_ptr(t)->f) );
+				_unwind(sp);
+			}
+			break;
+		case MUSE_CONS_CELL :
+			{
+				int sp = _spos();
+				_spush(save);
+				_sett(c, _cons(MUSE_NIL,MUSE_NIL));
+				_unwind(sp);
+			}
+			duph( env, _head(t), _tail(c), save );
+			dupt( env, _tail(t), _tail(c), save );
+			break;
+
+		default:
+			_sett( c, t );
+		}
+	}
+}
+
+/**
+ * Deep copies the given object. Leaves the duplicate object on the 
+ * muSE stack upon return.
  */
 muse_cell muse_dup( muse_env *env, muse_cell obj )
 {
@@ -317,14 +425,13 @@ muse_cell muse_dup( muse_env *env, muse_cell obj )
 		case MUSE_FLOAT_CELL	: return _mk_float( _ptr(obj)->f );
 		case MUSE_CONS_CELL		: 
 		{
-			muse_cell result = _cons( MUSE_NIL, MUSE_NIL );
+
 			int sp = _spos();
-			
-			_seth( result, muse_dup(env,_head(obj)) );
+			muse_cell result = _cons( MUSE_NIL, MUSE_NIL );
 			_unwind(sp);
-			_sett( result, muse_dup(env,_tail(obj)) );
-			_unwind(sp);
-			
+			duph( env, _head(obj), result, result );
+			dupt( env, _tail(obj), result, result );
+			_spush(result);
 			return result;
 		}
 		default					: return obj;
