@@ -648,6 +648,30 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
  * Establishes that the entries in the vector or the hashtable should
  * be determined by the given function. The function is only computed
  * on demand.
+ *
+ * Example:
+ * @code
+ * > (define fibs (vector 0 1))
+ * > (funcspec fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
+ * > (fibs 20)
+ * 6765
+ * > fibs
+ * {vector 0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987 1597 2584 4181 6765}
+ * @endcode
+ *
+ * Or with a hashtable -
+ * @code
+ * > (define fibs (mk-hashtable))
+ * > (funcspec fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
+ * > (fibs 0 0)
+ * 0
+ * > (fibs 1 1)
+ * 1
+ * > (fibs 10)
+ * 55
+ * > fibs
+ * {hashtable '((7 . 13) (6 . 8) (5 . 5) (4 . 3) (2 . 1) (3 . 2) (1 . 1) (9 . 34) (0 . 0) (10 . 55) (8 . 21))}
+ * @endcode
  */
 muse_cell fn_funcspec( muse_env *env, void *context, muse_cell args )
 {
