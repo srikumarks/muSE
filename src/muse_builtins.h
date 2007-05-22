@@ -105,6 +105,8 @@ muse_cell fn_not( muse_env *env, void *context, muse_cell args );
 /** @addtogroup LanguageConstructs Language constructs */
 /*@{*/
 muse_cell syntax_if( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_when( muse_env *env, void *context, muse_cell args ); 
+muse_cell syntax_unless( muse_env *env, void *context, muse_cell args ); 
 muse_cell syntax_cond( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_do( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_while( muse_env *env, void *context, muse_cell args );

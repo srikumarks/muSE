@@ -105,6 +105,8 @@ static const struct _builtins
 	
 /************** Constructs ***************/
 {		L"if",			syntax_if			},
+{               L"when",                syntax_when                     },
+{               L"unless",              syntax_unless                   },
 {		L"cond",		syntax_cond			},
 {		L"do",			syntax_do			},
 {		L"while",		syntax_while		},
@@ -228,7 +230,7 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (if cond-expr then-expr [else-expr]).
+ * (if cond-expr then-expr else-expr).
  * Evaluate the \c cond-expr first. If the \c cond-expr evaluates
  * to something that's not \c (), the \c if expression evaluates
  * to the result of the \c then-expr. If an \c else-expr is
@@ -245,17 +247,55 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 {
+	MUSE_DIAGNOSTICS({
+		if ( !args )
+			muse_message( env, L"(if >>cond<< then else)", L"Missing condition in 'if' construct.\n%m", args );
+		if ( !_tail(args) )
+			muse_message( env, L"(if cond >>then<< else)", L"Missing 'then' part of 'if' construct.\n%m", args );
+		if ( !_tail(_tail(args)) )
+			muse_message( env, L"(if cond then >>else<<)", L"Missing 'else' part of 'if' construct.\n%m", args );
+	});
+
 	muse_cell expr = _evalnext(&args);
-	
+
 	if ( expr )
 		return muse_eval( env, _head(args), MUSE_TRUE ); /* then */
 	
-	args = _tail(args); /* Skip then portion. */
-	
-	if ( args )
-		return muse_eval( env, _head(args), MUSE_TRUE ); /* else */
-	
-	return MUSE_NIL;
+	muse_assert( _tail(args) != MUSE_NIL );
+
+	return muse_eval( env, _head(_tail(args)), MUSE_TRUE ); /* else */
+}
+
+/**
+ * (when cond ---body---)
+ *
+ * Evaluates \p cond first. If condition evaluated to non-NIL value, then
+ * the body is evaluated just like \p do and the value of the last expression
+ * is the value of the \c when construct. Otherwise the value is \c ().
+ */
+muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell expr = _evalnext(&args);
+	if ( expr )
+		return _do(args);
+	else
+		return MUSE_NIL;
+}
+
+/**
+ * (unless cond ---body---)
+ *
+ * Evaluates \p cond first. If condition evaluated to \c (), then the body 
+ * is evaluated just like \c do and  the value of the last expression is
+ * the value of the \c unless construct. Otherwise the value is \c ().
+ */
+muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell expr = _evalnext(&args);
+	if ( !expr )
+		return _do(args);
+	else
+		return MUSE_NIL;
 }
 
 /**
