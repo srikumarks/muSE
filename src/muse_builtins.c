@@ -23,6 +23,7 @@ static const struct _builtins
 	} k_builtins[] =
 {
 {		L"quote",		fn_quote			},
+{               L"lazy",                fn_lazy                         },
 {		L"cons",		fn_cons				},
 {		L"lcons",		fn_lcons			},
 {		L"eval",		fn_eval				},

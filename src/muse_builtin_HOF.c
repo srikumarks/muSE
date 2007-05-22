@@ -21,12 +21,12 @@ static muse_cell list_iterator( muse_env *env, void *self, muse_iterator_callbac
 	
 	while ( list )
 	{
-		cont = callback( env, self, context, _head(list) );
+		cont = callback( env, self, context, muse_head(env,list) );
 		_unwind(sp);
 		if ( !cont )
 			return list;
 		
-		list = _tail(list);
+		list = muse_tail(env,list);
 	}	
 	
 	return MUSE_NIL;

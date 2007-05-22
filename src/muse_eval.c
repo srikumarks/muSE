@@ -325,8 +325,8 @@ static muse_cell quick_quote_list( muse_env *env, muse_cell list )
 	muse_cell h = list;
 	while ( h )
 	{
-		_seth( h, _qq(_head(h)) );
-		h = _tail(h);
+		_seth( h, _qq(muse_head(env,h)) );
+		h = muse_tail(env,h);
 	}
 	return list;
 }
@@ -340,8 +340,8 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
 	muse_cell h = list;
 	while ( h )
 	{
-		_seth( h, _quq(_head(h)) );
-		h = _tail(h);
+		_seth( h, _quq(muse_head(env,h)) );
+		h = muse_tail(env,h);
 	}
 
 	return list;
