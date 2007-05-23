@@ -257,14 +257,11 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 			muse_message( env, L"(if cond then >>else<<)", L"Missing 'else' part of 'if' construct.\n%m", args );
 	});
 
-	muse_cell expr = _evalnext(&args);
+	{
+		muse_cell expr = _evalnext(&args);
 
-	if ( expr )
-		return muse_eval( env, _head(args), MUSE_TRUE ); /* then */
-	
-	muse_assert( _tail(args) != MUSE_NIL );
-
-	return muse_eval( env, _head(_tail(args)), MUSE_TRUE ); /* else */
+		return muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+	}
 }
 
 /**
