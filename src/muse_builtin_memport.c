@@ -15,9 +15,21 @@
 #include <stdlib.h>
 #include <memory.h>
 
-/** @addtogroup Ports */
+/** @addtogroup FunctionalObjects */
 /*@{*/
-
+/**
+ * @defgroup MemPorts Memory ports
+ *
+ * Memory ports, or "memports" for short, provide a way to use the muSE
+ * parser and writer on data received by a program. For example, if a program
+ * receives some code as a string or raw data, it can write it to a memport
+ * and subsequently read it term by term.
+ *
+ * You create memports using the \ref fn_memport "memport" creator function.
+ * Once created, a memport can be used like any other standard port with
+ * all the regular I/O functions.
+ */
+/*@{*/
 typedef struct _memchunk_t
 {
 	struct _memchunk_t *next;
@@ -207,7 +219,7 @@ static memport_type_t g_memport_type =
  * 3
  * @endcode
  */
-static muse_cell fn_memport( muse_env *env, void *context, muse_cell args )
+muse_cell fn_memport( muse_env *env, void *context, muse_cell args )
 {
 	return _mk_functional_object( (muse_functional_object_type_t*)&g_memport_type, args );
 }
@@ -218,3 +230,5 @@ void muse_define_builtin_memport(muse_env *env)
 	After this the generic port functions take over. */
 	_define( _csymbol(L"memport"), _mk_nativefn( fn_memport, NULL ) );
 }
+/*@}*/
+/*@}*/

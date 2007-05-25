@@ -106,6 +106,8 @@ BEGIN_MUSE_C_FUNCTIONS
  *		- \ref fn_rand "rand"
  *
  * @subsection ML_DataStructures Data structures
+ *	- \ref fn_cons "cons", \ref fn_first "first", \ref fn_rest "rest"
+ *	- \ref fn_lcons "lcons", \ref fn_lazy "lazy"
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
  *	- \ref ByteArray "byte arrays"
@@ -118,7 +120,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * 
  * @subsection ML_IO Input and output
  *	- \ref PortIO
- *	- \ref fn_open_file "open-file"
+ *	- \ref fn_open_file "open-file", \ref fn_memport "memport"
  * 	- \ref fn_print "print", \ref fn_write "write"
  * 	- \ref fn_read "read"
  *	- \ref fn_close "close"
