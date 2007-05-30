@@ -400,14 +400,9 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 				arguments in list order. 
 				
 				See also syntax_lambda and muse_apply_lambda implementation. */
-				if ( lazy )
-				{
-					result = _setcellt(_cons(fn,args_already_evaluated ? args : muse_eval_list(env, args)), MUSE_LAZY_CELL);
-				}
-				else
-				{
-					result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
-				}
+				args = (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args);
+				result = lazy ? _setcellt(_cons(fn,args), MUSE_LAZY_CELL)
+							  : muse_apply_lambda( env, fn, args );
 				break;
 			default						:
 				/*	If the first argument is not a function, simply return the sexpr. 
