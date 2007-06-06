@@ -246,6 +246,17 @@ static muse_cell *hashtable_add( muse_env *env, hashtable_t *h, muse_cell key, m
 	}
 }
 
+static void hashtable_fast_add( muse_env *env, hashtable_t *h, muse_cell *kvpair, muse_cell key, muse_cell value )
+{
+	muse_assert( *kvpair == MUSE_NIL );
+
+	(*kvpair) = _cons( _cons( key, value ), MUSE_NIL );
+	++(h->count);
+
+	if ( h->count >= 2 * h->bucket_count )
+		hashtable_rehash( env, h, 2 * h->bucket_count );
+}
+
 static muse_cell *hashtable_get( muse_env *env, hashtable_t *h, muse_cell key, muse_int *hash_out )
 {
 	muse_int hash = muse_hash(env,key);
@@ -274,7 +285,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 			muse_cell value = _evalnext(&args);
 
 			/* First see if the key is already in the hash table. */
-			if ( kvpair )
+			if ( *kvpair )
 			{
 				if ( value )
 				{
@@ -299,8 +310,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 					Check to see if we need to rehash the table. 
 					We rehash if we have to do more than 2 linear
 					searches on the average for each access. */
-					hashtable_add( env, h, key, value, &hash );
-
+					hashtable_fast_add( env, h, kvpair, key, value );
 					return value;
 				}
 				else
@@ -313,7 +323,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 		}
 		
 		/* We've been asked to get a property. */
-		if ( kvpair )
+		if ( *kvpair )
 			return _tail( _head( *kvpair ) );
 		else
 		{

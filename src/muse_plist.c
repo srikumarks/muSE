@@ -61,16 +61,24 @@ muse_cell muse_assoc( muse_env *env, muse_cell alist, muse_cell prop )
  * @code
  * muse_cell alist, prop;
  * muse_cell *pos = muse_assoc_iter( &alist, prop );
- * if ( pos )
- * {
- *     (*pos) = muse_tail(*pos);
- * }
+ * (*pos) = muse_tail(*pos);
+ * @endcode
+ *
+ * If the property is not found in the alist, the return
+ * value is a pointer to the tail cell of the end of
+ * the alist. This way, you can add the item to the end
+ * if the property is not found.
+ * @code
+ * muse_cell alist, prop, defval;
+ * muse_cell *pos = muse_assoc_iter(&alist, prop);
+ * if ( !*pos )
+ *    (*pos) = muse_cons( muse_cons( prop, defval ), MUSE_NIL );
  * @endcode
  */
 muse_cell *muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop )
 {
 	if ( !*alist )
-		return NULL;
+		return alist;
 	else if ( muse_eq( env, _head(_head(*alist)), prop ) )
 		return alist;
 	else
