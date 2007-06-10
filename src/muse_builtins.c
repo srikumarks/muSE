@@ -28,6 +28,7 @@ static const struct _builtins
 {		L"lcons",		fn_lcons			},
 {		L"eval",		fn_eval				},
 {		L"fn",			syntax_lambda		},
+{		L"lambda",		syntax_lambda		},
 {		L"fn:",			syntax_block		},
 {		L"gfn",			syntax_generic_lambda	},
 {		L"gfn:",		syntax_generic_block	},
