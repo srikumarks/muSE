@@ -113,6 +113,10 @@ typedef struct
 	int					free_cell_count; /**< The number of free cells. This is used nearly
 											only for diagnostic purposes. May be removed in the
 											future for efficiency reasons. */
+	unsigned char		*keep;		/**< The keep vector is a set of marks for cells that
+										 must always survive garbage collection. You set a 
+										 mark in the keep vector by calling muse_mark() on
+										 the cell *outside* a call to muse_gc(). */
 } muse_heap;
 
 typedef enum

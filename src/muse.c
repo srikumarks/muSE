@@ -102,6 +102,7 @@ static void init_heap( muse_env *env, muse_heap *heap, int heap_size )
 	heap->free_cells		= _cellati(1); /* 0 is not in free list as its a fixed cell. */
 	heap->free_cell_count	= heap_size - 1;
 	heap->marks				= (unsigned char *)calloc( heap_size >> 3, 1 );
+	heap->keep				= (unsigned char *)calloc( heap_size >> 3, 1 );
 
 	/* Initialize free list */
 	{
@@ -123,9 +124,22 @@ static void destroy_heap( muse_heap *heap )
 		heap->cells = NULL;
 		heap->size_cells = 0;
 		free(heap->marks);
+		free(heap->keep);
 		heap->free_cells = 0;
 		heap->free_cell_count = 0;
 	}
+}
+
+static unsigned char *crealloc( unsigned char *mem, size_t orig_size, size_t new_size )
+{
+	unsigned char *mem2 = realloc( mem, new_size );
+
+	if ( mem2 )
+	{
+		memset( mem2 + orig_size, 0, new_size - orig_size );
+	}
+
+	return mem2;
 }
 
 static muse_boolean grow_heap( muse_heap *heap, int new_size )
@@ -140,11 +154,13 @@ static muse_boolean grow_heap( muse_heap *heap, int new_size )
 		muse_cell_data *p = (muse_cell_data*)realloc( heap->cells, new_size * sizeof(muse_cell_data) );
 		if ( p )
 		{
-			unsigned char *m = (unsigned char *)realloc( heap->marks, new_size >> 3 );
+			unsigned char *m = crealloc( heap->marks, heap->size_cells >> 3, new_size >> 3 );
+			unsigned char *k = crealloc( heap->keep, heap->size_cells >> 3, new_size >> 3 );
 			if ( m )
 			{
 				heap->cells = p;
 				heap->marks = m;
+				heap->keep = k;
 
 				/* Collect the newly allocated cells into the free list. */				
 				{
@@ -1034,6 +1050,30 @@ muse_boolean muse_doing_gc( muse_env *env )
 	return env->collecting_garbage;
 }
 
+/**
+ * Copies the marks to the keep vector so that
+ * whatever needs to  survive garbage collection
+ * is preserved.
+ */
+static void keep_marks( muse_heap *heap )
+{
+	memcpy( heap->keep, heap->marks, heap->size_cells >> 3 );
+}
+
+/**
+ * Copies the keep vector to the mark vector
+ * so that the old values of the mark vector
+ * are restored. Note that after this call,
+ * the keep vector is considered to be garbage.
+ */
+static void mark_keep( muse_heap *heap )
+{
+	/* Simply swap the two pointers. */
+	unsigned char *temp = heap->keep;
+	heap->keep = heap->marks;
+	heap->marks = temp;
+}
+
 void muse_gc_impl( muse_env *env, int free_cells_needed )
 {
 	muse_heap *heap = _heap();
@@ -1042,36 +1082,44 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 	{
 		/* We need to gc. */
 		
-		/* 1. Unmark all cells. */
-		memset( heap->marks, 0, heap->size_cells >> 3 );
-		
 		if ( free_cells_needed > 0 )
 		{
-			_mark(0);
-
-			/* 2. Mark all symbols and their values and plists. */
-			/*mark_stack( _symstack() );*/
-			mark_stack( env, _symstack() );
-			
-			/* 3. Mark references held by every process. */
+			// If the process is in an atomic block, don't do GC,
+			// but simply grow the heap by the necessary amount.
+			if ( env->current_process->atomicity == 0 )
 			{
-				muse_process_frame_t *cp = env->current_process;
-				muse_process_frame_t *p = cp;
+				/* 1. Save the current mark vector. */
+				keep_marks( heap );
+				
+				_mark(0);
 
-				do 
+				/* 2. Mark all symbols and their values and plists. */
+				mark_stack( env, _symstack() );
+				
+				/* 3. Mark references held by every process. */
 				{
-					mark_process(p);
-					p = p->next;
-				}
-				while ( p != cp );
-			}
+					muse_process_frame_t *cp = env->current_process;
+					muse_process_frame_t *p = cp;
 
-			/* 4. Go through the specials list and release 
-				  everything that isn't referenced. */
-			free_unused_specials( env, &env->specials );
-			
-			/* 5. Collect whatever is unmarked into the free list. */
-			collect_free_cells( env, _heap() );
+					do 
+					{
+						mark_process(p);
+						p = p->next;
+					}
+					while ( p != cp );
+				}
+
+				/* 4. Go through the specials list and release 
+					  everything that isn't referenced. */
+				free_unused_specials( env, &env->specials );
+				
+				/* 5. Collect whatever is unmarked into the free list. */
+				collect_free_cells( env, _heap() );
+
+				/* 6. Restore the mark vector to the marks for the
+				cells that must survive gc. */
+				mark_keep( heap );
+			}
 			
 			if ( heap->free_cell_count < (100 - env->parameters[MUSE_GROW_HEAP_THRESHOLD]) * heap->size_cells / 100 )
 			{
