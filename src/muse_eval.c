@@ -243,19 +243,27 @@ muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args
 					int sp = _spos();
 					muse_cell result = _force(_do( _tail(fn) ));
 					_unwind(sp);
-					if ( !result )
+					if ( result )
+					{
+						/* Leave the bindings on the bindings stack as is. */
+						return MUSE_TRUE;
+					}
+					else
 					{
 						/* Condition failed. Unbind the latest bindings. */
 						_unwind_bindings(bsp);
 						return MUSE_FALSE;
 					}
-					else
-					{
-						/* Leave the bindings on the bindings stack as is. */
-					}
 				}
-
-				return MUSE_TRUE;
+				else
+				{
+					/* Argument binding failed, which means the given thing
+					doesn't match even the guard's pattern. So this binding is
+					considered to have failed. Unwind any bindings that 
+					the match might have left on the bindings stack. */
+					_unwind_bindings(bsp);
+					return MUSE_FALSE;
+				}
 			}
 		default : return muse_equal( env, formals, args );
 	}
