@@ -15,7 +15,7 @@
 
 static muse_cell list_iterator( muse_env *env, void *self, muse_iterator_callback_t callback, void *context )
 {
-	muse_cell list = (muse_cell)self;
+	muse_cell list = (muse_cell)(size_t)self;
 	int sp = _spos();
 	int cont = MUSE_TRUE;
 	
@@ -50,7 +50,7 @@ static muse_iterator_t get_iterator_view( muse_env *env, muse_cell obj, muse_fun
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		if ( objptr_out )
-			(*objptr_out) = (void*)obj;
+			(*objptr_out) = (void*)(size_t)obj;
 		return list_iterator;
 	}
 	else
@@ -405,7 +405,7 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 
 static muse_boolean finder( muse_env *env, void *self, void *what, muse_cell thing )
 {
-	return muse_equal( env, (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
+	return muse_equal( env, (muse_cell)(size_t)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
@@ -448,7 +448,7 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 	
 	if ( iter )
 	{
-		result = iter( env, collObj, finder, (void*)object );
+		result = iter( env, collObj, finder, (void*)(size_t)object );
 	}
 	
 	return result;

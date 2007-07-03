@@ -423,7 +423,7 @@ FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
 /** @name Diagnostics */
 /*@{*/
 const muse_char *muse_typename( muse_cell thing );
-int			muse_sprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, ... );
+size_t		muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... );
 void		muse_message( muse_env *env, const muse_char *context, const muse_char *format, ... );
 muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... );
 muse_cell	muse_similar_symbol( muse_env *env, muse_cell symbol, int *distance );
@@ -432,10 +432,10 @@ muse_cell	muse_symbol_with_value( muse_env *env, muse_cell value );
 
 /** @name Multilingual stuff */
 /*@{*/
-	int		muse_unicode_to_utf8( char *out, int out_maxlen, const muse_char *win, int win_len );
-	int		muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int in_len );
-	int		muse_utf8_size( const muse_char *wstr, int length );
-	int		muse_unicode_size( const char *utf8, int nbytes );
+	size_t	muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win, size_t win_len );
+	size_t	muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len );
+	size_t	muse_utf8_size( const muse_char *wstr, size_t length );
+	size_t	muse_unicode_size( const char *utf8, size_t nbytes );
 /*@}*/
 
 /** @name Dynamically loading plugins */

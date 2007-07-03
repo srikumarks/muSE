@@ -206,17 +206,17 @@ FILE* muse_fopen( const muse_char *filename, const muse_char *options )
  * @return The number of bytes written to the output UTF8 buffer, excluding any
  * terminating null character that we written.
  */
-int muse_unicode_to_utf8( char *out, int out_maxlen, const muse_char *win, int win_len )
+size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win, size_t win_len )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
-	int result = WideCharToMultiByte( CP_UTF8, 0, win, win_len, out, out_maxlen, NULL, NULL );
+	int result = WideCharToMultiByte( CP_UTF8, 0, win, (int)win_len, out, (int)out_maxlen, NULL, NULL );
 #else
 	int result = (int)wcstombs( out, win, out_maxlen );
 #endif
 
 	assert( win_len == 0 || result > 0 );
 
-	if ( result < out_maxlen )
+	if ( result < (int)out_maxlen )
 		out[result] = '\0';
 
 	return result;
@@ -235,17 +235,17 @@ int muse_unicode_to_utf8( char *out, int out_maxlen, const muse_char *win, int w
  * @return The number of output *characters* written the buffer, excluding any
  * terminating null character that might have been written.
  */
-int muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int in_len )
+size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
-	int result = MultiByteToWideChar( CP_UTF8, 0, in, in_len, wout, wout_maxlen * sizeof(muse_char) );
+	int result = MultiByteToWideChar( CP_UTF8, 0, in, (int)in_len, wout, (int)(wout_maxlen * sizeof(muse_char)) );
 #else
 	int result = (int)mbstowcs( wout, in, wout_maxlen );
 #endif
 
 	assert( in_len == 0 || result > 0 );
 
-	if ( result < wout_maxlen )
+	if ( result < (int)wout_maxlen )
 		wout[result] = 0;
 
 	return result;
@@ -256,7 +256,7 @@ int muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int 
  * that might be needed to represent the given number of unicode characters
  * using UTF8 encoding.
  */
-int muse_utf8_size( const muse_char *wstr, int length )
+size_t muse_utf8_size( const muse_char *wstr, size_t length )
 {
 	assert( length >= 0 );
 	return (length + 1) * 2 * sizeof(muse_char);
@@ -268,7 +268,7 @@ int muse_utf8_size( const muse_char *wstr, int length )
  * bytes that will be required to store the converted unicode 
  * version of the given utf8 string.
  */
-int	muse_unicode_size( const char *utf8, int nbytes )
+size_t	muse_unicode_size( const char *utf8, size_t nbytes )
 {
 	return (nbytes+1) * sizeof(muse_char);
 }
@@ -334,15 +334,15 @@ static void muse_exception(muse_env *env, muse_cell args)
 }
 
 #define _sprintf_object(buffer,maxlen,thing) muse_sprintf_object(env,buffer,maxlen,thing)
-static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing );
+static size_t muse_sprintf_object( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing );
 #define _sprintf_list(buffer,maxlen,thing) muse_sprintf_list(env,buffer,maxlen,thing)
-static int muse_sprintf_list( muse_env *env, muse_char *buffer, int maxlen, muse_cell list );
+static size_t muse_sprintf_list( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell list );
 #define _sprintf_text(buffer,maxlen,thing) muse_sprintf_text(env,buffer,maxlen,thing)
-static int muse_sprintf_text( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing );
+static size_t muse_sprintf_text( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing );
 
-static int muse_sprintf_list( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
+static size_t muse_sprintf_list( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing )
 {
-	int len = 0;
+	size_t len = 0;
 	muse_cell thing_iter = thing;
 	buffer[len++] = '(';
 	buffer[len] = '\0';
@@ -377,18 +377,18 @@ static int muse_sprintf_list( muse_env *env, muse_char *buffer, int maxlen, muse
 	return len;
 }
 
-static int muse_sprintf_text( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
+static size_t muse_sprintf_text( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing )
 {
-	int len = 0;
+	size_t len = 0;
 	int textlen = 0;
 	const muse_char *text = _text_contents( thing, &textlen );
-	if ( textlen > maxlen - len - 2 )
+	if ( (size_t)textlen > maxlen - len - 2 )
 	{
 		/* Too big for buffer. Shorten it. */
 		if ( maxlen - len > 5 )
 		{
 			/* Can show with ellipsis. */
-			int end = maxlen - 4;
+			size_t end = maxlen - 4;
 			buffer[len++] = '"';
 			while ( len < end )
 			{
@@ -423,14 +423,14 @@ static int muse_sprintf_text( muse_env *env, muse_char *buffer, int maxlen, muse
 	return len;
 }
 
-static int muse_vsprintf_object( muse_env *env, muse_char *buffer, int maxlen, va_list *argv )
+static size_t muse_vsprintf_object( muse_env *env, muse_char *buffer, size_t maxlen, va_list *argv )
 {
 	return _sprintf_object( buffer, maxlen, va_arg( *argv, muse_cell ) );
 }
 
-static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, muse_cell thing )
+static size_t muse_sprintf_object( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing )
 {
-	int len = 0;
+	size_t len = 0;
 
 	switch ( _cellt(thing) )
 	{
@@ -438,7 +438,7 @@ static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, mu
 		{
 			const muse_char *name = muse_symbol_name(env,thing);
 			if ( name ) {
-				int name_len = (int)wcslen(name);
+				size_t name_len = wcslen(name);
 				if ( name_len > maxlen - len )
 					name_len = maxlen - len;
 				if ( name_len >= 1 )
@@ -451,7 +451,7 @@ static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, mu
 				char obj[64];
 				obj[63] = '\0';
 				snprintf( obj, 64, "<obj:%x>", thing );
-				len += muse_utf8_to_unicode( buffer + len, maxlen - len, obj, strlen(obj) );
+				len += muse_utf8_to_unicode( buffer + len, (maxlen - len), obj, strlen(obj) );
 			}
 		}
 		break;
@@ -490,20 +490,20 @@ static int muse_sprintf_object( muse_env *env, muse_char *buffer, int maxlen, mu
 	return len;
 }
 
-static int muse_vsprintf_type( muse_env *env, muse_char *buffer, int maxlen, va_list *argv )
+static size_t muse_vsprintf_type( muse_env *env, muse_char *buffer, size_t maxlen, va_list *argv )
 {
 	muse_cell thing = va_arg( *argv, muse_cell );
 	const muse_char *tname = muse_typename( thing );
-	int tlen = (int)wcslen( tname );
+	size_t tlen = wcslen( tname );
 	if ( tlen > maxlen )
 		tlen = maxlen;
 	memcpy( buffer, tname, tlen * sizeof(muse_char) );
 	return tlen;
 }
 
-static int muse_vsprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, va_list *argv )
+static size_t muse_vsprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, va_list *argv )
 {
-	int len = 0;
+	size_t len = 0;
 
 	while ( len < maxlen && format[0] )
 	{
@@ -529,7 +529,7 @@ static int muse_vsprintf( muse_env *env, muse_char *buffer, int maxlen, const mu
 				{
 					/* %s accepts a literal string (unicode). */
 					const muse_char *lit = (const muse_char *)va_arg( *argv, muse_char * );
-					int litlen = (int)wcslen(lit);
+					size_t litlen = wcslen(lit);
 					if ( litlen > maxlen - len )
 						litlen = maxlen - len;
 					memcpy( buffer + len, lit, litlen * sizeof(muse_char) );
@@ -594,9 +594,9 @@ static int muse_vsprintf( muse_env *env, muse_char *buffer, int maxlen, const mu
  *
  * @see muse_vsprintf
  */
-int	muse_sprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, ... )
+size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... )
 {
-	int len = 0;
+	size_t len = 0;
 	va_list args;
 
 	va_start( args, format );
@@ -622,7 +622,7 @@ void muse_message( muse_env *env, const muse_char *context, const muse_char *mes
 	enum { MAXLEN = 512 };
 	muse_char text[MAXLEN];
 	va_list args;
-	int len = 0;
+	size_t len = 0;
 
 	muse_assert( wcslen(context) < MAXLEN-60);
 	#if MUSE_PLATFORM_WINDOWS
@@ -657,7 +657,7 @@ static muse_boolean muse_test_one( muse_env *env, const muse_char *context, muse
 								  muse_cell symbol, muse_cell value, 
 								  const muse_char *spec, va_list *argv,
 								  muse_char *failure_descr);
-static int levenshtein_distance( const muse_char *s1, const muse_char *s2 );
+static size_t levenshtein_distance( const muse_char *s1, const muse_char *s2 );
 
 /**
  * Checks whether a set of expectations are satisfied by some values.
@@ -767,7 +767,7 @@ muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance
 			Ignore operators and special symbols. */
 			if ( s2 != symbol && isalpha(s2name[0]) )
 			{
-				int d = levenshtein_distance( s1, s2name );
+				int d = (int)levenshtein_distance( s1, s2name );
 				if ( d < distance )
 				{
 					result = s2;
@@ -1093,27 +1093,27 @@ static muse_boolean muse_test_one( muse_env *env, const muse_char *context, muse
 	}
 }
 
-static int min3 ( int x, int y, int z )
+static size_t min3 ( size_t x, size_t y, size_t z )
 {
-	int m = x;
+	size_t m = x;
 	m = (y < m) ? y : m;
 	m = (z < m) ? z : m;
 	return m;
 }
 
-static int levenshtein_distance( const muse_char *s1, const muse_char *s2 )
+static size_t levenshtein_distance( const muse_char *s1, const muse_char *s2 )
 {
-	int l1 = wcslen(s1);
-	int l2 = wcslen(s2);
-	int rowlen = l1 + 1;
-	int size_bytes = rowlen * (l2 + 1) * sizeof(int);
-	int *d = (int*)alloca( size_bytes );
+	size_t l1 = wcslen(s1);
+	size_t l2 = wcslen(s2);
+	size_t rowlen = l1 + 1;
+	size_t size_bytes = rowlen * (l2 + 1) * sizeof(size_t);
+	size_t *d = (size_t*)alloca( size_bytes );
 
 	assert( l1 < 256 && l2 < 256 && "Warning: Don't use too long strings for distance measure!" );
 	memset( d, 0, size_bytes );
 
 	{
-		int i,j;
+		size_t i,j;
 
 		for ( i = 0; i <= l1; ++i )
 			d[i] = i;
@@ -1124,7 +1124,7 @@ static int levenshtein_distance( const muse_char *s1, const muse_char *s2 )
 		{
 			for ( j = 1; j <= l2; ++j )
 			{
-				int cost = (toupper(s1[i-1]) == toupper(s2[j-1])) ? 0 : 1;
+				size_t cost = (toupper(s1[i-1]) == toupper(s2[j-1])) ? 0 : 1;
 				d[i + j * rowlen] = min3(
 										d[ i - 1 + j * rowlen ] + 1, // deletion
 										d[i + (j-1)*rowlen] + 1, // insertion
