@@ -63,7 +63,7 @@ typedef struct
 	int			bucket_count;	/**< The number of buckets in the hash table. */
 	muse_cell	*buckets;		/**< The array holding the buckets. Each bucket is
 									simply an assoc list. */
-	muse_cell	funcspec;		/**< fn(key)->value for use when key is not found. */
+	muse_cell	datafn;			/**< fn(key)->value for use when key is not found. */
 } hashtable_t;
 
 static void hashtable_init( muse_env *env, void *p, muse_cell args )
@@ -93,7 +93,7 @@ static void hashtable_mark( muse_env *env, void *p )
 		}
 	}
 
-	muse_mark( env, h->funcspec );
+	muse_mark( env, h->datafn );
 }
 
 static void hashtable_destroy( muse_env *env, void *p )
@@ -330,9 +330,9 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 			/* key doesn't exist. Try to compute using the func spec. */
 			muse_cell value = MUSE_NIL;
 
-			/* Use the funcspec to derive the value for the key. */
-			if ( h->funcspec )
-				value = _force(muse_apply( env, h->funcspec, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
+			/* Use the datafn to derive the value for the key. */
+			if ( h->datafn )
+				value = _force(muse_apply( env, h->datafn, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
 
 			/* Cache the value in the hashtable. */
 			if ( value )
@@ -552,10 +552,12 @@ static muse_cell hashtable_iterator( muse_env *env, hashtable_t *self, muse_iter
 	return MUSE_NIL;
 }
 
-static void hashtable_funcspec( muse_env *env, void *self, muse_cell funcspec )
+static muse_cell hashtable_datafn( muse_env *env, void *self, muse_cell datafn )
 {
 	hashtable_t *ht = (hashtable_t*)self;
-	ht->funcspec = funcspec;
+	muse_cell olddatafn = ht->datafn;
+	ht->datafn = datafn;
+	return olddatafn;
 }
 
 static muse_monad_view_t g_hashtable_monad_view =
@@ -573,7 +575,7 @@ static void *hashtable_view( muse_env *env, int id )
 	{
 		case 'mnad' : return &g_hashtable_monad_view;
 		case 'iter' : return hashtable_iterator;
-		case 'spec' : return hashtable_funcspec;
+		case 'dtfn' : return hashtable_datafn;
 		default : return NULL;
 	}
 }

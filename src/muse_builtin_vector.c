@@ -53,7 +53,7 @@ typedef struct
 	muse_functional_object_t base;
 	int length;
 	muse_cell *slots;
-	muse_cell funcspec;
+	muse_cell datafn;
 } vector_t;
 
 static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell val );
@@ -85,7 +85,7 @@ static void vector_mark( muse_env *env, void *ptr )
 		muse_mark( env, *cptr++ );
 	}
 
-	muse_mark( env, v->funcspec );
+	muse_mark( env, v->datafn );
 }
 
 static void vector_destroy( muse_env *env, void *ptr )
@@ -147,10 +147,10 @@ static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell 
 {
 	if ( !val )
 	{
-		if ( v->funcspec )
+		if ( v->datafn )
 		{
 			int sp = _spos();
-			val = _force(muse_apply( env, v->funcspec, _cons(_mk_int(index),MUSE_NIL), MUSE_TRUE, MUSE_TRUE )); 
+			val = _force(muse_apply( env, v->datafn, _cons(_mk_int(index),MUSE_NIL), MUSE_TRUE, MUSE_TRUE )); 
 			_unwind(sp);
 		}
 
@@ -167,7 +167,7 @@ static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell 
  */
 static void vector_forceall( muse_env *env, vector_t *v )
 {
-	if ( v->funcspec )
+	if ( v->datafn )
 	{
 		int i = 0;
 		for ( i = 0; i < v->length; ++i )
@@ -399,7 +399,7 @@ static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_c
 	int i;
 	muse_boolean cont = MUSE_TRUE;
 	
-	if ( self->funcspec )
+	if ( self->datafn )
 	{
 		for ( i = 0; i < self->length; ++i )
 		{
@@ -423,10 +423,12 @@ static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_c
 	return MUSE_NIL;
 }
 
-static void vector_funcspec( muse_env *env, void *self, muse_cell funcspec )
+static muse_cell vector_datafn( muse_env *env, void *self, muse_cell datafn )
 {
 	vector_t *v = (vector_t*)self;
-	v->funcspec = funcspec;
+	muse_cell olddatafn = v->datafn;
+	v->datafn = datafn;
+	return olddatafn;
 }
 
 static muse_monad_view_t g_vector_monad_view =
@@ -444,7 +446,7 @@ static void *vector_view( muse_env *env, int id )
 	{
 		case 'mnad' : return &g_vector_monad_view;
 		case 'iter' : return vector_iterator;
-		case 'spec' : return vector_funcspec;
+		case 'dtfn' : return vector_datafn;
 		default : return NULL;
 	}
 }

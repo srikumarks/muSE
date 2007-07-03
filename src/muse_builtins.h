@@ -86,7 +86,7 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args );
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args );
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args );
 muse_cell fn_transpose( muse_env *env, void *context, muse_cell args );
-muse_cell fn_funcspec( muse_env *env, void *context, muse_cell args );
+muse_cell fn_datafn( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Comparisons Comparisons */
