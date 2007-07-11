@@ -15,7 +15,7 @@
 
 static muse_cell list_iterator( muse_env *env, void *self, muse_iterator_callback_t callback, void *context )
 {
-	muse_cell list = (muse_cell)self;
+	muse_cell list = (muse_cell)(size_t)self;
 	int sp = _spos();
 	int cont = MUSE_TRUE;
 	
@@ -50,7 +50,7 @@ static muse_iterator_t get_iterator_view( muse_env *env, muse_cell obj, muse_fun
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		if ( objptr_out )
-			(*objptr_out) = (void*)obj;
+			(*objptr_out) = (void*)(size_t)obj;
 		return list_iterator;
 	}
 	else
@@ -405,7 +405,7 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 
 static muse_boolean finder( muse_env *env, void *self, void *what, muse_cell thing )
 {
-	return muse_equal( env, (muse_cell)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
+	return muse_equal( env, (muse_cell)(size_t)what, thing ) ? MUSE_FALSE : MUSE_TRUE;
 }
 
 /**
@@ -448,7 +448,7 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 	
 	if ( iter )
 	{
-		result = iter( env, collObj, finder, (void*)object );
+		result = iter( env, collObj, finder, (void*)(size_t)object );
 	}
 	
 	return result;
@@ -643,7 +643,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (funcspec [vector|hashtable] (fn ([key|index]) ...))
+ * (datafn [vector|hashtable] (fn ([key|index]) ...))
  *
  * Establishes that the entries in the vector or the hashtable should
  * be determined by the given function. The function is only computed
@@ -652,7 +652,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
  * Example:
  * @code
  * > (define fibs (vector 0 1))
- * > (funcspec fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
+ * > (datafn fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
  * > (fibs 20)
  * 6765
  * > fibs
@@ -662,7 +662,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
  * Or with a hashtable -
  * @code
  * > (define fibs (mk-hashtable))
- * > (funcspec fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
+ * > (datafn fibs (fn (i) (+ (fibs (- i 1)) (fibs (- i 2)))))
  * > (fibs 0 0)
  * 0
  * > (fibs 1 1)
@@ -673,22 +673,39 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
  * {hashtable '((7 . 13) (6 . 8) (5 . 5) (4 . 3) (2 . 1) (3 . 2) (1 . 1) (9 . 34) (0 . 0) (10 . 55) (8 . 21))}
  * @endcode
  */
-muse_cell fn_funcspec( muse_env *env, void *context, muse_cell args )
+muse_cell fn_datafn( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj = _evalnext(&args);
-	muse_cell funcspec = _evalnext(&args);
 
 	muse_functional_object_t *objPtr = NULL;
-	muse_funcspec_t funcspec_impl = (muse_funcspec_t)get_view( env, 'spec', obj, &objPtr );
-	if ( funcspec_impl )
+	muse_datafn_t datafn_impl = (muse_datafn_t)get_view( env, 'dtfn', obj, &objPtr );
+	if ( datafn_impl )
 	{
-		funcspec_impl( env, objPtr, funcspec );
-		return muse_builtin_symbol(env, MUSE_T);
+		if ( args )
+		{
+			/* Change the datafn to the one provided. */
+			muse_cell datafn = _evalnext(&args);
+
+			MUSE_DIAGNOSTICS({
+				if ( !_isfn(datafn) )
+					muse_message( env, L"(datafn obj >>fn<<)", L"Expected function f(k)->v, got [%m] instead.", datafn );
+			});
+
+			datafn_impl( env, objPtr, datafn );
+			return obj;
+		}
+		else
+		{
+			/* Only object given, so get the current data fn. */
+			muse_cell datafn = datafn_impl( env, objPtr, MUSE_NIL );
+			datafn_impl( env, objPtr, datafn );
+			return datafn;
+		}
 	}
 	else
 	{
 		MUSE_DIAGNOSTICS({
-			muse_message( env, L"(funcspec >>object<< fn)", L"Object %m doesn't support the 'spec' view!", obj );
+			muse_message( env, L"(datafn >>object<< fn)", L"Object %m doesn't support the 'dtfn' view!", obj );
 		});
 		return MUSE_NIL;
 	}

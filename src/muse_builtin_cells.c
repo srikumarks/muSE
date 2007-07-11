@@ -196,7 +196,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	
 	/* Define the value of the symbol. */
 	{
-		muse_cell value = _defgen( env, (int)context, sym, oldval, _head(args) );
+		muse_cell value = _defgen( env, (int)(size_t)context, sym, oldval, _head(args) );
 
 		MUSE_DIAGNOSTICS({
 			if ( _tail(args) )

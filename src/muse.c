@@ -36,7 +36,9 @@ const char *g_muse_typenames[] =
 	"MUSE_NATIVEFN_CELL",
 	"MUSE_INT_CELL",
 	"MUSE_FLOAT_CELL",
-	"MUSE_TEXT_CELL"
+	"MUSE_TEXT_CELL",
+	"MUSE_LAZY_CELL",
+	"MUSE_TUPLE_CELL"
 };
 
 static void init_stack( muse_stack *s, int size )
@@ -819,6 +821,16 @@ muse_cell muse_mk_anon_symbol(muse_env *env)
 	return sym;
 }
 
+static void mark_tuple( muse_env *env, muse_cell c )
+{
+	muse_tuple_cell t = _ptr(c)->tuple;
+	int i;
+	for ( i = 0; i < t.count; ++i )
+	{
+		muse_mark( env, t.slots[i] );
+	}
+}
+
 /**
  * Prior to garbage collection, muse_mark is called
  * on all cells which are referenced somewhere and
@@ -851,10 +863,17 @@ void muse_mark( muse_env *env, muse_cell c )
 			/* If the cell is a functional object, mark all cells whose
 			references it holds as well. */
 
-			muse_functional_object_t *obj = _fnobjdata(c);
-			if ( obj && obj->type_info->mark )
+			if ( _cellt(c) == MUSE_TUPLE_CELL )
 			{
-				obj->type_info->mark(env,obj);
+				mark_tuple(env, c);
+			}
+			else
+			{
+				muse_functional_object_t *obj = _fnobjdata(c);
+				if ( obj && obj->type_info->mark )
+				{
+					obj->type_info->mark(env,obj);
+				}
 			}
 		}
 	}

@@ -56,10 +56,18 @@ typedef struct { muse_nativefn_t fn; void *context; }	muse_nativefn_cell;
  * the end of the string. The end pointer points to the
  * null character that is stored at the end of the string.
  * The text cell is managed by the muse environment and
- * will be de4stroyed at garbage collection time if no
+ * will be destroyed at garbage collection time if no
  * other cells refer to it.
  */
 typedef struct { muse_char *start, *end; }	muse_text_cell;
+
+/**
+ * A tuple is a fixed-structure sequence of cells.
+ * Tuples can be used whenever fixed-time access
+ * to number of values in a collection is required,
+ * without the indirection overhead of a vector.
+ */
+typedef struct { int count; muse_cell *slots; } muse_tuple_cell;
 
 /**
  * A muse cell is a union of all the possible cell types.
@@ -80,7 +88,14 @@ typedef union
 	muse_cons_cell		cons;
 	muse_nativefn_cell	fn;
 	muse_text_cell		text;
+	muse_tuple_cell		tuple;
 } muse_cell_data;
+
+enum
+{
+	MUSE_TYPE_BITS = 4, /**< Number of low order bits dedicated to holding the type of a cell. */
+	MUSE_TYPE_BITMASK = (1 << MUSE_TYPE_BITS) - 1, /**< Bitwise-and a cell reference with this to get its type. */
+};
 
 /**
  * A stack is used to keep track of temporary 
@@ -207,7 +222,7 @@ extern const char *g_muse_typenames[];
  */
 static inline muse_cell _celli( muse_cell cell ) 
 { 
-	return cell >> 3; 
+	return cell >> MUSE_TYPE_BITS; 
 }
 
 /**
@@ -216,7 +231,7 @@ static inline muse_cell _celli( muse_cell cell )
  */
 static inline muse_cell _cellati( int i )
 {
-	return i << 3;
+	return i << MUSE_TYPE_BITS;
 }
 
 /**
@@ -230,7 +245,7 @@ static inline int op_newlocal( muse_env *env )
 }
 static inline muse_cell _localcell(int ix)
 {
-	return 7 + (ix << 3);
+	return MUSE_TYPE_BITMASK + (ix << MUSE_TYPE_BITS);
 }
 
 /**
@@ -240,7 +255,7 @@ static inline muse_cell _localcell(int ix)
  */
 static inline muse_cell_t _cellt( muse_cell cell ) 
 { 
-	return (muse_cell_t)(cell & 7); 
+	return (muse_cell_t)(cell & MUSE_TYPE_BITMASK); 
 }
 static inline const char *_typename( muse_cell cell )
 {
@@ -361,7 +376,7 @@ static inline muse_cell op_head( muse_env *env, muse_cell c )
 {
 	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_LAZY_CELL );
 	if ( _cellt(c) == MUSE_SYMBOL_CELL )
-		return 	env->current_process->locals.bottom[_ptr(c)->cons.head >> 3];
+		return 	env->current_process->locals.bottom[_ptr(c)->cons.head >> MUSE_TYPE_BITS];
 	else
 		return _ptr(c)->cons.head;
 }
@@ -421,13 +436,13 @@ static inline void op_setht( muse_env *env, muse_cell c, muse_cell h, muse_cell 
 #define _define(symbol,value) op_define(env,symbol,value)
 static inline muse_cell op_define( muse_env *env, muse_cell symbol, muse_cell value )
 {
-	env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3] = value;
+	env->current_process->locals.bottom[_ptr(symbol)->cons.head >> MUSE_TYPE_BITS] = value;
 	return value;
 }
 #define _symval(symbol) op_symval(env,symbol)
 static inline muse_cell op_symval( muse_env *env, muse_cell symbol )
 {
-	return env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3];
+	return env->current_process->locals.bottom[_ptr(symbol)->cons.head >> MUSE_TYPE_BITS];
 }
 #define _bspos() op_bspos(env)
 static inline int op_bspos(muse_env *env)
@@ -484,7 +499,7 @@ static inline int op_ismarked( muse_env *env, muse_cell c )
 static inline int _iscompound( muse_cell c )
 {
 	int t = _cellt(c);
-	return t < MUSE_NATIVEFN_CELL || t > MUSE_TEXT_CELL;
+	return t < MUSE_NATIVEFN_CELL || t == MUSE_LAZY_CELL;
 }
 #define _takefreecell() op_takefreecell(env)
 static inline muse_cell op_takefreecell(muse_env *env)
