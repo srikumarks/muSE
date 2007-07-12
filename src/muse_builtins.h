@@ -126,6 +126,13 @@ muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_string_p( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
+/** @addtogroup TypeCasting Type casting */
+/*@{*/
+muse_cell fn_int( muse_env *env, void *context, muse_cell args );
+muse_cell fn_float( muse_env *env, void *context, muse_cell args );
+muse_cell fn_number( muse_env *env, void *context, muse_cell args );
+/*@}*/
+
 /** @addtogroup ObjectSystem Object system */
 /*@{*/
 muse_cell fn_class( muse_env *env, void *context, muse_cell args );
