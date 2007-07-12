@@ -14,6 +14,7 @@
 #include "muse_builtins.h"
 #include "muse_port.h"
 #include <string.h>
+#include <stdlib.h>
 
 static void write_xml_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
 static void write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
@@ -205,3 +206,444 @@ static void write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnod
 		write_xml_node( env, p, xmlnode, depth );
 	}
 }
+
+static void xml_skip_ignorables( muse_port_t p );
+static muse_boolean xml_skip_whitespace( muse_port_t p );
+static void ungetbuffer( char *c, size_t n, muse_port_t p );
+static muse_boolean xml_comment_start( muse_port_t p );
+static muse_boolean xml_skip_comment( muse_port_t p );
+static muse_boolean xml_proc_start( muse_port_t p );
+static muse_boolean xml_skip_proc( muse_port_t p );
+static muse_cell xml_read_tag( muse_env *env, muse_port_t p );
+static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol );
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p );
+static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol );
+static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag );
+
+/**
+ * (read-xml port)
+ *
+ * Reads one xml node (a simple subset of xml) and returns it in the 
+ * canonical form.
+ * @code
+ * <tag attr1="v1" attr2="v2">hello <b>world</b></tag>
+ * @endcode
+ * gets returned as
+ * @code
+ * (tag ((attr1 . v1) (attr2 . v2)) hello (b () world))
+ * @endcode
+ *
+ * Comments are skipped, processing instructions are skipped
+ * (only UTF-8 is supported) and all content is interpreted as
+ * a stream of scheme atoms - symbols, numbers, strings, etc.
+ * with white space separating them.
+ */
+muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell portcell	= _evalnext(&args);
+	muse_port_t port	= _port(portcell);
+
+	return xml_read_tag( env, port );
+}
+
+static void xml_skip_ignorables( muse_port_t p )
+{
+	int skipcount = 0;
+
+	do
+	{
+		if ( port_eof(p) || p->error )
+			return;
+		else
+		{
+			skipcount = 0;
+			skipcount += xml_skip_whitespace(p);
+			skipcount += xml_skip_comment(p);
+			skipcount += xml_skip_whitespace(p);
+			skipcount += xml_skip_proc(p);
+		}
+	}
+	while ( skipcount > 0 );
+}
+
+static muse_boolean xml_skip_whitespace( muse_port_t p )
+{
+	int skipcount = 0;
+
+	while ( !port_eof(p) && p->error == 0 )
+	{
+		int c = port_getc(p);
+		if ( !isspace(c) )
+		{
+			port_ungetc(c,p);
+			break;
+		}
+
+		skipcount++;
+	}
+
+	return skipcount > 0 ? MUSE_TRUE : MUSE_FALSE;
+}
+
+static void ungetbuffer( char *c, size_t n, muse_port_t p )
+{
+	muse_int i;
+	for ( i = n-1; i >= 0; --i )
+	{
+		port_ungetc(c[i],p);
+	}
+}
+
+static muse_boolean xml_comment_start( muse_port_t p )
+{
+	char c[4];
+	size_t n = port_read( c, 4, p );
+
+	if ( n == 4 && c[0] == '<' && c[1] == '!' && c[2] == '-' && c[3] == '-' )
+		return MUSE_TRUE;
+	else
+	{
+		ungetbuffer( c, n, p );
+		return MUSE_FALSE;
+	}
+}
+
+static muse_boolean xml_skip_comment( muse_port_t p )
+{
+	if ( xml_comment_start(p) )
+	{
+		while ( !port_eof(p) && p->error == 0 )
+		{
+			int c = port_getc(p);
+			if ( c == '-' )
+			{
+				/* Check if it is end of comment. */
+				int c2 = port_getc(p);
+				if ( c2 == '-' )
+				{
+					int c3 = port_getc(p);
+					if ( c3 == '>' )
+					{
+						/* End of comment, alright. */
+						return MUSE_TRUE;
+					}
+					else
+					{
+						port_ungetc(c3,p);
+						port_ungetc(c2,p);
+					}
+				}
+				else
+					port_ungetc(c2,p);
+			}
+			else if ( c == '<' )
+			{
+				/* May be beginning of another comment. */
+				port_ungetc(c,p);
+				{
+					muse_boolean nested_comment = xml_skip_comment(p);
+					if ( !nested_comment )
+						port_getc(p);
+				}
+			}
+		}
+
+		return MUSE_TRUE;
+	}
+	else
+		return MUSE_FALSE;
+}
+
+static muse_boolean xml_proc_start( muse_port_t p )
+{
+	char c[2];
+	size_t n = port_read( c, 2, p );
+
+	if ( n == 2 && c[0] == '<' && c[1] == '?' )
+		return MUSE_TRUE;
+	else
+	{
+		ungetbuffer( c, n, p );
+		return MUSE_FALSE;
+	}
+}
+
+static muse_boolean xml_skip_proc( muse_port_t p )
+{
+	if ( xml_proc_start(p) )
+	{
+		while ( !port_eof(p) && p->error == 0 )
+		{
+			int c = port_getc(p);
+			if ( c == '?' )
+			{
+				int c2 = port_getc(p);
+				if ( c2 == '>' )
+				{
+					/* End of processing instruction. */
+					return MUSE_TRUE;
+				}
+				else
+					port_ungetc(c2,p);
+			}
+		}
+
+		return MUSE_TRUE;
+	}
+	else
+		return MUSE_FALSE;
+}
+
+static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
+{
+	int c;
+
+	xml_skip_ignorables(p);
+
+	c = port_getc(p);
+	if ( c == '<' )
+	{
+		char sym[128];
+		int symlen = 0;
+		for ( symlen = 0; symlen < 127; ++symlen )
+		{
+			int tc = port_getc(p);
+			if ( isspace(tc) || tc == '>' )
+			{
+				sym[symlen] = '\0';
+				port_ungetc(tc,p);
+				break;
+			}
+			else
+				sym[symlen] = tc;
+		}
+
+		sym[symlen] = '\0';
+
+		{
+			int sp = _spos();
+			muse_cell tag = muse_csymbol_utf8(env,sym);
+			muse_cell attribs = xml_read_tag_attribs(env,p);
+			muse_cell body = xml_read_tag_body(env,p,tag);
+			muse_cell tagexpr = _cons(tag,_cons(attribs,body));
+			_unwind(sp);
+			_spush(tagexpr);
+			return tagexpr;
+		}
+	}
+	else
+	{
+		port_ungetc(c,p);
+		return MUSE_NIL;
+	}
+}
+
+
+static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
+{
+	int c;
+
+	if ( port_eof(p) || p->error != 0 )
+	{
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+
+	(*eol) = MUSE_FALSE;
+	xml_skip_whitespace(p);
+	c = port_getc(p);
+	if ( c == '>' )
+	{
+		/* End of tag start. */
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+	else if ( c == '/' )
+	{
+		/* End of tag. */
+		c = port_getc(p);
+		muse_assert( c == '>' );
+		ungetbuffer( "</>", 3, p );
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+	else
+	{
+		/* Read x="y" kind of associations. */
+		char sym[128];
+		int symlen = 0;
+		port_ungetc(c,p);
+
+		for ( symlen = 0; symlen < 127; ++symlen )
+		{
+			int sc = port_getc(p);
+			if ( isspace(sc) )
+			{
+				sym[symlen] = '\0';
+				break;
+			}
+			else if ( sc == '=' )
+			{
+				sym[symlen] = '\0';
+				port_ungetc(sc,p);
+				break;
+			}
+			else if ( sc == '>' )
+			{
+				sym[symlen] = '\0';
+				port_ungetc(sc,p);
+				break;
+			}
+			else
+				sym[symlen] = (char)sc;
+		}
+
+		sym[symlen] = '\0';
+		xml_skip_whitespace(p);
+
+		{
+			muse_cell msym = muse_csymbol_utf8(env,sym);
+			int nc = port_getc(p);
+			if ( nc == '=' )
+			{
+				/* Association. Read the following thing as a muse string. */
+				muse_cell val = muse_pread(p);
+				return _cons(msym,val);
+			}
+			else
+			{
+				/* Flag. */
+				port_ungetc(nc,p);
+				return _cons(msym, muse_builtin_symbol(env,MUSE_T));
+			}
+		}
+	}
+}
+
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p )
+{
+	return muse_generate_list( env, (muse_list_generator_t)xml_tag_attrib_gen, p );
+}
+
+static void xml_trim_text_whitespace( char **text, size_t *len )
+{
+	/* Trim leading white space. */
+	while ( (*len) > 0 )
+	{
+		if ( isspace((*text)[0]) )
+		{
+			(*len)--;
+			(*text)++;
+		}
+		else
+			break;
+	}
+
+	/* Trim trailing white space. */
+	while ( (*len) > 0 )
+	{
+		if ( isspace((*text)[(*len)-1]) )
+		{
+			(*len)--;
+			(*text)[(*len)] = '\0';
+		}
+		else
+			break;
+	}
+}
+
+static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
+{
+	if ( port_eof(p) || p->error != 0 )
+	{
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+	else
+	{
+		int c = port_getc(p);
+		if ( c == '<' )
+		{
+			int c2 = port_getc(p);
+			if ( c2 == '/' )
+			{
+				/* End of tag. Read until '>' and return end of list. */
+				while ( !port_eof(p) && p->error == 0 && c2 != '>' )
+					c2 = port_getc(p);
+				(*eol) = MUSE_TRUE;
+				return MUSE_NIL;
+			}
+			else
+			{
+				/* Sub tag. */
+				port_ungetc(c2,p);
+				port_ungetc(c,p);
+				(*eol) = MUSE_FALSE;
+				return xml_read_tag(env,p);
+			}
+		}
+		else
+		{
+			size_t textcap = 128;
+			size_t textsize = 0;
+			char *text = (char*)malloc( textcap );
+
+			/* Keep the character just read in. */
+			text[textsize++] = c;
+
+			while ( !port_eof(p) && p->error == 0 )
+			{
+				int c = port_getc(p);
+				if ( c == '<' )
+				{
+					/* Beginning of sub tag or tag end.*/
+					muse_cell result;
+					char *trimmedtext = text;
+					size_t trimmedtextlen = textsize;
+					port_ungetc(c,p);
+					text[textsize] = '\0';
+					xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
+					if ( trimmedtextlen == 0 )
+					{
+						/* If text is entirely white space, skip it. */
+						free(text);
+						return xml_tag_body_gen( env, p, i, eol );
+					}
+					else
+					{
+						result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
+						free(text);
+						(*eol) = MUSE_FALSE;
+						return result;
+					}
+				}
+				else
+				{
+					if ( textsize >= textcap )
+					{
+						textcap *= 2;
+						text = (char*)realloc( text, textcap );
+					}
+
+					text[textsize++] = (char)c;
+				}
+			}
+
+			text[textsize] = '\0';
+
+			{
+				muse_cell result = muse_mk_text_utf8( env, text, text+textsize );
+				free(text);
+				(*eol) = MUSE_FALSE;
+				return result;
+			}
+		}
+	}
+}
+
+static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag )
+{
+	xml_skip_ignorables(p);
+	return muse_generate_list( env, (muse_list_generator_t)xml_tag_body_gen, p );
+}
+
