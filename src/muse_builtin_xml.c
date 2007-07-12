@@ -212,6 +212,8 @@ static muse_boolean xml_skip_whitespace( muse_port_t p );
 static void ungetbuffer( char *c, size_t n, muse_port_t p );
 static muse_boolean xml_comment_start( muse_port_t p );
 static muse_boolean xml_skip_comment( muse_port_t p );
+static muse_boolean xml_DOCTYPE_start( muse_port_t p );
+static muse_boolean xml_skip_DOCTYPE( muse_port_t p );
 static muse_boolean xml_proc_start( muse_port_t p );
 static muse_boolean xml_skip_proc( muse_port_t p );
 static muse_cell xml_read_tag( muse_env *env, muse_port_t p );
@@ -266,6 +268,8 @@ static void xml_skip_ignorables( muse_port_t p )
 			skipcount = 0;
 			skipcount += xml_skip_whitespace(p);
 			skipcount += xml_skip_comment(p);
+			skipcount += xml_skip_whitespace(p);
+			skipcount += xml_skip_DOCTYPE(p);
 			skipcount += xml_skip_whitespace(p);
 			skipcount += xml_skip_proc(p);
 		}
@@ -361,6 +365,40 @@ static muse_boolean xml_skip_comment( muse_port_t p )
 		return MUSE_FALSE;
 }
 
+static muse_boolean xml_DOCTYPE_start( muse_port_t p )
+{
+	char c[10];
+	size_t n = port_read( c, 9, p );
+
+	if ( n == 9 && strcmp(c,"<!DOCTYPE") == 0 )
+		return MUSE_TRUE;
+	else
+	{
+		ungetbuffer( c, n, p );
+		return MUSE_FALSE;
+	}
+}
+
+static muse_boolean xml_skip_DOCTYPE( muse_port_t p )
+{
+    if ( xml_DOCTYPE_start(p) )
+    {
+        while ( !port_eof(p) && p->error == 0 )
+        {
+            int c = port_getc(p);
+            if ( c == '>' )
+            {
+                /* End of DOCTYPE expression. */
+                return MUSE_TRUE;
+            }
+        }
+        
+        return MUSE_TRUE;
+    }
+    else
+        return MUSE_FALSE;
+}
+
 static muse_boolean xml_proc_start( muse_port_t p )
 {
 	char c[2];
@@ -415,7 +453,7 @@ static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
 		for ( symlen = 0; symlen < 127; ++symlen )
 		{
 			int tc = port_getc(p);
-			if ( isspace(tc) || tc == '>' )
+			if ( isspace(tc) || tc == '>' || tc == '/' )
 			{
 				sym[symlen] = '\0';
 				port_ungetc(tc,p);
