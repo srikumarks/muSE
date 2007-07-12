@@ -233,10 +233,17 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  * (tag ((attr1 . v1) (attr2 . v2)) hello (b () world))
  * @endcode
  *
- * Comments are skipped, processing instructions are skipped
- * (only UTF-8 is supported) and all content is interpreted as
- * a stream of scheme atoms - symbols, numbers, strings, etc.
- * with white space separating them.
+ *	- Comments are skipped,
+ *	- processing instructions are skipped,
+ *	- only UTF-8 is supported,
+ *	- white space after opening tags and before closing tags are trimmed, 
+ *	- all "content" within tags are read in as strings, 
+ *	- no support for xml namespaces,
+ *	- only reads one xml node at a time,
+ *	- xml node name (i.e. tag) is not limited to alpha-numeric characters,
+ *	- attr='value' and attr=value notations are not supported in attribute lists
+ *		- only attr="value" is supported.
+ *	- read-xml followed by write-xml should essentially be an identity operation.
  */
 muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 {
