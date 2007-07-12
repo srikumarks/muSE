@@ -63,6 +63,8 @@ void port_init( muse_env *env, muse_port_base_t *p )
 	p->pretty_print = env->parameters[MUSE_PRETTY_PRINT];
 	p->tab_size		= env->parameters[MUSE_TAB_SIZE];
 	p->pp_align_level = 0;
+	p->pp_max_indent_cols = MAX_INDENT_COLS;
+	p->pp_align_cols = (int*)calloc( p->pp_max_indent_cols, sizeof(int) );
 }
 
 /**
@@ -73,6 +75,8 @@ void port_destroy( muse_port_base_t *p )
 {
 	port_destroy_buffer( &p->in );
 	port_destroy_buffer( &p->out );
+	free(p->pp_align_cols);
+	p->pp_align_cols = NULL;
 }
 
 /**
@@ -293,10 +297,10 @@ size_t port_write( void *buffer, size_t nbytes, muse_port_base_t *port )
 	muse_env *env = port->env;
 	muse_port_buffer_t *out	= &port->out;
 	
-	muse_assert( buffer && port && (nbytes > 0) );
-	
-	if ( port->error )
+	if ( port->error || nbytes == 0 )
 		return 0;
+	
+	muse_assert( buffer && port && (nbytes > 0) );
 	
 	/* First write out whatever we've accumulated in the buffer. */
 	if ( out->avail + nbytes > PORT_BUFFER_SIZE )
@@ -380,7 +384,11 @@ static void pretty_printer_indent( muse_port_t p )
 	if ( p->pretty_print )
 	{
 		muse_env *env = p->env;
-		muse_assert( p->pp_align_level < MAX_INDENT_COLS-1 );
+		if ( p->pp_align_level + 1 >= p->pp_max_indent_cols )
+		{
+			p->pp_max_indent_cols *= 2;
+			p->pp_align_cols = (int*)realloc( p->pp_align_cols, sizeof(int) * p->pp_max_indent_cols );
+		}
 		p->pp_align_cols[p->pp_align_level+1] = p->pp_align_cols[p->pp_align_level];
 		++(p->pp_align_level);
 	}

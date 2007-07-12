@@ -96,7 +96,8 @@ typedef struct _muse_port_base_t
 
 	/** Pretty printing. */
 	/*@{*/
-	int pp_align_cols[MAX_INDENT_COLS];
+	int pp_max_indent_cols;
+	int *pp_align_cols;
 	int pp_align_level;
 	/*@}*/
 } muse_port_base_t;
