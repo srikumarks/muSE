@@ -243,14 +243,24 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  *	- no support for xml namespaces,
  *	- only reads one xml node at a time,
  *	- xml node name (i.e. tag) is not limited to alpha-numeric characters,
- *	- attr='value' and attr=value notations are not supported in attribute lists
- *		- only attr="value" is supported.
- *	- read-xml followed by write-xml should essentially be an identity operation.
+ *	- attr='value' and attr="value" notations are the only ones supported.
+ *	- read-xml followed by write-xml should essentially be an identity operation,
+ *	- if you don't give a port argument, it reads a node from the standard input.
  */
 muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell portcell	= _evalnext(&args);
-	muse_port_t port	= _port(portcell);
+	muse_port_t port;
+
+	if ( args )
+	{
+		muse_cell portcell	= _evalnext(&args);
+		port	= _port(portcell);
+	}
+	else
+	{
+		/* If no port argument is given, read from stdin. */
+		port = muse_stdport( env, MUSE_STDIN_PORT );
+	}
 
 	return xml_read_tag( env, port );
 }
@@ -483,6 +493,37 @@ static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
 	}
 }
 
+static char *xml_read_utf8_until( char eos, int *length, muse_port_t p )
+{
+	int maxlen = 64, len = 0;
+	char *text = (char*)malloc(maxlen);
+
+	while ( !port_eof(p) && p->error == 0 )
+	{
+		int c = port_getc(p);
+		
+		if ( len+1 >= maxlen )
+		{
+			maxlen *= 2;
+			text = (char*)realloc( text, maxlen );
+		}
+
+		if ( c == eos )
+		{
+			(*length) = len;
+			text[len] = '\0';
+			return text;
+		}
+		else
+		{
+			text[len++] = c;
+		}
+	}
+
+	(*length) = len;
+	text[len] = '\0';
+	return text;
+}
 
 static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
 {
@@ -552,8 +593,25 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_b
 			if ( nc == '=' )
 			{
 				/* Association. Read the following thing as a muse string. */
-				muse_cell val = muse_pread(p);
-				return _cons(msym,val);
+				xml_skip_whitespace(p);
+				{
+					int q = port_getc(p);
+					if ( q == '"' || q == '\'' )
+					{
+						int length = 0;
+						char *val = xml_read_utf8_until( q, &length, p );
+						muse_cell mval = muse_mk_text_utf8( env, val, val + length );
+						free(val);
+
+						return _cons( msym, mval );
+					}
+					else
+					{
+						/* Its an error, but treat it like a flag. */
+						port_ungetc(q,p);
+						return _cons(msym, muse_builtin_symbol(env,MUSE_T));						
+					}
+				}
 			}
 			else
 			{
