@@ -67,7 +67,10 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 	{
 		p->file = muse_fopen( _text_contents(filename,NULL), (read_flag ? (write_flag ? L"rwb" : L"rb") : (write_flag ? L"wb" : L"rb")) );
 		if ( !p->file )
+		{
+			p->base.error = -1;
 			return;
+		}
 		p->desc = fileno( p->file );
 		
 		p->base.error	= 0;
