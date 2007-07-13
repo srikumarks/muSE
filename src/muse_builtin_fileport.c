@@ -46,6 +46,7 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 
 	muse_boolean read_flag = MUSE_FALSE;
 	muse_boolean write_flag = MUSE_FALSE;
+	muse_boolean binary_flag = MUSE_FALSE;
 	muse_cell filename = _evalnext(&args);
 
 	/* Get the read/write flags. */
@@ -56,6 +57,8 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 			read_flag = MUSE_TRUE;
 		else if ( flag == _csymbol(L"for-writing") )
 			write_flag = MUSE_TRUE;
+		else if ( flag == _csymbol(L"binary") )
+			binary_flag = MUSE_TRUE;
 	}
 
 	if ( read_flag ) p->base.mode |= MUSE_PORT_READ;
@@ -76,12 +79,15 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 		p->base.error	= 0;
 		p->base.eof		= 0;
 
-		if ( write_flag )
-			write_utf8_header(env,p);
-		if ( read_flag )
+		if ( !binary_flag )
 		{
-			discard_utf8_header(env,p);
-			check_for_ezscheme_file(p);
+			if ( write_flag )
+				write_utf8_header(env,p);
+			if ( read_flag )
+			{
+				discard_utf8_header(env,p);
+				check_for_ezscheme_file(p);
+			}
 		}
 	}
 }
@@ -119,7 +125,68 @@ static size_t fileport_read( void *buffer, size_t nbytes, void *port )
 	if ( p->file )
 		return fread( buffer, 1, nbytes, p->file );
 	else 
-		return read( p->desc, buffer, nbytes );
+		return read( p->desc, buffer, (unsigned int)nbytes );
+}
+
+static size_t uc16_fileport_read( void *buffer, size_t nbytes, void *port )
+{
+	fileport_t *p = (fileport_t*)port;
+
+	/* We're reading a unicode file. We need to read in 16-bit 
+	data and convert it into utf-8 before storing it into buffer. 
+	Kind of inefficient, but simplest way to support 16-bit text
+	files given that utf8 is native for us. */
+	if ( p->file )
+	{
+		unsigned char *b = (unsigned char *)buffer;
+		size_t n = 0;
+		FILE *f = p->file;
+
+		while ( !feof(f) && n < nbytes )
+		{
+			int c = (fgetc(f) & 0xFF);
+			c |= (fgetc(f) & 0xFF) << 8;
+
+			if ( c >= 0 && c <= 0x7F )
+			{
+				b[n++] = (unsigned char)c;
+			}
+			else if ( c >= 0x80 && c <= 0x7FF )
+			{
+				if ( n+2 > nbytes )
+				{
+					ungetc( c >> 8, f );
+					ungetc( c & 0xFF, f );
+					return n;
+				}
+
+				b[n++] = (unsigned char)(c >> 6) | 0xC0;
+				b[n++] = (unsigned char)(c & 0x3F) | 0x80;
+			}
+			else if ( c >= 0x800 && c <= 0xFFFF )
+			{
+				if ( n+3 > nbytes )
+				{
+					ungetc( c >> 8, f );
+					ungetc( c & 0xFF, f );
+					return n;
+				}
+
+				b[n++] = (unsigned char)(c >> 12) | 0xE0;
+				b[n++] = (unsigned char)((c >> 6) & 0x3F) | 0x80;
+				b[n++] = (unsigned char)(c & 0x3F) | 0x80;
+			}
+			else
+			{
+				p->base.error = -1;
+				return 0;
+			}
+		}
+
+		return n;
+	}
+	else
+		return 0;
 }
 
 static size_t fileport_write(void *buffer, size_t nbytes, void *port )
@@ -129,7 +196,7 @@ static size_t fileport_write(void *buffer, size_t nbytes, void *port )
 	if ( p->file )
 		return fwrite( buffer, 1, nbytes, p->file );
 	else
-		return write( p->desc, buffer, nbytes );
+		return write( p->desc, buffer, (unsigned int)nbytes );
 }
 
 static int fileport_flush( void *port )
@@ -161,6 +228,28 @@ static fileport_type_t g_fileport_type =
 		fileport_read,
 		fileport_write,
 		fileport_flush
+	}
+};
+
+static fileport_type_t g_uc16_fileport_type =
+{
+	{
+		{
+			'muSE',
+			'port',
+			sizeof(fileport_t),
+			NULL,
+			NULL,
+			fileport_init,
+			NULL,
+			fileport_destroy,
+			NULL
+		},
+
+		fileport_close,
+		uc16_fileport_read,
+		NULL,
+		NULL
 	}
 };
 
@@ -228,10 +317,13 @@ muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
 }
 
 /**
- * (open-file "filename.txt" ['for-reading 'for-writing]).
+ * (open-file "filename.txt" ['for-reading 'for-writing 'binary]).
  * Returns a new file port for reading or writing to it.
  * Use \c read and \c write with the returned port and
- * when you're done with it, call \c close.
+ * when you're done with it, call \c close. If you use the 'binary
+ * flag, then any header that might be present at the start of
+ * the file won't be processed. Also, no such header will be written
+ * out if you're opening the file for writing.
  *
  * For example -
  * @code
@@ -416,14 +508,30 @@ static void discard_utf8_header( muse_env *env, fileport_t *p )
 		platforms. */
 
 		unsigned char c[3];
-		int nbytes = read( p->desc, c, 3 );
+		int nbytes = read( p->desc, c, 2 );
 
-		if ( nbytes == 3 )
+		if ( nbytes == 2 )
 		{
-			if ( c[0] == 0xef && c[1] == 0xbb && c[2] == 0xbf )
+			if ( c[0] == 0xff && c[1] == 0xfe )
 			{
-				/* Yes its the UTF8 header. Discard it. */
+				/* 16-bit unicode file! Change its type. */
+				p->base.base.type_info = (muse_functional_object_type_t*)&g_uc16_fileport_type;
 				nbytes = 0;
+			}
+			else if ( c[1] == 0x00 )
+			{
+				/* Guessing that it is a 16-bit unicode stream, unix style. */
+				p->base.base.type_info = (muse_functional_object_type_t*)&g_uc16_fileport_type;
+			}
+			else if ( c[0] = 0xef && c[1] == 0xbb )
+			{
+				/* Could be utf8. */
+				nbytes += read( p->desc, c+2, 1 );
+				if ( nbytes == 3 && c[2] == 0xbf )
+				{
+					/* Yes it is utf8. Discard it. */
+					nbytes = 0;
+				}
 			}
 		}
 
