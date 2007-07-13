@@ -348,7 +348,10 @@ int port_flush( muse_port_base_t *port )
 		out->fpos	+= bytes_written;
 	}
 	
-	return portfn(port,flush)( port );
+	if ( port->mode & MUSE_PORT_WRITE )
+		return portfn(port,flush)( port );
+	else
+		return 0;
 }
 
 #undef portfn
