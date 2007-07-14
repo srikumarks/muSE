@@ -601,11 +601,56 @@ muse_cell muse_generate_list( muse_env *env, muse_list_generator_t generator, vo
 	return MUSE_NIL;
 }
 
+typedef struct 
+{
+	const char *format;
+	va_list *args;
+} format_list_state_t;
+
+static muse_cell format_list_item( muse_env *env, format_list_state_t *state, int i, muse_boolean *eol )
+{
+	va_list *args = state->args;
+
+	char code = *(state->format);
+
+	if ( code ) 
+	{
+		++(state->format);
+		(*eol) = MUSE_FALSE;
+
+		switch (code)
+		{
+			case 'c' : return va_arg( *args, muse_cell );
+			case 'i' : return _mk_int( va_arg(*args, int) );
+			case 'I' : return _mk_int( va_arg(*args, muse_int) );
+			case 'f' : return _mk_float( va_arg(*args, muse_float) );
+			case 'T' : return muse_mk_ctext( env, va_arg(*args, const muse_char *) );
+			case 't' : return muse_mk_ctext_utf8( env, va_arg(*args, const char *) );
+			case 'S' : return _csymbol( va_arg(*args, const muse_char *) );
+			case 's' : return muse_csymbol_utf8( env, va_arg(*args, const char *) );
+			case '\'': return muse_quote( env, format_list_item( env, state, i, eol ) ); // Quote the next item.
+			case '(' : return muse_generate_list( env, (muse_list_generator_t)format_list_item, state ); // Nested list.
+			case ')' : break; // End of list.
+			default:
+				MUSE_DIAGNOSTICS({
+					muse_char sym[2];
+					sym[0] = code;
+					sym[1] = 0;
+					muse_message( env, L"muse_list: Unknown format symbol '%s'.", sym );
+				});
+		}
+	}
+
+	(*eol) = MUSE_TRUE;
+	return MUSE_NIL;
+}
+
 /**
  * Returns a list of the given items. The format string
  * is a string of single character codes indicating the type of
  * argument to convert to a muse object. 
  *
+ * Single character codes -
  * 	- c -> cell
  * 	- i -> 32-bit integer
  * 	- I -> 64-bit integer
@@ -614,58 +659,33 @@ muse_cell muse_generate_list( muse_env *env, muse_list_generator_t generator, vo
  * 	- t -> utf8 text string
  * 	- S -> unicode symbol string
  * 	- s -> utf8 symbol string
+ *
+ * Multiple character codes -
+ *	- '<format-code> -> A quote character followed by a format code will place 
+ *						a value according to the format code in quoted form
+ *						into the list. 2 characters consumed, 1 item generated.
+ *	- (<format-codes>) -> nestable list of items. All characters from the '(' to
+ *						the matching ')' are consumed and 1 item is generated.
+ *						The generator works as though there is an implicit '('
+ *						at the beginning of the format list and a matching ')'
+ *						at the end of the format list.
  */
 muse_cell muse_list( muse_env *env, const char *format, ... )
 {
-	muse_cell h, t, c;
-	const char *fmt = format;
-	int sp;
+	muse_cell result = MUSE_NIL;
 	va_list args;
 	va_start( args, format );
-	
-	h = t = c = MUSE_NIL;
-	sp = _spos();
-	
-	while ( *fmt )
-	{
-		c = MUSE_NIL;
-		
-		switch ( *fmt )
-		{
-			case 'c' : c = va_arg( args, muse_cell ); break;
-			case 'i' : c = _mk_int( va_arg(args, int) ); break;
-			case 'I' : c = _mk_int( va_arg(args, muse_int) ); break;
-			case 'f' : c = _mk_float( va_arg(args, muse_float) ); break;
-			case 'T' : c = muse_mk_ctext( env, va_arg(args, const muse_char *) ); break;
-			case 't' : c = muse_mk_ctext_utf8( env, va_arg(args, const char *) ); break;
-			case 'S' : c = _csymbol( va_arg(args, const muse_char *) ); break;
-			case 's' : c = muse_csymbol_utf8( env, va_arg(args, const char *) ); break;
-			default :
-				fprintf( stderr, "muse_list: Unknown format symbol '%c' in format string '%s'.\n", *fmt, format );
-				muse_assert( c );
-		}
-		
-		c = _cons( c, MUSE_NIL );
-		
-		if ( h )
-		{
-			_sett( t, c );
-			t = c;
-		}
-		else
-		{
-			h = t = c;
-			_unwind(sp);
-			_spush(h);
-			sp = _spos();
-		}
 
-		++fmt;
-		_unwind(sp);
+	{
+		format_list_state_t state;
+		state.format = format;
+		state.args = &args;
+
+		result = muse_generate_list( env, (muse_list_generator_t)format_list_item, &state );
 	}
-	
+
 	va_end( args );
-	return h;
+	return result;
 }
 
 /**

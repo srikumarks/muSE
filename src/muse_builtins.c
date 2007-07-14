@@ -23,10 +23,12 @@ static const struct _builtins
 	} k_builtins[] =
 {
 {		L"quote",		fn_quote			},
+{		L"lazy",		fn_lazy				},
 {		L"cons",		fn_cons				},
 {		L"lcons",		fn_lcons			},
 {		L"eval",		fn_eval				},
 {		L"fn",			syntax_lambda		},
+{		L"lambda",		syntax_lambda		},
 {		L"fn:",			syntax_block		},
 {		L"gfn",			syntax_generic_lambda	},
 {		L"gfn:",		syntax_generic_block	},
@@ -76,7 +78,7 @@ static const struct _builtins
 {		L"ormap",		fn_ormap			},
 {		L"for-each",	fn_for_each			},
 {		L"transpose",	fn_transpose		},
-{		L"funcspec",	fn_funcspec			},
+{		L"datafn",		fn_datafn			},
 
 /************** Math ***************/
 {		L"+",			fn_add				},
@@ -105,6 +107,8 @@ static const struct _builtins
 	
 /************** Constructs ***************/
 {		L"if",			syntax_if			},
+{               L"when",                syntax_when                     },
+{               L"unless",              syntax_unless                   },
 {		L"cond",		syntax_cond			},
 {		L"do",			syntax_do			},
 {		L"while",		syntax_while		},
@@ -115,11 +119,17 @@ static const struct _builtins
 /************** Type checks ***************/
 {		L"int?",		fn_int_p			},
 {		L"float?",		fn_float_p			},
+{		L"number?",		fn_number_p			},
 {		L"cons?",		fn_cons_p			},
 {		L"fn?",			fn_fn_p				},
 {		L"symbol?",		fn_symbol_p			},
 {		L"text?",		fn_string_p			},
 	
+/************** Type conversions ***************/
+{		L"int",			fn_int				},
+{		L"float",		fn_float			},
+{		L"number",		fn_number			},
+
 /************** Algorithms ***************/
 {		L"sort!",		fn_sort_inplace		},
 {		L"sort",		fn_sort				},
@@ -143,6 +153,7 @@ static const struct _builtins
 {		L"flush",		fn_flush			},
 {		L"load",		fn_load				},
 {		L"write-xml",	fn_write_xml		},
+{		L"read-xml",	fn_read_xml			},
 {		L"exit",		fn_exit				},
 
 /************** Ports ***************/
@@ -228,7 +239,7 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (if cond-expr then-expr [else-expr]).
+ * (if cond-expr then-expr else-expr).
  * Evaluate the \c cond-expr first. If the \c cond-expr evaluates
  * to something that's not \c (), the \c if expression evaluates
  * to the result of the \c then-expr. If an \c else-expr is
@@ -245,17 +256,52 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 {
+	MUSE_DIAGNOSTICS({
+		if ( !args )
+			muse_message( env, L"(if >>cond<< then else)", L"Missing condition in 'if' construct.\n%m", args );
+		if ( !_tail(args) )
+			muse_message( env, L"(if cond >>then<< else)", L"Missing 'then' part of 'if' construct.\n%m", args );
+		if ( !_tail(_tail(args)) )
+			muse_message( env, L"(if cond then >>else<<)", L"Missing 'else' part of 'if' construct.\n%m", args );
+	});
+
+	{
+		muse_cell expr = _evalnext(&args);
+
+		return muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+	}
+}
+
+/**
+ * (when cond ---body---)
+ *
+ * Evaluates \p cond first. If condition evaluated to non-NIL value, then
+ * the body is evaluated just like \p do and the value of the last expression
+ * is the value of the \c when construct. Otherwise the value is \c ().
+ */
+muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
+{
 	muse_cell expr = _evalnext(&args);
-	
 	if ( expr )
-		return muse_eval( env, _head(args), MUSE_TRUE ); /* then */
-	
-	args = _tail(args); /* Skip then portion. */
-	
-	if ( args )
-		return muse_eval( env, _head(args), MUSE_TRUE ); /* else */
-	
-	return MUSE_NIL;
+		return _do(args);
+	else
+		return MUSE_NIL;
+}
+
+/**
+ * (unless cond ---body---)
+ *
+ * Evaluates \p cond first. If condition evaluated to \c (), then the body 
+ * is evaluated just like \c do and  the value of the last expression is
+ * the value of the \c unless construct. Otherwise the value is \c ().
+ */
+muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell expr = _evalnext(&args);
+	if ( !expr )
+		return _do(args);
+	else
+		return MUSE_NIL;
 }
 
 /**
@@ -495,6 +541,101 @@ muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
 	muse_cell arg = _evalnext(&args);
 	
 	return _cellt(arg) == MUSE_TEXT_CELL ? arg : MUSE_NIL;
+}
+
+/**
+ * (int thing)
+ *
+ * Converts the given thing to an integer or returns () if
+ * it cannot. Integers, floats and strings containing integers
+ * can be converted to integers using this function.
+ */
+muse_cell fn_int( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thing = _evalnext(&args);
+	switch ( _cellt(thing) )
+	{
+	case MUSE_INT_CELL : return thing;
+	case MUSE_FLOAT_CELL : return _mk_int((muse_int)_floatvalue(thing));
+	case MUSE_TEXT_CELL :
+		{
+			int len = 0;
+			const muse_char *text = _text_contents( thing, &len );
+			muse_int i = 0;
+			int n = swscanf( text, L"%lld", &i );
+			if ( n == 1 )
+				return _mk_int(i);
+			else
+				return MUSE_NIL;
+		}
+	default: return MUSE_NIL;
+	}
+}
+
+/**
+ * (float thing)
+ *
+ * Converts the given thing to a floating point number or returns () if
+ * it cannot. Integers, floats and strings containing floats
+ * can be converted to floats using this function.
+ */
+muse_cell fn_float( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thing = _evalnext(&args);
+	switch ( _cellt(thing) )
+	{
+	case MUSE_FLOAT_CELL : return thing;
+	case MUSE_INT_CELL : return _mk_float((muse_float)_intvalue(thing));
+	case MUSE_TEXT_CELL :
+		{
+			int len = 0;
+			const muse_char *text = _text_contents( thing, &len );
+			muse_float f = 0;
+			int n = swscanf( text, L"%f", &f );
+			if ( n == 1 )
+				return _mk_float(f);
+			else
+				return MUSE_NIL;
+		}
+	default: return MUSE_NIL;
+	}
+}
+
+/**
+ * (number thing)
+ *
+ * Returns a number - either int or float. If thing is a string,
+ * it is parsed to determine whether it is an int or float.
+ * Returns () if thing cannot be converted to a number.
+ */
+muse_cell fn_number( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thing = _evalnext(&args);
+	switch ( _cellt(thing) )
+	{
+	case MUSE_FLOAT_CELL : 
+	case MUSE_INT_CELL : 
+		return thing;
+	case MUSE_TEXT_CELL :
+		{
+			int len = 0;
+			const muse_char *text = _text_contents( thing, &len );
+			muse_float f = 0;
+			muse_int i = 0;
+			int n = swscanf( text, L"%lf", &f );
+			n += swscanf( text, L"%lld", &i );
+			if ( n > 0 )
+			{
+				if ( (muse_float)i == f )
+					return _mk_int(i);
+				else
+					return _mk_float(f);
+			}
+			else
+				return MUSE_NIL;
+		}
+	default: return MUSE_NIL;
+	}
 }
 
 /**

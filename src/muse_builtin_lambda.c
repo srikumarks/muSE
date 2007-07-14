@@ -903,6 +903,30 @@ static muse_cell delay_expr( muse_env *env, muse_cell expr )
 }
 
 /**
+ * @defgroup LazyEvaluation Lazy evaluation
+ */
+/*@{*/
+/**
+ * (lazy expr) 
+ *
+ * Delays the evaluation of the given expression until the value of the
+ * expression is required or "forced" by some other operation. Native
+ * functions are not tail call optimized (except if they are objects)
+ * so you can use this to place tail calls to native functions such
+ * as \c apply.
+ * 
+ * This function has been named differently from R5RS (which uses "delay")
+ * because it does not create a "promise" object. The forcing of the 
+ * evaluation of the lazy expression happens automatically.
+ *
+ * @see \ref fn_lcons "lcons"
+ */
+muse_cell fn_lazy( muse_env *env, void *context, muse_cell args )
+{
+	return delay_expr( env, _head(args) );
+}
+
+/**
  * (lcons a b)
  *
  * A "lazy" version of (cons a b) where the a and b are expressions
@@ -920,6 +944,9 @@ static muse_cell delay_expr( muse_env *env, muse_cell expr )
  * > (take 10 (numsfrom 100))
  * (100 101 102 103 104 105 106 107 108 109)
  * @endcode
+ *
+ * @see \ref fn_lazy "lazy"
+ * @see \ref fn_cons "cons"
  */
 muse_cell fn_lcons( muse_env *env, void *context, muse_cell args )
 {
@@ -928,3 +955,4 @@ muse_cell fn_lcons( muse_env *env, void *context, muse_cell args )
 
 	return _cons( h, t );
 }
+/*@}*/

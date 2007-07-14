@@ -106,6 +106,8 @@ BEGIN_MUSE_C_FUNCTIONS
  *		- \ref fn_rand "rand"
  *
  * @subsection ML_DataStructures Data structures
+ *	- \ref fn_cons "cons", \ref fn_first "first", \ref fn_rest "rest"
+ *	- \ref fn_lcons "lcons", \ref fn_lazy "lazy"
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
  *	- \ref ByteArray "byte arrays"
@@ -118,7 +120,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * 
  * @subsection ML_IO Input and output
  *	- \ref PortIO
- *	- \ref fn_open_file "open-file"
+ *	- \ref fn_open_file "open-file", \ref fn_memport "memport"
  * 	- \ref fn_print "print", \ref fn_write "write"
  * 	- \ref fn_read "read"
  *	- \ref fn_close "close"
@@ -426,7 +428,7 @@ FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
 /** @name Diagnostics */
 /*@{*/
 const muse_char *muse_typename( muse_cell thing );
-int			muse_sprintf( muse_env *env, muse_char *buffer, int maxlen, const muse_char *format, ... );
+size_t		muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... );
 void		muse_message( muse_env *env, const muse_char *context, const muse_char *format, ... );
 muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... );
 muse_cell	muse_similar_symbol( muse_env *env, muse_cell symbol, int *distance );
@@ -435,10 +437,10 @@ muse_cell	muse_symbol_with_value( muse_env *env, muse_cell value );
 
 /** @name Multilingual stuff */
 /*@{*/
-	int		muse_unicode_to_utf8( char *out, int out_maxlen, const muse_char *win, int win_len );
-	int		muse_utf8_to_unicode( muse_char *wout, int wout_maxlen, const char *in, int in_len );
-	int		muse_utf8_size( const muse_char *wstr, int length );
-	int		muse_unicode_size( const char *utf8, int nbytes );
+	size_t	muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win, size_t win_len );
+	size_t	muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len );
+	size_t	muse_utf8_size( const muse_char *wstr, size_t length );
+	size_t	muse_unicode_size( const char *utf8, size_t nbytes );
 /*@}*/
 
 /** @name Dynamically loading plugins */
@@ -733,12 +735,14 @@ typedef muse_cell (*muse_iterator_t)( muse_env *env, void *self, muse_iterator_c
  * An 'iter' view will provide this function to call that can be used to iterate over collections.
  */
 
-typedef muse_cell (*muse_funcspec_t)( muse_env *env, void *self, muse_cell funcspec );
+typedef muse_cell (*muse_datafn_t)( muse_env *env, void *self, muse_cell datafn );
 /**<
- * A 'spec' view will return this function which you can call to set the behaviour
+ * A 'dtfn' view will return this function which you can call to set the behaviour
  * of a data structure to be that of a function. Whenever a value is not found in the
- * data structure (such as vector or hashtable), the function \p funcspec will be invoked
+ * data structure (such as vector or hashtable), the function \p datafn will be invoked
  * to determine the value. The result of the function should be cached for future accesses.
+ *
+ * The return value will be the value of the data function before changing it to \p datafn.
  */
 
 END_MUSE_C_FUNCTIONS

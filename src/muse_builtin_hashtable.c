@@ -63,7 +63,7 @@ typedef struct
 	int			bucket_count;	/**< The number of buckets in the hash table. */
 	muse_cell	*buckets;		/**< The array holding the buckets. Each bucket is
 									simply an assoc list. */
-	muse_cell	funcspec;		/**< fn(key)->value for use when key is not found. */
+	muse_cell	datafn;			/**< fn(key)->value for use when key is not found. */
 } hashtable_t;
 
 static void hashtable_init( muse_env *env, void *p, muse_cell args )
@@ -93,7 +93,7 @@ static void hashtable_mark( muse_env *env, void *p )
 		}
 	}
 
-	muse_mark( env, h->funcspec );
+	muse_mark( env, h->datafn );
 }
 
 static void hashtable_destroy( muse_env *env, void *p )
@@ -246,6 +246,17 @@ static muse_cell *hashtable_add( muse_env *env, hashtable_t *h, muse_cell key, m
 	}
 }
 
+static void hashtable_fast_add( muse_env *env, hashtable_t *h, muse_cell *kvpair, muse_cell key, muse_cell value )
+{
+	muse_assert( *kvpair == MUSE_NIL );
+
+	(*kvpair) = _cons( _cons( key, value ), MUSE_NIL );
+	++(h->count);
+
+	if ( h->count >= 2 * h->bucket_count )
+		hashtable_rehash( env, h, 2 * h->bucket_count );
+}
+
 static muse_cell *hashtable_get( muse_env *env, hashtable_t *h, muse_cell key, muse_int *hash_out )
 {
 	muse_int hash = muse_hash(env,key);
@@ -274,7 +285,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 			muse_cell value = _evalnext(&args);
 
 			/* First see if the key is already in the hash table. */
-			if ( kvpair )
+			if ( *kvpair )
 			{
 				if ( value )
 				{
@@ -299,8 +310,7 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 					Check to see if we need to rehash the table. 
 					We rehash if we have to do more than 2 linear
 					searches on the average for each access. */
-					hashtable_add( env, h, key, value, &hash );
-
+					hashtable_fast_add( env, h, kvpair, key, value );
 					return value;
 				}
 				else
@@ -313,16 +323,16 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 		}
 		
 		/* We've been asked to get a property. */
-		if ( kvpair )
+		if ( *kvpair )
 			return _tail( _head( *kvpair ) );
 		else
 		{
 			/* key doesn't exist. Try to compute using the func spec. */
 			muse_cell value = MUSE_NIL;
 
-			/* Use the funcspec to derive the value for the key. */
-			if ( h->funcspec )
-				value = _force(muse_apply( env, h->funcspec, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
+			/* Use the datafn to derive the value for the key. */
+			if ( h->datafn )
+				value = _force(muse_apply( env, h->datafn, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
 
 			/* Cache the value in the hashtable. */
 			if ( value )
@@ -542,10 +552,12 @@ static muse_cell hashtable_iterator( muse_env *env, hashtable_t *self, muse_iter
 	return MUSE_NIL;
 }
 
-static void hashtable_funcspec( muse_env *env, void *self, muse_cell funcspec )
+static muse_cell hashtable_datafn( muse_env *env, void *self, muse_cell datafn )
 {
 	hashtable_t *ht = (hashtable_t*)self;
-	ht->funcspec = funcspec;
+	muse_cell olddatafn = ht->datafn;
+	ht->datafn = datafn;
+	return olddatafn;
 }
 
 static muse_monad_view_t g_hashtable_monad_view =
@@ -563,7 +575,7 @@ static void *hashtable_view( muse_env *env, int id )
 	{
 		case 'mnad' : return &g_hashtable_monad_view;
 		case 'iter' : return hashtable_iterator;
-		case 'spec' : return hashtable_funcspec;
+		case 'dtfn' : return hashtable_datafn;
 		default : return NULL;
 	}
 }

@@ -243,19 +243,27 @@ muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args
 					int sp = _spos();
 					muse_cell result = _force(_do( _tail(fn) ));
 					_unwind(sp);
-					if ( !result )
+					if ( result )
+					{
+						/* Leave the bindings on the bindings stack as is. */
+						return MUSE_TRUE;
+					}
+					else
 					{
 						/* Condition failed. Unbind the latest bindings. */
 						_unwind_bindings(bsp);
 						return MUSE_FALSE;
 					}
-					else
-					{
-						/* Leave the bindings on the bindings stack as is. */
-					}
 				}
-
-				return MUSE_TRUE;
+				else
+				{
+					/* Argument binding failed, which means the given thing
+					doesn't match even the guard's pattern. So this binding is
+					considered to have failed. Unwind any bindings that 
+					the match might have left on the bindings stack. */
+					_unwind_bindings(bsp);
+					return MUSE_FALSE;
+				}
 			}
 		default : return muse_equal( env, formals, args );
 	}
@@ -325,8 +333,8 @@ static muse_cell quick_quote_list( muse_env *env, muse_cell list )
 	muse_cell h = list;
 	while ( h )
 	{
-		_seth( h, _qq(_head(h)) );
-		h = _tail(h);
+		_seth( h, _qq(muse_head(env,h)) );
+		h = muse_tail(env,h);
 	}
 	return list;
 }
@@ -340,8 +348,8 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
 	muse_cell h = list;
 	while ( h )
 	{
-		_seth( h, _quq(_head(h)) );
-		h = _tail(h);
+		_seth( h, _quq(muse_head(env,h)) );
+		h = muse_tail(env,h);
 	}
 
 	return list;
@@ -400,14 +408,9 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
 				arguments in list order. 
 				
 				See also syntax_lambda and muse_apply_lambda implementation. */
-				if ( lazy )
-				{
-					result = _setcellt(_cons(fn,args_already_evaluated ? args : muse_eval_list(env, args)), MUSE_LAZY_CELL);
-				}
-				else
-				{
-					result = muse_apply_lambda( env, fn, (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args) );
-				}
+				args = (args_already_evaluated || _head(fn) < 0) ? args : muse_eval_list(env, args);
+				result = lazy ? _setcellt(_cons(fn,args), MUSE_LAZY_CELL)
+							  : muse_apply_lambda( env, fn, args );
 				break;
 			case MUSE_SYMBOL_CELL		:
 				/* The thing in the function position can be an "object" - i.e. a symbol to which

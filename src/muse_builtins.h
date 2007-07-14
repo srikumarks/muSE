@@ -22,6 +22,7 @@
 /** @addtogroup CoreLanguage Core language */
 /*@{*/
 muse_cell fn_quote( muse_env *env, void *context, muse_cell args );
+muse_cell fn_lazy( muse_env *env, void *context, muse_cell args );
 muse_cell fn_cons( muse_env *env, void *context, muse_cell args );
 muse_cell fn_lcons( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args );
@@ -85,7 +86,7 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args );
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args );
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args );
 muse_cell fn_transpose( muse_env *env, void *context, muse_cell args );
-muse_cell fn_funcspec( muse_env *env, void *context, muse_cell args );
+muse_cell fn_datafn( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Comparisons Comparisons */
@@ -105,6 +106,8 @@ muse_cell fn_not( muse_env *env, void *context, muse_cell args );
 /** @addtogroup LanguageConstructs Language constructs */
 /*@{*/
 muse_cell syntax_if( muse_env *env, void *context, muse_cell args );
+muse_cell syntax_when( muse_env *env, void *context, muse_cell args ); 
+muse_cell syntax_unless( muse_env *env, void *context, muse_cell args ); 
 muse_cell syntax_cond( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_do( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_while( muse_env *env, void *context, muse_cell args );
@@ -121,6 +124,13 @@ muse_cell fn_cons_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_string_p( muse_env *env, void *context, muse_cell args );
+/*@}*/
+
+/** @addtogroup TypeCasting Type casting */
+/*@{*/
+muse_cell fn_int( muse_env *env, void *context, muse_cell args );
+muse_cell fn_float( muse_env *env, void *context, muse_cell args );
+muse_cell fn_number( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup ObjectSystem Object system */
@@ -149,6 +159,7 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args );
 muse_cell fn_flush( muse_env *env, void *context, muse_cell args );
 muse_cell fn_load( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args );
+muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args );
 muse_cell fn_exit( muse_env *env, void *context, muse_cell args );
 /*@}*/
 

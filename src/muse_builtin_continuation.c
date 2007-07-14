@@ -187,7 +187,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		/* TODO: Passing a pointer in "result" is not 64-bit clean, because
 		result is 32-bit and the pointer can be 64-bit. But until longjmp interface
 		has 64-bit int, this simply has to be worked around. */
-		c = (continuation_t*)result;
+		c = (continuation_t*)(size_t)result;
 
 		/* Restore the system stack. The function parameters become valid after the
 		stack is restored and we can refer to "env" and others. */
@@ -230,7 +230,7 @@ static muse_cell fn_continuation( muse_env *env, continuation_t *c, muse_cell ar
 
 	c->invoke_result = _evalnext(&args);
 	
-	longjmp( c->state, (int)c );
+	longjmp( c->state, (int)(size_t)c );
 
 	return MUSE_NIL;
 }
@@ -631,6 +631,10 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 	/* No handler succeeded in handling the exception. */
 	muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
 	remove_process( env->current_process );
+
+	/* Issue#30 - Build warning about not all control paths returning value.
+	   This function doesn't return after the above remove_process() call. */
+	return MUSE_NIL;
 }
 /*@}*/
 /*@}*/
