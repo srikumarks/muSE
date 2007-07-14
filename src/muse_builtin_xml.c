@@ -27,7 +27,7 @@ static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
  * and writes it out to the given port. The XML node representation
  * is as follows -
  * @code
- * (tag ((attr1 value1) (attr2 value2) ...)
+ * (tag ((attr1 . "value1") (attr2 . "value2") ...)
  *    body1
  *    body2
  *    ...
@@ -161,7 +161,7 @@ static void write_tag_attrs( muse_env *env, muse_port_t port, muse_cell attrs )
 		port_putc( '=', port );
 
 		{
-			muse_cell value = _head(_tail(attr));
+			muse_cell value = _tail(attr);
 			switch ( _cellt(value) )
 			{
 			case MUSE_INT_CELL:
@@ -232,7 +232,7 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  * @endcode
  * gets returned as
  * @code
- * (tag ((attr1 . v1) (attr2 . v2)) hello (b () world))
+ * (tag ((attr1 . "v1") (attr2 . "v2")) "hello" (b () "world"))
  * @endcode
  *
  *	- Comments are skipped,
