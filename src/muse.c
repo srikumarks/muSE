@@ -36,7 +36,8 @@ const char *g_muse_typenames[] =
 	"MUSE_NATIVEFN_CELL",
 	"MUSE_INT_CELL",
 	"MUSE_FLOAT_CELL",
-	"MUSE_TEXT_CELL"
+	"MUSE_TEXT_CELL",
+	"MUSE_LAZY_CELL"
 };
 
 static void init_stack( muse_stack *s, int size )
