@@ -523,7 +523,7 @@ static void discard_utf8_header( muse_env *env, fileport_t *p )
 				/* Guessing that it is a 16-bit unicode stream, unix style. */
 				p->base.base.type_info = (muse_functional_object_type_t*)&g_uc16_fileport_type;
 			}
-			else if ( c[0] = 0xef && c[1] == 0xbb )
+			else if ( c[0] == 0xef && c[1] == 0xbb )
 			{
 				/* Could be utf8. */
 				nbytes += read( p->desc, c+2, 1 );

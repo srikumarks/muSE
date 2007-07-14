@@ -379,6 +379,7 @@ static muse_boolean xml_DOCTYPE_start( muse_port_t p )
 {
 	char c[10];
 	size_t n = port_read( c, 9, p );
+	c[9] = '\0';
 
 	if ( n == 9 && strcmp(c,"<!DOCTYPE") == 0 )
 		return MUSE_TRUE;
