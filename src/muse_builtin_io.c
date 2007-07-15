@@ -201,3 +201,212 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 		return MUSE_NIL;
 	}
 }
+
+/**
+ * (mickey inport outport)
+ *
+ * Reads in the stream from the input port, expands all 
+ * mickey expressions and outputs to the output port.
+ *
+ * @see muse_mickey
+ */
+muse_cell fn_mickey( muse_env *env, void *context, muse_cell args )
+{
+	muse_port_t in = _port(_evalnext(&args));
+	muse_port_t out = _port(_evalnext(&args));
+
+	muse_mickey( in, out );
+
+	return MUSE_NIL;
+}
+
+static void mickey_mode( muse_port_t in, muse_port_t out );
+
+/**
+ * Processes mickey streams from input port to output port.
+ * Mickey streams let you use muSE as a powerful yet simple 
+ * macro expander. You may find this useful in scripting,
+ * dynamic documents in web applications, etc.
+ * 
+ * A mickey stream is a stream of text with embedded "mickey"
+ * codes - of the form @...expr...@ where the portion between 
+ * the "@" signs (which look like Mickey's ears and hence the
+ * name) is interpreted as a muSE expression. The result 
+ * of evaluating the expression is used in place of the 
+ * @ expression itself (without the mickey ears). 
+ *
+ * If you put a sequence of expressions within @..expr..@,
+ * the mickey block will evaluate to the value of the last 
+ * expression - behaving like a (do ..) block.
+ *
+ * Note that scheme symbols and atoms are themselves allowed 
+ * to use the @ character within a mickey expression. So, for
+ * example, if you simply want a symbol Hello to expand to 
+ * its value "World", you should write it like this -
+ *		@Hello;@
+ * The ; character will terminate the symbol name and ignore 
+ * all characters up to the next new line or @ whichever comes 
+ * first. In general, it is a good idea to end a mickey
+ * expression with ;@ instead of just @. Stuff like @(+ 1 2)@
+ * will work correctly however. 
+ *
+ * If you have a symbol starting with an @ character 
+ * (say @rate), you can place its value in the output 
+ * using @(eval '@rate)@.
+ *
+ * If you want to place a literal @ character in the output 
+ * stream, simply use @@ in the input stream wherever you need
+ * the literal @. For example, an email address would look
+ * like somebody@@somewhere.com in the input stream.
+ */
+void muse_mickey( muse_port_t in, muse_port_t out )
+{
+	muse_env *env = in->env;
+
+	while ( !port_eof(in) && in->error == 0 )
+	{
+		/* Free state - no mickey expression.
+		Pass through all characters. */
+		int c = port_getc(in);
+
+		if ( c == '@' )
+		{
+			/* Start of mickey expression. */
+			mickey_mode( in, out );			
+		}
+		else if ( c > 0 )
+		{
+			port_putc( c, out );
+		}
+	}
+}
+
+static size_t skip_whitespace( muse_port_t in )
+{
+	size_t n = 0;
+	while ( !port_eof(in) && in->error == 0 )
+	{
+		int c = port_getc(in);
+		if ( isspace(c) )
+		{
+			++n;
+		}
+		else
+		{
+			port_ungetc(c,in);
+			return n;
+		}
+	}
+
+	return n;
+}
+
+/**
+ * The meaning of the ; character inside of a 
+ * mickey expression is to skip everything till 
+ * either the closing mickey character or a newline,
+ * whicever comes first. 
+ */
+static size_t skip_mickey_comment( muse_port_t in )
+{
+	size_t n = skip_whitespace(in);
+	
+	if ( !port_eof(in) && in->error == 0 )
+	{
+		int c = port_getc(in);
+		if ( c == ';' )
+		{
+			/* Skip comment. */
+			++n;
+
+			while ( !port_eof(in) && in->error == 0 )
+			{
+				c = port_getc(in);
+
+				if ( c == '@' )
+				{
+					/* End of mickey expression. Don't include
+					the @ character itself. */
+					port_ungetc(c,in);
+					break;
+				}
+				else if ( c == '\n' )
+				{
+					/* End of line. Comment finished. */
+					break;
+				}
+
+				++n;
+			}
+		}
+		else
+		{
+			port_ungetc(c,in);
+		}
+	}
+
+	return n;
+}
+
+/**
+ * Skips one or more comment expressions and all white space.
+ */
+static void skip_mickey_comments( muse_port_t in )
+{
+	size_t commentline = skip_mickey_comment(in);
+
+	while ( commentline > 0 )
+	{
+		commentline = skip_mickey_comment(in);
+	}
+}
+
+/**
+ * The previous character was a '@', so we're now in
+ * "mickey mode" and must read and process all expressions
+ * up to the next @ character. If we immediately encounter 
+ * an @ character (module white space), we treat it as
+ * a literal @ character. 
+ */
+static void mickey_mode( muse_port_t in, muse_port_t out )
+{
+	muse_env *env = in->env;
+	muse_cell result = MUSE_NIL;
+	int sp = _spos();
+	int numexprs = 0;
+	
+	skip_mickey_comments( in );
+
+	while ( !port_eof(in) && in->error == 0 )
+	{
+		int c = port_getc(in);
+
+		if ( c == '@' )
+		{
+			/* End of mickey mode. */
+			if ( numexprs > 0 )
+			{
+				if ( result ) muse_pprint( out, result );
+			}
+			else
+			{
+				/* If no expressions were evaluated, treat it
+				as a an escaped @ character. */
+				port_putc( '@', out );
+			}
+
+			_unwind(sp);
+			return;
+		}
+		else
+		{
+			port_ungetc(c,in);
+
+			/* Process expression. */
+			_unwind(sp);
+			result = muse_eval( env, muse_pread(in), MUSE_FALSE );
+			skip_mickey_comments(in);
+			++numexprs;
+		}
+	}
+}

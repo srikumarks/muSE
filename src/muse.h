@@ -639,6 +639,7 @@ void		muse_unassign_port( muse_port_t p );
 muse_cell	muse_pread( muse_port_t port );
 void		muse_pwrite( muse_port_t port, muse_cell sexpr );
 void		muse_pprint( muse_port_t port, muse_cell sexpr );
+void		muse_mickey( muse_port_t in, muse_port_t out );
 /*@}*/
 
 /**

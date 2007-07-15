@@ -157,6 +157,7 @@ muse_cell fn_print( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write( muse_env *env, void *context, muse_cell args );
 muse_cell fn_read( muse_env *env, void *context, muse_cell args );
 muse_cell fn_flush( muse_env *env, void *context, muse_cell args );
+muse_cell fn_mickey( muse_env *env, void *context, muse_cell args );
 muse_cell fn_load( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args );
 muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args );

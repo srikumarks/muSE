@@ -151,6 +151,7 @@ static const struct _builtins
 {		L"write",		fn_write			},
 {		L"read",		fn_read				},
 {		L"flush",		fn_flush			},
+{		L"mickey",		fn_mickey			},
 {		L"load",		fn_load				},
 {		L"write-xml",	fn_write_xml		},
 {		L"read-xml",	fn_read_xml			},
