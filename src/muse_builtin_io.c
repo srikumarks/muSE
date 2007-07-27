@@ -259,7 +259,7 @@ static void mickey_mode( muse_port_t in, muse_port_t out );
  * the literal @. For example, an email address would look
  * like somebody@@somewhere.com in the input stream.
  */
-void muse_mickey( muse_port_t in, muse_port_t out )
+MUSEAPI void muse_mickey( muse_port_t in, muse_port_t out )
 {
 	muse_env *env = in->env;
 

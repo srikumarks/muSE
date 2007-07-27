@@ -23,7 +23,7 @@
  * to exit the program by typing @code (exit) @endcode
  * into the command line.
  */
-void muse_repl(muse_env *env)
+MUSEAPI void muse_repl(muse_env *env)
 {
 	int sp = _spos();
 	int error_count = 0;

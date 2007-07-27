@@ -18,7 +18,7 @@
  * The behaviour of quote is that 
  * @code s = _eval( muse_quote(s) ) @endcode
  */
-muse_cell muse_quote( muse_env *env, muse_cell args )
+MUSEAPI muse_cell muse_quote( muse_env *env, muse_cell args )
 {
 	return _cons( env->builtin_symbols[MUSE_QUOTE], args );
 }
@@ -37,7 +37,7 @@ muse_cell muse_quote( muse_env *env, muse_cell args )
  * The result of the evaluation is usually protected
  * by the stack if it is a newly allocated cell.
  */
-muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean lazy )
+MUSEAPI muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean lazy )
 {	
 	/* A -ve cell number is used as an indicator that the 
 	object being referred to is "quick-quoted". So in this
@@ -70,7 +70,7 @@ muse_cell muse_eval( muse_env *env, muse_cell sexpr, muse_boolean lazy )
  * This is useful to evaluate arguments inside native 
  * functions.
  */
-muse_cell muse_evalnext( muse_env *env, muse_cell *sexpr )
+MUSEAPI muse_cell muse_evalnext( muse_env *env, muse_cell *sexpr )
 {
 	return _eval( _next(sexpr) );
 }
@@ -80,7 +80,7 @@ muse_cell muse_evalnext( muse_env *env, muse_cell *sexpr )
  * builds a new list out of the results of the
  * evaluations and returns the list.
  */
-muse_cell muse_eval_list( muse_env *env, muse_cell list )
+MUSEAPI muse_cell muse_eval_list( muse_env *env, muse_cell list )
 {
 	muse_cell h = MUSE_NIL, t = MUSE_NIL, c = MUSE_NIL;
 	int sp = -1;
@@ -166,7 +166,7 @@ muse_cell muse_apply_nativefn( muse_env *env, muse_cell fn, muse_cell args )
  * @see syntax_case
  * @see syntax_let
  */
-muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args )
+MUSEAPI muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args )
 {
 	if ( formals == args ) 
 		return MUSE_TRUE; /* Usually happens when formals == args == MUSE_NIL */
@@ -367,7 +367,7 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
  * 
  * @see muse_apply_lambda
  */
-muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean lazy )
+MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean args_already_evaluated, muse_boolean lazy )
 {
 	/* Check whether we've devoted enough attention to this process. */
 	yield_process(env,1);
@@ -460,7 +460,7 @@ muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_boolean 
  * in sequence. The result of evaluating a block is the
  * result of evaluating the last expression in the block.
  */
-muse_cell muse_do( muse_env *env, muse_cell block )
+MUSEAPI muse_cell muse_do( muse_env *env, muse_cell block )
 {
 	muse_cell result = MUSE_NIL;
 	int sp = _spos();
@@ -481,7 +481,7 @@ muse_cell muse_do( muse_env *env, muse_cell block )
 /**
  * Forces evaluation of a lazy cell.
  */
-muse_cell muse_force( muse_env *env, muse_cell cell )
+MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 {
 	int sp = _spos();
 	while ( _cellt(cell) == MUSE_LAZY_CELL )

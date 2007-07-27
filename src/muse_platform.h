@@ -80,4 +80,8 @@ END_MUSE_C_FUNCTIONS
 	#define MUSE_DIAGNOSTICS3(statement)
 #endif
 
+#ifndef MUSEAPI
+#define MUSEAPI
+#endif
+
 #endif /* __MUSE_PLATFORM_H__ */

@@ -23,7 +23,7 @@
  * Returns the type of the cell data referenced
  * by the given cell reference.
  */
-muse_cell_t muse_cell_type( muse_cell cell )
+MUSEAPI muse_cell_t muse_cell_type( muse_cell cell )
 {
 	return _cellt(cell);
 }
@@ -32,7 +32,7 @@ muse_cell_t muse_cell_type( muse_cell cell )
  * Returns MUSE_TRUE if the given cell is a function
  * - either native or lambda.
  */
-muse_boolean muse_isfn( muse_cell cell )
+MUSEAPI muse_boolean muse_isfn( muse_cell cell )
 {
 	return _isfn(cell);
 }
@@ -47,7 +47,7 @@ muse_boolean muse_isfn( muse_cell cell )
  * 
  * @see muse_tail
  */
-muse_cell muse_head( muse_env *env, muse_cell cell )
+MUSEAPI muse_cell muse_head( muse_env *env, muse_cell cell )
 {
 	muse_cell h = _head(cell);
 
@@ -67,7 +67,7 @@ muse_cell muse_head( muse_env *env, muse_cell cell )
  * 
  * @see muse_head
  */
-muse_cell muse_tail( muse_env *env, muse_cell cell )
+MUSEAPI muse_cell muse_tail( muse_env *env, muse_cell cell )
 {
 	muse_cell t = _tail(cell);
 
@@ -85,7 +85,7 @@ muse_cell muse_tail( muse_env *env, muse_cell cell )
  * can be obtained using
  * @code muse_head( env, muse_tail_n( env, list, n-1 ) ) @endcode
  */
-muse_cell muse_tail_n( muse_env *env, muse_cell cell, int n )
+MUSEAPI muse_cell muse_tail_n( muse_env *env, muse_cell cell, int n )
 {
 	while ( n-- > 0 )
 		cell = _tail(cell);
@@ -98,7 +98,7 @@ muse_cell muse_tail_n( muse_env *env, muse_cell cell, int n )
  * Given an integer or float cell, it returns
  * the value cast to a 64-bit integer.
  */
-muse_int muse_int_value( muse_env *env, muse_cell cell )
+MUSEAPI muse_int muse_int_value( muse_env *env, muse_cell cell )
 {
 	return _intvalue(cell);
 }
@@ -107,7 +107,7 @@ muse_int muse_int_value( muse_env *env, muse_cell cell )
  * Given an integer or float cell, it returns
  * the value cast to a 64-bit float.
  */
-muse_float muse_float_value( muse_env *env, muse_cell cell )
+MUSEAPI muse_float muse_float_value( muse_env *env, muse_cell cell )
 {
 	return _floatvalue(cell);
 }
@@ -118,7 +118,7 @@ muse_float muse_float_value( muse_env *env, muse_cell cell )
  * parameter is non-NULL, the length of the string
  * is stored in that location.
  */
-const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int *length )
+MUSEAPI const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int *length )
 {
 	muse_text_cell *t = &_ptr(cell)->text;
 	if ( length )
@@ -132,7 +132,7 @@ const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int *length 
  * Invalid with an anonymous symbolm you'll get
  * NULL.
  */
-const muse_char *muse_symbol_name( muse_env *env, muse_cell sym )
+MUSEAPI const muse_char *muse_symbol_name( muse_env *env, muse_cell sym )
 {
 	return _text_contents( _symname(sym), NULL );
 }
@@ -141,7 +141,7 @@ const muse_char *muse_symbol_name( muse_env *env, muse_cell sym )
  * Returns the top-most value of the symbol
  * that's on the symbol's value stack.
  */
-muse_cell muse_symbol_value( muse_env *env, muse_cell sym )
+MUSEAPI muse_cell muse_symbol_value( muse_env *env, muse_cell sym )
 {
 	return _symval(sym);
 }
@@ -157,7 +157,7 @@ muse_cell muse_symbol_value( muse_env *env, muse_cell sym )
  * @see muse_set_head
  * @see muse_set_tail
  */
-muse_cell muse_set_cell( muse_env *env, muse_cell cell, muse_cell head, muse_cell tail )
+MUSEAPI muse_cell muse_set_cell( muse_env *env, muse_cell cell, muse_cell head, muse_cell tail )
 {
 	_setht( cell, head, tail );
 	return cell;
@@ -169,7 +169,7 @@ muse_cell muse_set_cell( muse_env *env, muse_cell cell, muse_cell head, muse_cel
  * @see muse_set_cell
  * @see muse_set_tail
  */
-muse_cell muse_set_head( muse_env *env, muse_cell cell, muse_cell head )
+MUSEAPI muse_cell muse_set_head( muse_env *env, muse_cell cell, muse_cell head )
 {
 	_ptr(cell)->cons.head = head;
 	return cell;
@@ -181,7 +181,7 @@ muse_cell muse_set_head( muse_env *env, muse_cell cell, muse_cell head )
  * @see muse_set_cell
  * @see muse_set_tail
  */
-muse_cell muse_set_tail( muse_env *env, muse_cell cell, muse_cell tail )
+MUSEAPI muse_cell muse_set_tail( muse_env *env, muse_cell cell, muse_cell tail )
 {
 	_ptr(cell)->cons.tail = tail;
 	return cell;
@@ -190,7 +190,7 @@ muse_cell muse_set_tail( muse_env *env, muse_cell cell, muse_cell tail )
 /**
  * Sets the integer value of an int cell.
  */
-muse_cell muse_set_int( muse_env *env, muse_cell int_cell, muse_int value )
+MUSEAPI muse_cell muse_set_int( muse_env *env, muse_cell int_cell, muse_int value )
 {
 	_ptr(int_cell)->i = value;
 	return int_cell;
@@ -199,7 +199,7 @@ muse_cell muse_set_int( muse_env *env, muse_cell int_cell, muse_int value )
 /**
  * Sets the float value of a float cell.
  */
-muse_cell muse_set_float( muse_env *env, muse_cell float_cell, muse_float value )
+MUSEAPI muse_cell muse_set_float( muse_env *env, muse_cell float_cell, muse_float value )
 {
 	_ptr(float_cell)->f = value;
 	return float_cell;
@@ -210,7 +210,7 @@ muse_cell muse_set_float( muse_env *env, muse_cell float_cell, muse_float value 
  * the cell's contents. The previous contents of the cell
  * are freed.
  */
-muse_cell muse_set_text( muse_env *env, muse_cell text, const muse_char *start, const muse_char *end )
+MUSEAPI muse_cell muse_set_text( muse_env *env, muse_cell text, const muse_char *start, const muse_char *end )
 {
 	muse_text_cell *t = &_ptr(text)->text;
 	
@@ -233,7 +233,7 @@ muse_cell muse_set_text( muse_env *env, muse_cell text, const muse_char *start, 
  * Same as \c muse_set_text, except that it takes a 
  * null terminated c-style string instead.
  */
-muse_cell muse_set_ctext( muse_env *env, muse_cell text, const muse_char *start )
+MUSEAPI muse_cell muse_set_ctext( muse_env *env, muse_cell text, const muse_char *start )
 {
 	return muse_set_text( env, text, start, start + wcslen(start) );
 }
@@ -246,7 +246,7 @@ muse_cell muse_set_ctext( muse_env *env, muse_cell text, const muse_char *start 
  * @see muse_pushdef
  * @see muse_popdef
  */
-muse_cell muse_define( muse_env *env, muse_cell symbol, muse_cell value )
+MUSEAPI muse_cell muse_define( muse_env *env, muse_cell symbol, muse_cell value )
 {
 	_define( symbol, value );
 	return value;
@@ -258,7 +258,7 @@ muse_cell muse_define( muse_env *env, muse_cell symbol, muse_cell value )
  * set of values. i.e. It pushes the value on the
  * symbol's value stack.
  */
-muse_cell muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value )
+MUSEAPI muse_cell muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value )
 {
 //	printf( "symbol %d <- value %d\n", symbol, value );
 	_push_binding(symbol);
@@ -274,7 +274,7 @@ muse_cell muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value )
  * in normal circumstances, unless the program delves
  * into the internal representation of symbols.
  */
-muse_cell muse_popdef( muse_env *env, muse_cell symbol )
+MUSEAPI muse_cell muse_popdef( muse_env *env, muse_cell symbol )
 {
 	muse_stack *s = &env->current_process->bindings_stack;
 	muse_cell val = _symval(symbol);
@@ -414,7 +414,7 @@ static void dupt( muse_env *env, muse_cell t, muse_cell c, muse_cell save )
  * Deep copies the given object. Leaves the duplicate object on the 
  * muSE stack upon return.
  */
-muse_cell muse_dup( muse_env *env, muse_cell obj )
+MUSEAPI muse_cell muse_dup( muse_env *env, muse_cell obj )
 {
 	if ( obj <= 0 )
 		return obj;
@@ -443,7 +443,7 @@ muse_cell muse_dup( muse_env *env, muse_cell obj )
  * For example if you have the list '(1 2 3 4), it'll return the cell
  * which will print as (4).
  */
-muse_cell muse_list_last( muse_env *env, muse_cell list )
+MUSEAPI muse_cell muse_list_last( muse_env *env, muse_cell list )
 {
 	muse_cell t = _tail(list);
 	
@@ -462,7 +462,7 @@ muse_cell muse_list_last( muse_env *env, muse_cell list )
  * head list is (), then the head list cannot be modified, so the
  * tail list is returned as is.
  */
-muse_cell muse_list_append( muse_env *env, muse_cell head, muse_cell tail )
+MUSEAPI muse_cell muse_list_append( muse_env *env, muse_cell head, muse_cell tail )
 {
 	if ( head )
 	{
@@ -481,7 +481,7 @@ muse_cell muse_list_append( muse_env *env, muse_cell head, muse_cell tail )
  * @param astep The step interval to reach the elements to extract. 
  * Typically, \p astep is 1.
  */
-muse_cell muse_array_to_list( muse_env *env, int count, const muse_cell *array, int astep )
+MUSEAPI muse_cell muse_array_to_list( muse_env *env, int count, const muse_cell *array, int astep )
 {
 	if ( count <= 0 )
 		return MUSE_NIL;
@@ -512,7 +512,7 @@ muse_cell muse_array_to_list( muse_env *env, int count, const muse_cell *array, 
  * of the array will be stored in it. You should free() the
  * result array when you're done with it.
  */
-muse_cell *muse_list_to_array( muse_env *env, muse_cell list, int *lengthptr )
+MUSEAPI muse_cell *muse_list_to_array( muse_env *env, muse_cell list, int *lengthptr )
 {
 	if ( !list )
 		return NULL;
@@ -540,7 +540,7 @@ muse_cell *muse_list_to_array( muse_env *env, muse_cell list, int *lengthptr )
  * each time and array locations into which the extracted elements will be placed
  * are obtained by stepping the array pointer by astep items for each element.
  */
-void muse_list_extract( muse_env *env, int count, muse_cell list, int lstep, muse_cell *array, int astep )
+MUSEAPI void muse_list_extract( muse_env *env, int count, muse_cell list, int lstep, muse_cell *array, int astep )
 {
 	if ( count <= 0 || !list )
 		return;
@@ -567,7 +567,7 @@ void muse_list_extract( muse_env *env, int count, muse_cell list, int lstep, mus
  * The generator function is called until it return "eol" or end-of-list.
  * \p context is an arbitrary data pointer that's passed to the generator.
  */
-muse_cell muse_generate_list( muse_env *env, muse_list_generator_t generator, void *context )
+MUSEAPI muse_cell muse_generate_list( muse_env *env, muse_list_generator_t generator, void *context )
 {
 	muse_cell h, t, v;
 	int i = 0, sp = _spos();
@@ -670,7 +670,7 @@ static muse_cell format_list_item( muse_env *env, format_list_state_t *state, in
  *						at the beginning of the format list and a matching ')'
  *						at the end of the format list.
  */
-muse_cell muse_list( muse_env *env, const char *format, ... )
+MUSEAPI muse_cell muse_list( muse_env *env, const char *format, ... )
 {
 	muse_cell result = MUSE_NIL;
 	va_list args;

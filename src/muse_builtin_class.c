@@ -162,7 +162,7 @@ static muse_cell search_class_hierarchy( muse_env *env, muse_cell classHierarchy
  * cons pair if it was found anywhere in the hierarchy, or to
  * () (= MUSE_NIL) if the member doesn't exist.
  */
-muse_cell muse_search_object( muse_env *env, muse_cell obj, muse_cell member )
+MUSEAPI muse_cell muse_search_object( muse_env *env, muse_cell obj, muse_cell member )
 {
 	muse_cell prop = _get_prop( obj, member );
 	

@@ -1175,7 +1175,7 @@ static muse_cell read_special( muse_port_t f )
  * 
  * @param f The port from which the expression is to be read.
  */
-muse_cell muse_pread( muse_port_t f )
+MUSEAPI muse_cell muse_pread( muse_port_t f )
 {
 	muse_env *env = f->env;
 	char c;
@@ -1498,7 +1498,7 @@ static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote )
 	/*pretty_printer_unindent();*/
 }
 
-void muse_pprint( muse_port_t port, muse_cell sexpr )
+MUSEAPI void muse_pprint( muse_port_t port, muse_cell sexpr )
 {
 	/* Temporary implementation. */
 	pretty_printer_reset(port);
@@ -1515,7 +1515,7 @@ void muse_pprint( muse_port_t port, muse_cell sexpr )
  * write encloses strings in quotes and print
  * doesn't.
  */
-void muse_pwrite( muse_port_t f, muse_cell sexpr )
+MUSEAPI void muse_pwrite( muse_port_t f, muse_cell sexpr )
 {
 	/* Temporary implementation. */
 	pretty_printer_reset(f);
@@ -1528,7 +1528,7 @@ void muse_pwrite( muse_port_t f, muse_cell sexpr )
  * If the given thing is not a port, then it
  * returns NULL.
  */
-muse_port_t muse_port( muse_env *env, muse_cell p )
+MUSEAPI muse_port_t muse_port( muse_env *env, muse_cell p )
 {
 	return (muse_port_t)_functional_object_data(p,'port');
 }

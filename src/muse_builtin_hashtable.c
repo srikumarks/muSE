@@ -737,7 +737,7 @@ void muse_define_builtin_type_hashtable(muse_env *env)
  * get you 0. The "length" of the hashtable is the number of 
  * key-value pairs put into it.
  */
-muse_cell muse_mk_hashtable( muse_env *env, int length )
+MUSEAPI muse_cell muse_mk_hashtable( muse_env *env, int length )
 {
 	int sp = _spos();
 	muse_cell ht = fn_mk_hashtable( env, NULL, _cons( _mk_int(length), MUSE_NIL ) );
@@ -749,7 +749,7 @@ muse_cell muse_mk_hashtable( muse_env *env, int length )
 /** 
  * Returns the number of key-value pairs put into the hash table.
  */
-int muse_hashtable_length( muse_env *env, muse_cell ht )
+MUSEAPI int muse_hashtable_length( muse_env *env, muse_cell ht )
 {
 	hashtable_t *h = (hashtable_t*)_functional_object_data( ht, 'hash' );
 	muse_assert( h != NULL && "Argument must be a hashtable object!" );
@@ -762,7 +762,7 @@ int muse_hashtable_length( muse_env *env, muse_cell ht )
  * The value associated with the key will be in the tail of the returned
  * pair.
  */
-muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
+MUSEAPI muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
 {
 	int sp = _spos();
 	muse_cell result = _apply( ht, _cons(key,MUSE_NIL), MUSE_TRUE );
@@ -775,7 +775,7 @@ muse_cell muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key )
  * The given value replaces any previous value that might have been
  * associated with the key.
  */
-muse_cell muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value )
+MUSEAPI muse_cell muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value )
 {
 	int sp = _spos();
 	muse_cell result = _apply( ht, _cons(key,_cons(value,MUSE_NIL)), MUSE_TRUE );
