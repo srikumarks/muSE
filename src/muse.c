@@ -1347,15 +1347,10 @@ muse_boolean run_process()
 	
 	if ( env->current_process->cstack.size > 0 && env->current_process->thunk )
 	{
-		/* Repeatedly evaluate the thunk in a loop until the
-		thunk returns a non-NIL value. */
-		muse_cell result = MUSE_NIL;
-		do
-		{
-			int sp = _spos();
-			result = _apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
-			_unwind(sp);
-		} while ( !result );
+		/* Evaluate the thunk. Since we now support tail recursion,
+		a server process can be expressed as an infinite loop, so we don't
+		need a special looping capability implemented here. */
+		_apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
 
 		/* Process completed. Switch to the next one. */
 		return remove_process( env->current_process );

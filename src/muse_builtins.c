@@ -890,14 +890,19 @@ muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
 /**
  * (spawn (fn () [body]) [attention]) -> pid
  *
- * Spawns a new process which will repeatedly evaluate the given thunk until
- * it evaluates to T. The (optional) attention value is a positive integer
+ * Spawns a new process which will evaluate the given thunk.
+ * The (optional) attention value is a positive integer
  * giving the number of reductions to perform in the created process
  * before yielding to other processes. The default value is 10.
  *
  * The result of the spawn expression is a pid using which you can
  * identify the created process and send messages to it by using the
  * pid as a normal function.
+ *
+ * The process will end when the thunk completes evaluation.
+ * So if you want to create a server process, you can express
+ * it as an infinitely tail recursive function. (Tail recursive
+ * calls are stack optimized.)
  */
 muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
 {
