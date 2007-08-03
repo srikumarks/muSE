@@ -38,7 +38,7 @@
  * @see muse_plugin_entry_t
  */
 #ifdef MUSE_PLATFORM_WINDOWS
-muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
+MUSEAPI muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
 {
 	HMODULE dll = LoadLibraryW(path);
 
@@ -57,7 +57,7 @@ muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell argl
 	}
 }
 #else
-muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
+MUSEAPI muse_cell muse_link_plugin( muse_env *env, const muse_char *path, muse_cell arglist )
 {
 	char buffer[4096];
 	void *dll = NULL;

@@ -28,7 +28,7 @@
  * for strings, but not robust enough for arbitrary data. Use
  * some other hash scheme if you want greater strength.
  */
-muse_int muse_hash_data( const unsigned char *start, const unsigned char *end, muse_int initial )
+MUSEAPI muse_int muse_hash_data( const unsigned char *start, const unsigned char *end, muse_int initial )
 {
 	muse_int hash = initial;
 	
@@ -43,7 +43,7 @@ muse_int muse_hash_data( const unsigned char *start, const unsigned char *end, m
 /**
  * A hash similar to muse_hash_data, but tailored for text.
  */
-muse_int muse_hash_text( const muse_char *start, const muse_char *end, muse_int initial )
+MUSEAPI muse_int muse_hash_text( const muse_char *start, const muse_char *end, muse_int initial )
 {
 	muse_int hash = initial;
 	
@@ -60,7 +60,7 @@ muse_int muse_hash_text( const muse_char *start, const muse_char *end, muse_int 
  * property that if two cells have different hashes,
  * they are not eq.
  */
-muse_int muse_hash( muse_env *env, muse_cell obj )
+MUSEAPI muse_int muse_hash( muse_env *env, muse_cell obj )
 {
 	int t = _cellt(obj);
 	
@@ -107,7 +107,7 @@ typedef struct
  * \c muse_tock() to get the time elapsed between
  * the two calls in microseconds.
  */
-void* muse_tick()
+MUSEAPI void* muse_tick()
 {
 	ticktock_t *timing = (ticktock_t*)malloc(sizeof(ticktock_t));
 
@@ -125,7 +125,7 @@ void* muse_tick()
  * Returns the time elapsed since the start of the given timer.
  * The timer is the object returned by muse_tick().
  */
-muse_int muse_elapsed_us(void *arg)
+MUSEAPI muse_int muse_elapsed_us(void *arg)
 {
 	ticktock_t *timing = (ticktock_t*)arg;
 	muse_int diff = 0;
@@ -152,7 +152,7 @@ muse_int muse_elapsed_us(void *arg)
  * call and this \c muse_tock() call in microseconds. The
  * handle becomes unusable after it is passed to \c muse_tock().
  */
-muse_int muse_tock(void* arg)
+MUSEAPI muse_int muse_tock(void* arg)
 {
 	muse_int diff = muse_elapsed_us(arg);
 	free(arg);
@@ -163,7 +163,7 @@ muse_int muse_tock(void* arg)
  * Sleeps the muse process for the given time 
  * in microseconds.
  */
-void muse_sleep( muse_int time_us )
+MUSEAPI void muse_sleep( muse_int time_us )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
 	Sleep( (DWORD)(time_us / 1000) );
@@ -177,7 +177,7 @@ void muse_sleep( muse_int time_us )
  * A wrapper to the common fopen function so that we can call _wfopen
  * if available, or the narrow version if the wide version isn't available.
  */
-FILE* muse_fopen( const muse_char *filename, const muse_char *options )
+MUSEAPI FILE* muse_fopen( const muse_char *filename, const muse_char *options )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
 	return _wfopen( filename, options );
@@ -206,7 +206,7 @@ FILE* muse_fopen( const muse_char *filename, const muse_char *options )
  * @return The number of bytes written to the output UTF8 buffer, excluding any
  * terminating null character that we written.
  */
-size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win, size_t win_len )
+MUSEAPI size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win, size_t win_len )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = WideCharToMultiByte( CP_UTF8, 0, win, (int)win_len, out, (int)out_maxlen, NULL, NULL );
@@ -235,7 +235,7 @@ size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_char *win,
  * @return The number of output *characters* written the buffer, excluding any
  * terminating null character that might have been written.
  */
-size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len )
+MUSEAPI size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len )
 {
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = MultiByteToWideChar( CP_UTF8, 0, in, (int)in_len, wout, (int)(wout_maxlen * sizeof(muse_char)) );
@@ -256,7 +256,7 @@ size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in
  * that might be needed to represent the given number of unicode characters
  * using UTF8 encoding.
  */
-size_t muse_utf8_size( const muse_char *wstr, size_t length )
+MUSEAPI size_t muse_utf8_size( const muse_char *wstr, size_t length )
 {
 	assert( length >= 0 );
 	return (length + 1) * 2 * sizeof(muse_char);
@@ -277,7 +277,7 @@ size_t	muse_unicode_size( const char *utf8, size_t nbytes )
 /**
  * Prints out an muse_assertion failure message in debug builds.
  */
-void muse_assert_failed( void *_env, const char *file, int line, const char *condtext )
+MUSEAPI void muse_assert_failed( void *_env, const char *file, int line, const char *condtext )
 {
 	muse_env *env = _env;
 	static const char *k_heading = "muSE:\tASSERT failed!\n";
@@ -308,7 +308,7 @@ void muse_assert_failed( void *_env, const char *file, int line, const char *con
  * Returns a non-mutable string describing the type of
  * the \p thing passed as the parameter.
  */
-const muse_char *muse_typename( muse_cell thing )
+MUSEAPI const muse_char *muse_typename( muse_cell thing )
 {
 	static const muse_char *k_type_names[] =
 	{
@@ -594,7 +594,7 @@ static size_t muse_vsprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
  *
  * @see muse_vsprintf
  */
-size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... )
+MUSEAPI size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... )
 {
 	size_t len = 0;
 	va_list args;
@@ -617,7 +617,7 @@ size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse
  * @see muse_sprintf
  * @see muse_vsprintf
  */
-void muse_message( muse_env *env, const muse_char *context, const muse_char *message, ... )
+MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_char *message, ... )
 {
 	enum { MAXLEN = 512 };
 	muse_char text[MAXLEN];
@@ -711,7 +711,7 @@ static size_t levenshtein_distance( const muse_char *s1, const muse_char *s2 );
  *			to be inverted. For example, a "not-defined" check can be encoded
  *			as "!:". The following test can be an or-block too.
  */
-muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... )
+MUSEAPI muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... )
 {
 	va_list args;
 	muse_boolean result = MUSE_FALSE;
@@ -738,7 +738,7 @@ muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_ch
  * You can then use the distance measure to decide whether the 
  * similar symbol is worth bothering about.
  */
-muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance )
+MUSEAPI muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance )
 {
 	int distance = 0x7fffffff;
 	int result = MUSE_NIL;
@@ -796,7 +796,7 @@ muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance
  * Beware that the complexity of this operation is linear w.r.t.
  * the number of symbols in the environment - defined or undefined.
  */
-muse_cell muse_symbol_with_value( muse_env *env, muse_cell value )
+MUSEAPI muse_cell muse_symbol_with_value( muse_env *env, muse_cell value )
 {
 	/* Traverse the symbol table and find the symbol that
 	has the given cell as its value. */

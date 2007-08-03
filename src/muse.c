@@ -281,7 +281,7 @@ static void init_parameters( muse_env *env, const int *parameters )
  *
  * @see muse_env_parameter_name_t
  */
-muse_env *muse_init_env( const int *parameters )
+MUSEAPI muse_env *muse_init_env( const int *parameters )
 {
 	muse_env *env = (muse_env*)calloc( 1, sizeof(muse_env) );
 	
@@ -341,7 +341,7 @@ muse_env *muse_init_env( const int *parameters )
  * the current environment is set to NULL and
  * no muse calls can subsequently be made.
  */
-void muse_destroy_env( muse_env *env )
+MUSEAPI void muse_destroy_env( muse_env *env )
 {
 #if __APPLE__
 	/* Deallocate objc pool if enabled. */
@@ -392,7 +392,7 @@ void muse_destroy_env( muse_env *env )
  * The cons operation does not fail unless there is
  * absolutely no system memory available for the new cell.
  */
-muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
+MUSEAPI muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
 {
 	if ( env->heap.free_cells == MUSE_NIL )
 	{
@@ -425,7 +425,7 @@ muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
  * Allocates a new integer cell to hold the given integer. 
  * The newly allocated cell is placed on the stack.
  */
-muse_cell muse_mk_int( muse_env *env, muse_int i )
+MUSEAPI muse_cell muse_mk_int( muse_env *env, muse_int i )
 {
 	muse_cell c = _setcellnct( _cons( 0, 0 ), MUSE_INT_CELL );
 	_ptr(c)->i = i;
@@ -436,7 +436,7 @@ muse_cell muse_mk_int( muse_env *env, muse_int i )
  * Allocates a new float cell to hold the given integer.
  * The newly allocated cell is placed on the stack.
  */
-muse_cell muse_mk_float( muse_env *env, muse_float f )
+MUSEAPI muse_cell muse_mk_float( muse_env *env, muse_float f )
 {
 	muse_cell c = _setcellnct( _cons( 0, 0 ), MUSE_FLOAT_CELL );
 	_ptr(c)->f = f;
@@ -495,7 +495,7 @@ muse_cell muse_mk_float( muse_env *env, muse_float f )
  * 
  * @see muse_stack_unwind, muse_stack_push
  */
-int	muse_stack_pos(muse_env *env)
+MUSEAPI int	muse_stack_pos(muse_env *env)
 {
 	return _spos();
 }
@@ -510,7 +510,7 @@ int	muse_stack_pos(muse_env *env)
  * 
  * @see muse_stack_pos
  */
-void muse_stack_unwind( muse_env *env, int stack_pos )
+MUSEAPI void muse_stack_unwind( muse_env *env, int stack_pos )
 {
 	_unwind(stack_pos);
 }
@@ -522,7 +522,7 @@ void muse_stack_unwind( muse_env *env, int stack_pos )
  * 
  * @see muse_stack_pos
  */
-muse_cell muse_stack_push( muse_env *env, muse_cell obj )
+MUSEAPI muse_cell muse_stack_push( muse_env *env, muse_cell obj )
 {
 	_spush(obj);
 	return obj;
@@ -546,7 +546,7 @@ static void add_special( muse_env *env, muse_cell special )
  * destroyed when the text cell is no longer needed and is
  * garbage collected.
  */ 
-muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *end )
+MUSEAPI muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *end )
 {
 	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_cell_data *d	= _ptr(c);
@@ -571,7 +571,7 @@ muse_cell muse_mk_text( muse_env *env, const muse_char *start, const muse_char *
  * Same as \c muse_mk_text() except that it takes a UTF8 string
  * and converts it into a unicode string and stores it.
  */
-muse_cell muse_mk_text_utf8( muse_env *env, const char *start, const char *end )
+MUSEAPI muse_cell muse_mk_text_utf8( muse_env *env, const char *start, const char *end )
 {
 	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_TEXT_CELL );
 	muse_text_cell *t	= &_ptr(c)->text;
@@ -589,7 +589,7 @@ muse_cell muse_mk_text_utf8( muse_env *env, const char *start, const char *end )
  * Same as \c muse_mk_text() except that it assumes a null
  * terminated string.
  */
-muse_cell muse_mk_ctext( muse_env *env, const muse_char *start )
+MUSEAPI muse_cell muse_mk_ctext( muse_env *env, const muse_char *start )
 {
 	return muse_mk_text( env, start, start + wcslen(start) );
 }
@@ -598,7 +598,7 @@ muse_cell muse_mk_ctext( muse_env *env, const muse_char *start )
  * Same as \c muse_mk_text_utf8() except that it assumes
  * a null terminated string as input.
  */
-muse_cell muse_mk_ctext_utf8( muse_env *env, const char *start )
+MUSEAPI muse_cell muse_mk_ctext_utf8( muse_env *env, const char *start )
 {
 	return muse_mk_text_utf8( env, start, start + strlen(start) );
 }
@@ -612,7 +612,7 @@ muse_cell muse_mk_ctext_utf8( muse_env *env, const char *start )
  * a call to a C++ member function, by writing a static 
  * wrapper function.
  */
-muse_cell muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context )
+MUSEAPI muse_cell muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context )
 {
 	muse_cell c			= _setcellnct( _cons( 0, 0 ), MUSE_NATIVEFN_CELL );
 	muse_cell_data *p	= _ptr(c);
@@ -628,7 +628,7 @@ muse_cell muse_mk_nativefn( muse_env *env, muse_nativefn_t fn, void *context )
  * called with no arguments when the function is 
  * garbage collected.
  */
-muse_cell muse_mk_destructor( muse_env *env, muse_nativefn_t fn, void *context )
+MUSEAPI muse_cell muse_mk_destructor( muse_env *env, muse_nativefn_t fn, void *context )
 {
 	muse_cell f = _mk_nativefn( fn, context );
 	add_special(env, f);
@@ -681,7 +681,7 @@ static muse_cell lookup_symbol( muse_env *env, const muse_char *start, const mus
  * is performed to see whether the symbol is already
  * interned or not.
  */
-muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_int hash )
+MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_int hash )
 {
 	muse_stack *ss = _symstack();
 
@@ -726,7 +726,7 @@ muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_i
  * that you can push and pop using \c muse_pushdef() and
  * \c muse_popdef().
  */
-muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse_char *end )
+MUSEAPI muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse_char *end )
 {
 	int p = -1;
 	muse_int hash = 0;
@@ -767,7 +767,7 @@ muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse_char *e
  * Same as \c muse_symbol(), but takes a c-style null
  * terminated unicode character string.
  */
-muse_cell muse_csymbol( muse_env *env, const muse_char *sym )
+MUSEAPI muse_cell muse_csymbol( muse_env *env, const muse_char *sym )
 {
 	return muse_symbol( env, sym, sym + wcslen(sym) );
 }
@@ -776,7 +776,7 @@ muse_cell muse_csymbol( muse_env *env, const muse_char *sym )
  * Same as \c muse_symbol() except that it takes a
  * UTF8 string.
  */
-muse_cell muse_symbol_utf8( muse_env *env, const char *start, const char *end )
+MUSEAPI muse_cell muse_symbol_utf8( muse_env *env, const char *start, const char *end )
 {
 	int utf8_len = (int)(end - start);
 	muse_char *s = (muse_char*)calloc( muse_unicode_size(start, utf8_len), 1 );
@@ -793,7 +793,7 @@ muse_cell muse_symbol_utf8( muse_env *env, const char *start, const char *end )
  * Same as \c muse_symbol_utf8() except that it takes
  * a c-style null terminated utf8 string.
  */
-muse_cell muse_csymbol_utf8( muse_env *env, const char *sym )
+MUSEAPI muse_cell muse_csymbol_utf8( muse_env *env, const char *sym )
 {
 	return muse_symbol_utf8( env, sym, sym + strlen(sym) );
 }
@@ -804,7 +804,7 @@ muse_cell muse_csymbol_utf8( muse_env *env, const char *sym )
  * 
  * @see muse_builtin_symbol_t
  */
-muse_cell muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s )
+MUSEAPI muse_cell muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s )
 {
 	muse_assert( s >= 0 && s < MUSE_NUM_BUILTIN_SYMBOLS );
 	return env->builtin_symbols[s];
@@ -823,7 +823,7 @@ muse_cell muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s )
  * in muSE's object system. An object's properties are
  * stored in the plist of an anonymous symbol.
  */
-muse_cell muse_mk_anon_symbol(muse_env *env)
+MUSEAPI muse_cell muse_mk_anon_symbol(muse_env *env)
 {
 	muse_cell sym = _setcellt( _cons( 0, 0 ), MUSE_SYMBOL_CELL );
 	
@@ -846,7 +846,7 @@ muse_cell muse_mk_anon_symbol(muse_env *env)
  * should not be garbage collected. The unmarked cells
  * are then swept into the free list.
  */
-void muse_mark( muse_env *env, muse_cell c )
+MUSEAPI void muse_mark( muse_env *env, muse_cell c )
 {
 	if ( c > 0 && !_ismarked(c) )
 	{
@@ -1032,7 +1032,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed );
  * it means muse environment is being destroyed and 
  * the gc call simply destroys all the specials.
  */
-void muse_gc( muse_env *env, int free_cells_needed )
+MUSEAPI void muse_gc( muse_env *env, int free_cells_needed )
 {
 	MUSE_DIAGNOSTICS3({
 		fprintf(stderr, "Gc...");
@@ -1066,7 +1066,7 @@ void muse_gc( muse_env *env, int free_cells_needed )
  * functions to decide whether to do destruction or some other
  * operation.
  */
-muse_boolean muse_doing_gc( muse_env *env )
+MUSEAPI muse_boolean muse_doing_gc( muse_env *env )
 {
 	return env->collecting_garbage;
 }
@@ -1170,7 +1170,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
  * information. The type of the returned cell is a native function,
  * so that the object can be used in the function position.
  */
-muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
+MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
 {
 	muse_assert( type_info && type_info->magic_word == 'muSE' );
 	muse_assert( type_info->size >= sizeof(muse_functional_object_t) );
@@ -1194,7 +1194,7 @@ muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_
  * Returns the data pointer of the functional object, or
  * NULL if the object is not a functional object.
  */
-muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word )
+MUSEAPI muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word )
 {
 	muse_functional_object_t *obj = _fnobjdata(fobj);
 	
@@ -1367,15 +1367,10 @@ muse_boolean run_process()
 	
 	if ( env->current_process->cstack.size > 0 && env->current_process->thunk )
 	{
-		/* Repeatedly evaluate the thunk in a loop until the
-		thunk returns a non-NIL value. */
-		muse_cell result = MUSE_NIL;
-		do
-		{
-			int sp = _spos();
-			result = _apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
-			_unwind(sp);
-		} while ( !result );
+		/* Evaluate the thunk. Since we now support tail recursion,
+		a server process can be expressed as an infinite loop, so we don't
+		need a special looping capability implemented here. */
+		_apply( env->current_process->thunk, MUSE_NIL, MUSE_TRUE );
 
 		/* Process completed. Switch to the next one. */
 		return remove_process( env->current_process );

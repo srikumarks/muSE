@@ -310,7 +310,7 @@ static fileport_t g_muse_stdports[3] =
 	}
 };
 
-muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
+MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
 {
 	muse_assert( descriptor >= MUSE_STDIN_PORT && descriptor <= MUSE_STDERR_PORT );
 	return env->stdports[descriptor];
@@ -399,7 +399,7 @@ void muse_define_builtin_fileport(muse_env *env)
  * @param mode A combination of \c muse_port_mode_bits_t indicating 
  * properties of the file port.
  */
-muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode )
+MUSEAPI muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode )
 {
 	fileport_t *port = calloc( 1, sizeof(fileport_t) );
 	
@@ -454,7 +454,7 @@ void muse_unassign_port( muse_port_t p )
  * 
  * Use this to load definitions from files.
  */
-muse_cell muse_load( muse_env *env, FILE *f )
+MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 {
 	muse_port_t in = muse_assign_port(env, f, MUSE_PORT_TRUSTED_INPUT );
 	int sp = _spos();

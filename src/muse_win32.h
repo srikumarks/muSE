@@ -46,4 +46,14 @@ typedef __int64 longlong_t;
 
 #define MUSE_PLATFORM_WINDOWS 1
 
+#ifdef MUSE_DLL
+#	ifdef _LIB		// We're building the muSE DLL itself.
+#		define MUSEAPI __declspec(dllexport)
+#	else			// We're building a module that uses the muSE DLL.
+#		define MUSEAPI __declspec(dllimport)
+#	endif
+#else				// muSE is being built or used as a statically linked library.
+#	define MUSEAPI
+#endif
+
 #endif /* __MUSE_WIN32_H__ */

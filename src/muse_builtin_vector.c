@@ -606,7 +606,7 @@ void muse_define_builtin_type_vector(muse_env *env)
  * Creates a new vector object that has enough slots allocated to hold
  * the given number of objects. All slots are initialized to MUSE_NIL.
  */
-muse_cell muse_mk_vector( muse_env *env, int length )
+MUSEAPI muse_cell muse_mk_vector( muse_env *env, int length )
 {
 	muse_assert( length >= 0 );
 	{
@@ -621,7 +621,7 @@ muse_cell muse_mk_vector( muse_env *env, int length )
 /**
  * Returns the number of slots the vector has.
  */
-int muse_vector_length( muse_env *env, muse_cell vec )
+MUSEAPI int muse_vector_length( muse_env *env, muse_cell vec )
 {
 	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!" );
@@ -631,7 +631,7 @@ int muse_vector_length( muse_env *env, muse_cell vec )
 /**
  * Returns the value occupying the slot at the given 0-based index.
  */
-muse_cell muse_vector_get( muse_env *env, muse_cell vec, int index )
+MUSEAPI muse_cell muse_vector_get( muse_env *env, muse_cell vec, int index )
 {
 	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!" );
@@ -647,7 +647,7 @@ muse_cell muse_vector_get( muse_env *env, muse_cell vec, int index )
 /**
  * Replaces the value in the slot at the given index with the new value.
  */
-muse_cell muse_vector_put( muse_env *env, muse_cell vec, int index, muse_cell value )
+MUSEAPI muse_cell muse_vector_put( muse_env *env, muse_cell vec, int index, muse_cell value )
 {
 	vector_t *v = (vector_t*)_functional_object_data( vec, 'vect' );
 	muse_assert( v != NULL && "v must be a vector!");

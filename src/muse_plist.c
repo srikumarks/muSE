@@ -17,7 +17,7 @@
  * created by the \c muse_symbol() class of functions,
  * or an anonymous symbol created by \c muse_mk_anon_symbol().
  */
-muse_cell muse_symbol_plist( muse_env *env, muse_cell sym )
+MUSEAPI muse_cell muse_symbol_plist( muse_env *env, muse_cell sym )
 {
 	/* Skip the first item that has the hash code and symbol name. */
 	return _tail(_tail(sym));
@@ -37,7 +37,7 @@ muse_cell muse_symbol_plist( muse_env *env, muse_cell sym )
  * pair instead. This will let us search through
  * an assoc list for all instances of a given key.
  */
-muse_cell muse_assoc( muse_env *env, muse_cell alist, muse_cell prop )
+MUSEAPI muse_cell muse_assoc( muse_env *env, muse_cell alist, muse_cell prop )
 {
 	if ( !alist )
 		return MUSE_NIL;
@@ -91,7 +91,7 @@ muse_cell *muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop )
  * head is the property key and the tail is the property
  * value.
  */
-muse_cell muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop )
+MUSEAPI muse_cell muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop )
 {
 	return muse_assoc( env, muse_symbol_plist(env, sym), prop );
 }
@@ -107,7 +107,7 @@ muse_cell muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop )
  * @return The cell in the symbol's plist that contains 
  * the association.
  */
-muse_cell muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value )
+MUSEAPI muse_cell muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value )
 {
 	muse_cell p = _get_prop( sym, prop );
 	if ( p )
@@ -125,7 +125,7 @@ muse_cell muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell
  * are "eq" if either they refer to the same cell,
  * or they are equal intgers.
  */
-int muse_eq( muse_env *env, muse_cell a, muse_cell b )
+MUSEAPI int muse_eq( muse_env *env, muse_cell a, muse_cell b )
 {
 	if ( a == b )
 		return MUSE_TRUE;
@@ -140,7 +140,7 @@ int muse_eq( muse_env *env, muse_cell a, muse_cell b )
  * Deep compares two cells.
  * @return 1 if the two cells are equal, 0 otherwise.
  */
-int muse_equal( muse_env *env, muse_cell a, muse_cell b )
+MUSEAPI int muse_equal( muse_env *env, muse_cell a, muse_cell b )
 {
 	/* Two cells are eq is they are the same! */
 	if ( a == b )
