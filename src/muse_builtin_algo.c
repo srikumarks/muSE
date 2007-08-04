@@ -183,3 +183,49 @@ muse_cell fn_sort( muse_env *env, void *context, muse_cell args )
 	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
 	return sort_by_property_inplace( env, list, propertyFn );
 }
+
+
+/**
+ * (reverse list)
+ *
+ * Evaluates to a list with items in the reverse order of the given
+ * list. The given list is not modified.
+ */
+muse_cell fn_reverse( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell list = _evalnext(&args);
+	muse_cell result = MUSE_NIL;
+
+	while ( list )
+	{
+		result = _cons( _next(&list), result );
+	}
+
+	return result;
+}
+
+/**
+ * (reverse! list)
+ *
+ * Evaluates to a list with items in the reverse order of the given
+ * list. The given list is reversed in-place to conserve memory, 
+ * therefore the cell given as input is left pointing to the last
+ * element of the list. Use @code (set! x (reverse! x)) @endcode
+ * if you want to modify a variable containing a list to its
+ * reversed version.
+ */
+muse_cell fn_reverse_inplace( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell list = _evalnext(&args);
+	muse_cell result = MUSE_NIL;
+
+	while ( list )
+	{
+		muse_cell next = _tail(list);
+		_sett( list, result );
+		result = list;
+		list = next;
+	}
+
+	return result;
+}

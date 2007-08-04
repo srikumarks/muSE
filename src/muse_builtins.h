@@ -146,6 +146,8 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args );
 /*@{*/
 muse_cell fn_sort_inplace( muse_env *env, void *context, muse_cell args );
 muse_cell fn_sort( muse_env *env, void *context, muse_cell args );
+muse_cell fn_reverse( muse_env *env, void *context, muse_cell args );
+muse_cell fn_reverse_inplace( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup PortIO Port I/O */

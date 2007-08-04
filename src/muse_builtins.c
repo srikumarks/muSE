@@ -133,6 +133,8 @@ static const struct _builtins
 /************** Algorithms ***************/
 {		L"sort!",		fn_sort_inplace		},
 {		L"sort",		fn_sort				},
+{		L"reverse",		fn_reverse			},
+{		L"reverse!",	fn_reverse_inplace	},
 	
 /************** Classes ***************/
 {		L"class",		fn_class			},
