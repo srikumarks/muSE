@@ -75,31 +75,37 @@ static void continuation_destroy( muse_env *env, void *p )
 	}
 }
 
-#if 0 // NOLOCALS
 static muse_cell *copy_current_bindings( muse_env *env, int *size )
 {
-	muse_stack *s = &(env->current_process->locals);
-	muse_cell *copy = NULL;
-	int i = 0;
+	muse_stack *bs = &(env->current_process->bindings_stack);
+	
+	int N = bs->top - bs->bottom;
+	
+	muse_cell *copy = (muse_cell*)malloc( sizeof(muse_cell) * N );
 
-	(*size) = env->num_symbols;
-	copy = (muse_cell*)malloc( sizeof(muse_cell) * (*size) );
-	memcpy( copy, s->bottom, sizeof(muse_cell) * (*size) );
-
+	{
+		int i;
+		for ( i = 0; i < N; i += 2 )
+		{
+			/* Even numbered entries are symbols and odd numbered entries
+			are the values of the preceding symbols. */
+			copy[i] = bs->bottom[i];
+			copy[i+1] = _symval(copy[i]);
+		}
+	}
+	
+	(*size) = N;
 	return copy;
 }
-#endif
 
-#if 0 //NOLOCALS
 static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
 {
-	muse_cell *end = bindings + size;
-	
-	muse_assert( size >= 0 );
-
-	memcpy( env->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
+	int i;
+	for ( i = 0; i < size; i += 2 )
+	{
+		_define( bindings[i], bindings[i+1] );
+	}
 }
-#endif 
 
 static void *min3( void *p1, void *p2, void *p3 )
 {
