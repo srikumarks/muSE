@@ -61,14 +61,10 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 		}
 		else
 		{
+			/* Global definition. Visible to all processes. */
 			_define( sym, sym );
 			fn = _eval(fn);
 			_define( sym, fn );
-			muse_mark( env, sym ); 
-				/**< 
-				 * We're defining a global. Lock it in
-				 * the heap right away so that GC becomes cheaper. 
-				 */
 		}
 		
 		
@@ -95,11 +91,6 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 		muse_cell case_arg_e = _tail(case_e);
 		muse_cell ext = _cons( _cons( _quq(_head(fn)), _tail(fn) ), MUSE_NIL );
 
-		/* If the generic function is global, make sure that the
-			extension or override is also global and hence is locked. */
-		if ( _ismarked(gen) )
-			muse_mark( env, ext );
-		
 		switch ( option )
 		{
 		case DEFINE_NORMAL :
