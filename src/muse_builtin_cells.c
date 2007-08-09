@@ -49,13 +49,29 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 			stack blowup. It usually safe to use recursion for small bound
 			routines such as syntax transformers. */
 		if ( env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom )
+		{
 			_pushdef( sym, sym ); /* Make the definition local in scope. */
+			fn = _eval(fn);
+			_define( sym, fn );
+			env->current_process->bindings_stack.top[-1] = fn;
+				/**< 
+				 * Replace the last entry on the bindings stack with
+				 * the actual value of the symbol now.
+				 */
+		}
 		else
+		{
 			_define( sym, sym );
-
-		fn = _eval(fn);
-
-		_define( sym, fn );
+			fn = _eval(fn);
+			_define( sym, fn );
+			muse_mark( env, sym ); 
+				/**< 
+				 * We're defining a global. Lock it in
+				 * the heap right away so that GC becomes cheaper. 
+				 */
+		}
+		
+		
 		return fn;
 	}
 
@@ -77,18 +93,25 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 	{
 		muse_cell case_e = _head(_tail(gen));
 		muse_cell case_arg_e = _tail(case_e);
+		muse_cell ext = _cons( _cons( _quq(_head(fn)), _tail(fn) ), MUSE_NIL );
 
+		/* If the generic function is global, make sure that the
+			extension or override is also global and hence is locked. */
+		if ( _ismarked(gen) )
+			muse_mark( env, ext );
+		
 		switch ( option )
 		{
 		case DEFINE_NORMAL :
 			/* (define ...) behaves like (define-extension ...) when given a generic. */
 		case DEFINE_EXTENSION : 
 			/* Extend. */
-			muse_list_append( env, _tail(case_arg_e), _cons( _cons( _quq(_head(fn)), _tail(fn) ), MUSE_NIL ) );
+			muse_list_append( env, _tail(case_arg_e), ext );
 			break;
 		case DEFINE_OVERRIDE :
 			/* Override. */
-			_sett( case_arg_e, _cons( _cons( _quq(_head(fn)), _tail(fn) ), _tail(case_arg_e) ) );
+			_sett( ext, _tail(case_arg_e) );
+			_sett( case_arg_e, ext );
 			break;
 		}
 
