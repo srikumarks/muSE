@@ -154,12 +154,15 @@ typedef struct _muse_process_frame_t
 	 * and the odd indices are all their bound values.
 	 */
 
-	muse_stack	locals;
+	int			saved_bindings_start;
 	/**<
-	 * The "locals" are a set of process-local storage values.
-	 * A symbol's value is different for each process.
+	 * When switching from one process to another,
+	 * the current process's overridden bindings are
+	 * first saved on to the bindings stack. This
+	 * variable remembers the position to which the bindings
+	 * must be restored when switching to this process.
 	 */
-
+	
 	muse_stack	cstack; ///< Holds the C stack pointer. If the pointer is NULL, its the main process.
 
 	muse_cell	thunk;
@@ -360,10 +363,7 @@ static inline muse_stack *op_symstack(muse_env *env)
 static inline muse_cell op_head( muse_env *env, muse_cell c )
 {
 	muse_assert( _cellt(c) == MUSE_CONS_CELL || _cellt(c) == MUSE_SYMBOL_CELL || _cellt(c) == MUSE_LAMBDA_CELL || _cellt(c) == MUSE_LAZY_CELL );
-	if ( _cellt(c) == MUSE_SYMBOL_CELL )
-		return 	env->current_process->locals.bottom[_ptr(c)->cons.head >> 3];
-	else
-		return _ptr(c)->cons.head;
+	return _ptr(c)->cons.head;
 }
 #define _tail(c) op_tail(env,c)
 static inline muse_cell op_tail( muse_env *env, muse_cell c )
@@ -421,13 +421,13 @@ static inline void op_setht( muse_env *env, muse_cell c, muse_cell h, muse_cell 
 #define _define(symbol,value) op_define(env,symbol,value)
 static inline muse_cell op_define( muse_env *env, muse_cell symbol, muse_cell value )
 {
-	env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3] = value;
+	_ptr(symbol)->cons.head = value;
 	return value;
 }
 #define _symval(symbol) op_symval(env,symbol)
 static inline muse_cell op_symval( muse_env *env, muse_cell symbol )
 {
-	return env->current_process->locals.bottom[_ptr(symbol)->cons.head >> 3];
+	return _ptr(symbol)->cons.head;
 }
 #define _bspos() op_bspos(env)
 static inline int op_bspos(muse_env *env)

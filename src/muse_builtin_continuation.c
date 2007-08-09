@@ -75,6 +75,7 @@ static void continuation_destroy( muse_env *env, void *p )
 	}
 }
 
+#if 0 // NOLOCALS
 static muse_cell *copy_current_bindings( muse_env *env, int *size )
 {
 	muse_stack *s = &(env->current_process->locals);
@@ -87,8 +88,9 @@ static muse_cell *copy_current_bindings( muse_env *env, int *size )
 
 	return copy;
 }
+#endif
 
-
+#if 0 //NOLOCALS
 static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
 {
 	muse_cell *end = bindings + size;
@@ -97,6 +99,7 @@ static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
 
 	memcpy( env->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
 }
+#endif 
 
 static void *min3( void *p1, void *p2, void *p3 )
 {

@@ -661,25 +661,11 @@ static muse_cell lookup_symbol( muse_env *env, const muse_char *start, const mus
  * is performed to see whether the symbol is already
  * interned or not.
  */
-MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix, muse_int hash )
+MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, muse_int hash )
 {
 	muse_stack *ss = _symstack();
 
 	muse_assert( _cellt(sym) == MUSE_SYMBOL_CELL );
-
-	/* Define the symbol to be itself in all processes. */
-	{
-		muse_process_frame_t *cp = env->current_process;
-		muse_process_frame_t *p = cp;
-
-		do
-		{
-			p->locals.bottom[local_ix] = sym;
-			p->locals.top = p->locals.bottom + env->num_symbols;
-			p = p->next;
-		}
-		while ( p != cp );
-	}
 
 	/* Add the symbol to its hash bucket. */
 	{
@@ -717,11 +703,11 @@ MUSEAPI muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse
 	else
 	{
 		muse_stack *ss = _symstack();
-		int local_ix = _newlocal();
 		
 		/* sym -> ( . ) */
 		p = _spos();
-		sym = _setcellt( _cons( _localcell(local_ix), MUSE_NIL ), MUSE_SYMBOL_CELL );
+		sym = _setcellt( _cons( MUSE_NIL, MUSE_NIL ), MUSE_SYMBOL_CELL );
+		_seth(sym,sym);
 		
 		{
 			muse_cell name = muse_mk_text( env, start, end );
@@ -734,7 +720,7 @@ MUSEAPI muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse
 			/* sym -> ( sym . symplist ) */
 			_sett( sym, symplist );
 
-			muse_intern_symbol( env, sym, local_ix, hash );
+			muse_intern_symbol( env, sym, hash );
 		}
 		
 		_unwind(p);
@@ -1244,7 +1230,6 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 		 * above because the bindings stack is an array of 
 		 * symbol-value pairs.
 		 */
-	init_stack( &p->locals,			env->parameters[MUSE_MAX_SYMBOLS]		);
 
 	if ( sp == NULL )
 	{
@@ -1264,10 +1249,6 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 
 	/* Initialize the queue pointers. */
 	p->next = p->prev = p;
-
-	/* Copy all the currently defined symbols over to the new process. */
-	if ( env->current_process )
-		memcpy( p->locals.bottom, env->current_process->locals.bottom, sizeof(muse_cell) * env->num_symbols );
 
 	return p;
 }
@@ -1359,6 +1340,49 @@ muse_boolean run_process()
 		return MUSE_TRUE;
 }
 
+
+/**
+ * When switching to a process, we need to save some
+ * of the current overridden bindings.
+ */
+static void save_bindings( muse_process_frame_t *process )
+{
+	muse_env *env = process->env;
+	muse_stack *bs = &(process->bindings_stack);
+	process->saved_bindings_start = bs->top - bs->bottom;
+
+	{
+		int i;
+		for ( i = 0; i < process->saved_bindings_start; i += 2 )
+		{
+			bs->top[0] = bs->bottom[i];
+			bs->top[1] = _symval(bs->bottom[i]);
+			bs->top += 2;
+		}
+	}
+}
+
+/**
+ * When switching to process, we need to restore some
+ * saved symbol bindings.
+ */
+static void restore_bindings( muse_process_frame_t *process )
+{
+	muse_env *env = process->env;
+	muse_stack *bs = &(process->bindings_stack);
+	
+	{
+		int i = process->saved_bindings_start;
+		int N = bs->top - bs->bottom;
+		for ( ; i < N; i += 2 )
+		{
+			_define( bs->bottom[i], bs->bottom[i+1] );
+		}
+	}
+	
+	bs->top = bs->bottom + process->saved_bindings_start;
+}
+
 /**
  * Immediately switches attention to the given process. If the given
  * process is in the "virgin" state, run_process() is called on it.
@@ -1393,6 +1417,8 @@ SWITCH_TO_PROCESS:
 
 		if ( env->current_process->state_bits == MUSE_PROCESS_DEAD )
 			env->current_process = process;
+		else
+			save_bindings( env->current_process );
 
 		if ( setjmp( env->current_process->jmp ) == 0 )
 		{
@@ -1409,7 +1435,10 @@ SWITCH_TO_PROCESS:
 				return run_process();
 			}
 			else
+			{
+				restore_bindings( env->current_process );
 				longjmp( env->current_process->jmp, 1 );
+			}
 		} 
 
 		return MUSE_TRUE;
@@ -1580,7 +1609,6 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 	if ( muse_doing_gc(env) && p->state_bits == MUSE_PROCESS_DEAD )
 	{
 		/* Cleanup process memory. */
-		destroy_stack( &p->locals );
 		destroy_stack( &p->bindings_stack );
 		destroy_stack( &p->stack );
 		free(p);
@@ -1598,7 +1626,6 @@ void mark_process( muse_process_frame_t *p )
 	muse_env *env = p->env;
 	mark_stack( env, &p->stack );
 	mark_stack( env, &p->bindings_stack );
-	mark_stack( env, &p->locals );
 	muse_mark( env, p->thunk );
 	muse_mark( env, p->mailbox );
 }
