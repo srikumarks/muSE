@@ -54,7 +54,6 @@ static const struct _builtins
 {		L"define",		fn_define			},
 {		L"define-extension",	fn_define_extension		},
 {		L"define-override",		fn_define_override		},
-{		L"set!",		fn_set_M			},
 {		L"setf!",		fn_setf_M			},
 {		L"setr!",		fn_setr_M			},
 {		L"first",		fn_first			},

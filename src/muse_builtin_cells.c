@@ -268,26 +268,6 @@ muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
 /*@}*/
 
 /**
- * (set! symbol value).
- *
- * Inside a function body or let or case block, it changes the value of the
- * given locally declared symbol. Cannot in general be used to set the value of 
- * a global symbol, unless that symbol is, up to this point, undefined.
- */
-muse_cell fn_set_M( muse_env *env, void *context, muse_cell args )
-{
-	muse_cell sym = _next(&args);
-
-	MUSE_DIAGNOSTICS({ muse_expect( env, L"set!", L"s:", sym, L"something" ); });
-
-	{
-		muse_cell value = _eval(_head(args));
-		_define(sym,value);
-		return value;
-	}
-}
-
-/**
  * (setf! cell value).
  *
  * Sets the head of the given cons cell to the given value.
