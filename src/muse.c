@@ -702,8 +702,6 @@ MUSEAPI muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse
 		return sym;
 	else
 	{
-		muse_stack *ss = _symstack();
-		
 		/* sym -> ( . ) */
 		p = _spos();
 		sym = _setcellt( _cons( MUSE_NIL, MUSE_NIL ), MUSE_SYMBOL_CELL );
@@ -1342,45 +1340,22 @@ muse_boolean run_process()
 
 
 /**
- * When switching to a process, we need to save some
- * of the current overridden bindings.
- */
-static void save_bindings( muse_process_frame_t *process )
-{
-	muse_env *env = process->env;
-	muse_stack *bs = &(process->bindings_stack);
-	process->saved_bindings_start = bs->top - bs->bottom;
-
-	{
-		int i;
-		for ( i = 0; i < process->saved_bindings_start; i += 2 )
-		{
-			bs->top[0] = bs->bottom[i];
-			bs->top[1] = _symval(bs->bottom[i]);
-			bs->top += 2;
-		}
-	}
-}
-
-/**
  * When switching to process, we need to restore some
  * saved symbol bindings.
  */
-static void restore_bindings( muse_process_frame_t *process )
+void restore_bindings( muse_process_frame_t *process )
 {
 	muse_env *env = process->env;
 	muse_stack *bs = &(process->bindings_stack);
 	
 	{
-		int i = process->saved_bindings_start;
-		int N = bs->top - bs->bottom;
-		for ( ; i < N; i += 2 )
+		muse_cell *c = bs->bottom;
+		while ( c < bs->top )
 		{
-			_define( bs->bottom[i], bs->bottom[i+1] );
+			_define( c[2], c[3] );
+			c += 4;
 		}
 	}
-	
-	bs->top = bs->bottom + process->saved_bindings_start;
 }
 
 /**
@@ -1417,8 +1392,6 @@ SWITCH_TO_PROCESS:
 
 		if ( env->current_process->state_bits == MUSE_PROCESS_DEAD )
 			env->current_process = process;
-		else
-			save_bindings( env->current_process );
 
 		if ( setjmp( env->current_process->jmp ) == 0 )
 		{

@@ -31,7 +31,6 @@ typedef struct _continuation_t
 	int			bindings_stack_from;
 	muse_cell	*bindings_stack_copy;
 	int			bindings_size;
-	muse_cell	*bindings_copy;
 	muse_cell	this_cont;
 	muse_cell	invoke_result;
 } continuation_t;
@@ -56,7 +55,6 @@ static void continuation_mark( muse_env *env, void *p )
 
 	mark_array( env, c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
 	mark_array( env, c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
-	mark_array( env, c->bindings_copy, c->bindings_copy + c->bindings_size );
 }
 
 static void continuation_destroy( muse_env *env, void *p )
@@ -66,7 +64,6 @@ static void continuation_destroy( muse_env *env, void *p )
 	free( c->system_stack_copy );	
 	free( c->muse_stack_copy );
 	free( c->bindings_stack_copy );
-	free( c->bindings_copy );
 	
 	{
 		muse_functional_object_t base = c->base;
@@ -75,37 +72,7 @@ static void continuation_destroy( muse_env *env, void *p )
 	}
 }
 
-static muse_cell *copy_current_bindings( muse_env *env, int *size )
-{
-	muse_stack *bs = &(env->current_process->bindings_stack);
-	
-	int N = bs->top - bs->bottom;
-	
-	muse_cell *copy = (muse_cell*)malloc( sizeof(muse_cell) * N );
-
-	{
-		int i;
-		for ( i = 0; i < N; i += 2 )
-		{
-			/* Even numbered entries are symbols and odd numbered entries
-			are the values of the preceding symbols. */
-			copy[i] = bs->bottom[i];
-			copy[i+1] = _symval(copy[i]);
-		}
-	}
-	
-	(*size) = N;
-	return copy;
-}
-
-static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
-{
-	int i;
-	for ( i = 0; i < size; i += 2 )
-	{
-		_define( bindings[i], bindings[i+1] );
-	}
-}
+void restore_bindings( muse_process_frame_t *process );
 
 static void *min3( void *p1, void *p2, void *p3 )
 {
@@ -177,9 +144,6 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		c->bindings_stack_copy = malloc( sizeof(muse_cell) * c->bindings_stack_size );
 		memcpy( c->bindings_stack_copy, env->current_process->bindings_stack.bottom, sizeof(muse_cell) * c->bindings_stack_size );
 
-		/* Save all bindings. */
-		c->bindings_copy = copy_current_bindings( env, &c->bindings_size );
-
 		/* Save a pointer to the current process. */
 		c->process = env->current_process;
 		c->process_atomicity = env->current_process->atomicity;
@@ -219,7 +183,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		c->process->bindings_stack.top = c->process->bindings_stack.bottom + c->bindings_stack_from + c->bindings_stack_size;
 
 		/* Restore the saved symbol values. */
-		restore_bindings( env, c->bindings_copy, c->bindings_size );
+		restore_bindings( c->process );
 
 		muse_assert( c->invoke_result >= 0 );
 		muse_assert( (c->process->state_bits & MUSE_PROCESS_DEAD) == 0 );

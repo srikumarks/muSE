@@ -254,15 +254,20 @@ MUSEAPI muse_cell muse_define( muse_env *env, muse_cell symbol, muse_cell value 
 
 /**
  * Makes the given value the current value of the
- * symbol, without losing the previously assigned
- * set of values. i.e. It pushes the value on the
- * symbol's value stack.
+ * symbol and saves this assignment on the bindings stack.
+ * The value before the assignment is saved as well.
+ *
+ * @todo There is a great amount of redundancy in the 
+ * bindings stack currently. Almost every symbol-value 
+ * bindings will be found twice. This should be fixed some
+ * time, but I'm leaving it like this for correctness
+ * sake and for changes to be minimal.
  */
 MUSEAPI muse_cell muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value )
 {
-//	printf( "symbol %d <- value %d\n", symbol, value );
 	_push_binding(symbol);
 	_define( symbol, value );
+	_push_binding(symbol);
 	return symbol;
 }
 
@@ -278,8 +283,8 @@ MUSEAPI muse_cell muse_popdef( muse_env *env, muse_cell symbol )
 {
 	muse_stack *s = &env->current_process->bindings_stack;
 	muse_cell val = _symval(symbol);
-	muse_assert( s->top[-2] == symbol );
-	s->top -= 2;
+	muse_assert( s->top[-4] == symbol );
+	s->top -= 4;
 	_define(s->top[0], s->top[1]);
 	return val;
 }
