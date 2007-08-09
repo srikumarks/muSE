@@ -95,6 +95,18 @@ static muse_boolean ensure_stack( muse_stack *s, int items )
 		return MUSE_FALSE;
 }
 
+/**
+ * Marks all the entities in the stack so they survive GC.
+ */
+static void mark_stack( muse_env *env, muse_stack *stack )
+{
+	muse_cell *bottom = stack->bottom;
+	muse_cell *top = stack->top;
+	
+	while ( bottom < top )
+		muse_mark( env, *bottom++ );
+}
+
 static void init_heap( muse_env *env, muse_heap *heap, int heap_size )
 {
 	heap_size				= (heap_size + 7) & ~7;
@@ -316,6 +328,9 @@ MUSEAPI muse_env *muse_init_env( const int *parameters )
 		muse_load_builtin_fns(env);
 		_unwind(sp);
 	}
+	
+	/* Mark all the built-in definitions so they always survive gc. */
+	mark_stack( env, _symstack() );
 
 	return env;
 }
@@ -843,15 +858,6 @@ MUSEAPI void muse_mark( muse_env *env, muse_cell c )
 			}
 		}
 	}
-}
-
-static void mark_stack( muse_env *env, muse_stack *stack )
-{
-	muse_cell *bottom = stack->bottom;
-	muse_cell *top = stack->top;
-	
-	while ( bottom < top )
-		muse_mark( env, *bottom++ );
 }
 
 static void free_text( muse_env *env, muse_cell t )
