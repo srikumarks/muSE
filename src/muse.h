@@ -266,6 +266,7 @@ typedef enum
 	MUSE_DEFINE,
 	MUSE_TRAP_POINT,
 	MUSE_SEND,
+	MUSE_SEND_SUPER,
 	
 	MUSE_NUM_BUILTIN_SYMBOLS /**< Not a symbol. */
 } muse_builtin_symbol_t;

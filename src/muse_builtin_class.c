@@ -200,16 +200,24 @@ MUSEAPI muse_cell muse_search_object( muse_env *env, muse_cell obj, muse_cell me
 muse_cell fn_send( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj			= _evalnext(&args);
-	muse_cell memberName	= _evalnext(&args);
-	muse_cell member		= muse_search_object( env, obj, memberName );
-	muse_cell memberVal		= _tail(member);
-	
-	/* If we're calling send, the member is expected to be a function
-	   we can call. */
-	if ( memberVal )
-		return _lapply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
+
+	if ( _functional_object_data(obj,'cobj') != NULL )
+	{
+		return _apply( obj, _cons( _builtin_symbol(MUSE_SEND), args ), MUSE_FALSE );
+	}
 	else
-		return MUSE_NIL;
+	{
+		muse_cell memberName	= _evalnext(&args);
+		muse_cell member		= muse_search_object( env, obj, memberName );
+		muse_cell memberVal		= _tail(member);
+		
+		/* If we're calling send, the member is expected to be a function
+		   we can call. */
+		if ( memberVal )
+			return _lapply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
+		else
+			return MUSE_NIL;
+	}
 }
 
 /**
@@ -239,16 +247,25 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell classes		= _evalnext(&args);
 	muse_cell obj			= _evalnext(&args);
-	muse_cell methodName	= _evalnext(&args);
-	muse_cell methodEntry	= (_cellt(classes) == MUSE_CONS_CELL) 
-								? search_class_hierarchy( env, classes, methodName )
-								: muse_search_object( env, classes, methodName );
-	muse_cell method		= _tail(methodEntry);
-	
-	if ( method )
-		return _lapply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
-	else
-		return MUSE_NIL;
+
+	/* If we're dealing with a cached object, simply
+	evaluate it with no arguments to get at the underlying 
+	object. */
+	if ( _functional_object_data(obj,'cobj') != NULL )
+		obj = _apply(obj,MUSE_NIL,MUSE_TRUE);
+
+	{
+		muse_cell methodName	= _evalnext(&args);
+		muse_cell methodEntry	= (_cellt(classes) == MUSE_CONS_CELL) 
+									? search_class_hierarchy( env, classes, methodName )
+									: muse_search_object( env, classes, methodName );
+		muse_cell method		= _tail(methodEntry);
+		
+		if ( method )
+			return _lapply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
+		else
+			return MUSE_NIL;
+	}
 }
 
 /**
@@ -272,17 +289,24 @@ muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
 muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj			= _evalnext(&args);
-	muse_cell memberName	= _evalnext(&args);
 	
-	if ( args )
+	if ( _functional_object_data(obj,'cobj') != NULL )
 	{
-		/* Argument given. We should set the member value. */
-		return _tail( muse_put_prop( env, obj, memberName, _evalnext(&args) ) );
+		return _apply( obj, args, MUSE_FALSE );
 	}
 	else
 	{
-		/* Argument not given. We should get the member value. */
-		return _tail(muse_search_object( env, obj, memberName ));
+		muse_cell memberName	= _evalnext(&args);
+		if ( args )
+		{
+			/* Argument given. We should set the member value. */
+			return _tail( muse_put_prop( env, obj, memberName, _evalnext(&args) ) );
+		}
+		else
+		{
+			/* Argument not given. We should get the member value. */
+			return _tail(muse_search_object( env, obj, memberName ));
+		}
 	}
 }
 
@@ -304,7 +328,7 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 typedef struct 
 {
 	muse_functional_object_t base;
-	muse_cell obj, super;
+	muse_cell self, obj, super;
 
 	/**
 	 * There are 16 cache entries. A property or method
@@ -357,18 +381,18 @@ static void cached_object_mark( muse_env *env, void *ptr )
  * However, first the cache is checked before
  * searching the property list of the object.
  */
-static muse_cell cached_pty( muse_env *env, cached_object_t *obj, muse_cell sym )
+static muse_cell cached_pty( muse_env *env, cached_object_t *obj, muse_cell sym, muse_boolean inherited )
 {
 	/* Use the lower 4 bits of the cell index as the hash. */
 	int hash = ((_celli(sym) >> 1) & 0xF);
 
 	muse_cell symval = obj->cache[hash];
 
-	if ( _head(symval) == sym )
+	if ( _head(symval) == sym && (inherited == ((obj->own_bits & (1 << hash)) ? MUSE_FALSE : MUSE_TRUE)) )
 		return symval;
 	else
 	{
-		symval = _get_prop( obj->obj, sym );
+		symval = inherited ? MUSE_NIL : _get_prop( obj->obj, sym );
 
 		if ( symval )
 		{
@@ -390,21 +414,27 @@ static muse_cell cached_pty( muse_env *env, cached_object_t *obj, muse_cell sym 
  * (obj sym)
  * (obj sym val)
  * (obj <- msg args...)
+ * (obj <<- msg args...)
  */
 muse_cell fn_cached_object( muse_env *env, cached_object_t *obj, muse_cell args )
 {
 	if ( args )
 	{
 		muse_cell sym = _evalnext(&args);
+		muse_boolean inherited = MUSE_FALSE;
 
-		if ( sym == _symval(_builtin_symbol(MUSE_SEND)) )
+		if ( (sym == _symval(_builtin_symbol(MUSE_SEND)) 
+				? ((inherited = MUSE_FALSE), MUSE_TRUE)
+				: (sym == _symval(_builtin_symbol(MUSE_SEND_SUPER))
+					? ((inherited = MUSE_TRUE), MUSE_TRUE)
+					: MUSE_FALSE)))
 		{
 			/* The rest of the stuff is a message to send to the object. */
 			muse_cell msg = _evalnext(&args);
 
-			muse_cell cached = cached_pty( env, obj, msg );
+			muse_cell cached = cached_pty( env, obj, msg, inherited );
 
-			return _lapply( _tail(cached), _cons( obj->obj, muse_eval_list( env, args ) ), MUSE_TRUE );
+			return _lapply( _tail(cached), _cons( obj->self, muse_eval_list( env, args ) ), MUSE_TRUE );
 		}
 		else
 		{
@@ -436,7 +466,7 @@ muse_cell fn_cached_object( muse_env *env, cached_object_t *obj, muse_cell args 
 			else
 			{
 				/* Getting a property. */
-				return _tail(cached_pty( env, obj, sym ));
+				return _tail(cached_pty( env, obj, sym, MUSE_FALSE ));
 			}
 		}
 	}
@@ -474,7 +504,10 @@ static muse_functional_object_type_t g_cached_object_type =
  */
 muse_cell fn_mk_cached_object( muse_env *env, void *context, muse_cell args )
 {
-	return muse_mk_functional_object( env, &g_cached_object_type, args );
+	muse_cell obj = muse_mk_functional_object( env, &g_cached_object_type, args );
+	cached_object_t *objptr = (cached_object_t*)_functional_object_data( obj, 'cobj' );
+	objptr->self = obj;
+	return obj;
 }
 
 /**

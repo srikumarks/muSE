@@ -224,6 +224,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_DEFINE,				L"define"	},
 	{ MUSE_TRAP_POINT,			L"{{trap}}" },
 	{ MUSE_SEND,				L"<-"		},
+	{ MUSE_SEND_SUPER,			L"<<-"		},
 	{ -1,						NULL		},
 };
 
