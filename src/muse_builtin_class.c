@@ -375,6 +375,12 @@ static void cached_object_mark( muse_env *env, void *ptr )
 	muse_mark( env, obj->obj );
 }
 
+static inline int cacheix( muse_cell sym )
+{
+	/* Use the lower 4 bits of the cell index/2 as the hash. */
+	return ((_celli(sym) >> 1) & 0xF);
+}
+
 /**
  * Gets the pty-value pair for the sym property
  * of the given object and caches it if necessary.
@@ -383,8 +389,8 @@ static void cached_object_mark( muse_env *env, void *ptr )
  */
 static muse_cell cached_pty( muse_env *env, cached_object_t *obj, muse_cell sym, muse_boolean inherited )
 {
-	/* Use the lower 4 bits of the cell index as the hash. */
-	int hash = ((_celli(sym) >> 1) & 0xF);
+	/* Use the lower 4 bits of the cell index/2 as the hash. */
+	int hash = cacheix(sym);
 
 	muse_cell symval = obj->cache[hash];
 
@@ -439,7 +445,7 @@ muse_cell fn_cached_object( muse_env *env, cached_object_t *obj, muse_cell args 
 		else
 		{
 			/* The arguments are for property getting and setting. */
-			int hash = ((_celli(sym) >> 1) & 0xF);
+			int hash = cacheix(sym);
 			muse_cell cached = obj->cache[hash];
 			muse_cell val = _evalnext(&args);
 
