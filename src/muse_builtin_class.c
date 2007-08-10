@@ -285,3 +285,211 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 		return _tail(muse_search_object( env, obj, memberName ));
 	}
 }
+
+/** @addtogroup FunctionalObjects */
+/*@{*/
+/**
+ * @defgroup Objects
+ *
+ * Cached objects have an underlying symbolic object
+ * whose methods and properties are accessed through a 
+ * fast caching mechanism. The cache makes repeated
+ * access to the same property or method implementation
+ * asymptotically constant time. Only the first access
+ * will take linear time.
+ */
+/*@{*/
+
+
+typedef struct 
+{
+	muse_functional_object_t base;
+	muse_cell obj, super;
+
+	/**
+	 * There are 16 cache entries. A property or method
+	 * is mapped to one of these entries using the lower 4
+	 * bits of the cell index of the property symbol.
+	 * The cell at the entry is the property-value pair
+	 * for the property. Note that this is only a cache
+	 * and not a full hash table, which needs to handle 
+	 * collisions, etc. All we are hoping to do here
+	 * is to speed repeated access to those handful of
+	 * methods of a class that are repeatedly accessed.
+	 */
+	muse_cell cache[16];
+
+	/**
+	 * One bit for each cache slot indicating whether
+	 * the property-value pair belongs to the symbolic
+	 * object (bit is set) or to one of its parents
+	 * (bit is not set).
+	 */
+	int own_bits;
+} cached_object_t;
+
+static void cached_object_init( muse_env *env, void *ptr, muse_cell args )
+{
+	cached_object_t *obj = (cached_object_t*)ptr;
+	obj->obj = _evalnext(&args);
+
+	/**
+	 * Force a "super" property if it is not found.
+	 */
+	{
+		muse_cell super = _get_prop( obj->obj, _builtin_symbol(MUSE_SUPER) );
+		if ( !super )
+			super = _put_prop( obj->obj, _builtin_symbol(MUSE_SUPER), MUSE_NIL );
+
+		obj->super = super;
+	}
+}
+
+static void cached_object_mark( muse_env *env, void *ptr )
+{
+	cached_object_t *obj = (cached_object_t*)ptr;
+	muse_mark( env, obj->obj );
+}
+
+/**
+ * Gets the pty-value pair for the sym property
+ * of the given object and caches it if necessary.
+ * However, first the cache is checked before
+ * searching the property list of the object.
+ */
+static muse_cell cached_pty( muse_env *env, cached_object_t *obj, muse_cell sym )
+{
+	/* Use the lower 4 bits of the cell index as the hash. */
+	int hash = ((_celli(sym) >> 1) & 0xF);
+
+	muse_cell symval = obj->cache[hash];
+
+	if ( _head(symval) == sym )
+		return symval;
+	else
+	{
+		symval = _get_prop( obj->obj, sym );
+
+		if ( symval )
+		{
+			/* Own property. */
+			obj->own_bits |= (1 << hash);
+		}
+		else
+		{
+			/* Parent's property. */
+			symval = search_class_hierarchy( env, obj->super, sym );
+			obj->own_bits &= ~(1 << hash);
+		}
+
+		return obj->cache[hash] = symval;
+	}
+}
+
+/**
+ * (obj sym)
+ * (obj sym val)
+ * (obj <- msg args...)
+ */
+muse_cell fn_cached_object( muse_env *env, cached_object_t *obj, muse_cell args )
+{
+	if ( args )
+	{
+		muse_cell sym = _evalnext(&args);
+
+		if ( sym == _symval(_builtin_symbol(MUSE_SEND)) )
+		{
+			/* The rest of the stuff is a message to send to the object. */
+			muse_cell msg = _evalnext(&args);
+
+			muse_cell cached = cached_pty( env, obj, msg );
+
+			return _lapply( _tail(cached), _cons( obj->obj, muse_eval_list( env, args ) ), MUSE_TRUE );
+		}
+		else
+		{
+			/* The arguments are for property getting and setting. */
+			int hash = ((_celli(sym) >> 1) & 0xF);
+			muse_cell cached = obj->cache[hash];
+			muse_cell val = _evalnext(&args);
+
+			if ( args )
+			{
+				/* Setting a property. */
+				if ( _head(cached) == sym && (obj->own_bits & (1 << hash)) )
+				{
+					/* Cache hit. Note that its a cache hit 
+					only if the property is owned by the object 
+					itself and is not inherited from a super class. */
+					_sett( cached, val );
+					return val;
+				}
+				else
+				{
+					/* Cache miss. */
+					cached = _put_prop( obj->obj, sym, val );
+					obj->cache[hash] = cached;
+					obj->own_bits |= (1 << hash);
+					return val;
+				}
+			}
+			else
+			{
+				/* Getting a property. */
+				return _tail(cached_pty( env, obj, sym ));
+			}
+		}
+	}
+	else
+	{
+		/* No args. Means just return the internal object. */
+		return obj->obj;
+	}
+}
+
+static muse_functional_object_type_t g_cached_object_type =
+{
+	'muSE',
+	'cobj',
+	sizeof(cached_object_t),
+	(muse_nativefn_t)fn_cached_object,
+	NULL,
+	cached_object_init,
+	cached_object_mark,
+	NULL,
+	NULL
+};
+
+/**
+ * (@object symobj)
+ * 
+ * Creates a cached object from a symbolic object.
+ * @code
+ * (define x (@object (new TestClass)))     ; New cached object.
+ * (x 'name)                                ; Property access
+ * (x 'name "Montgomery")                   ; Property setting
+ * (x <- 'perform-trick "loop the loop" 15) ; Invoke a method (send a message).
+ * (x)                                      ; Get the underlying symbolic object.
+ * @endcode
+ */
+muse_cell fn_mk_cached_object( muse_env *env, void *context, muse_cell args )
+{
+	return muse_mk_functional_object( env, &g_cached_object_type, args );
+}
+
+/**
+ * (@object? obj)
+ *
+ * Evaluates to obj if it is a cached object. Otherwise ().
+ */
+muse_cell fn_is_cached_object_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell obj = _evalnext(&args);
+
+	muse_assert( _cellt(obj) == MUSE_NATIVEFN_CELL );
+
+	return (_ptr(obj)->fn.fn == (muse_nativefn_t)fn_cached_object) ? obj : MUSE_NIL;
+}
+
+/*@}*/
+/*@}*/

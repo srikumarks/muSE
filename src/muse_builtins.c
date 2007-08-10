@@ -143,6 +143,8 @@ static const struct _builtins
 {		L"send-super",	fn_send_super		},
 {		L"<-",			fn_send				},
 {		L"<<-",			fn_send_super		},
+{		L"@object",		fn_mk_cached_object	},
+{		L"@object?",	fn_is_cached_object_p },
 	
 /************** Ports ***************/
 {		L"port?",		fn_port_p			},

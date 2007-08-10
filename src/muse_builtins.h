@@ -139,6 +139,8 @@ muse_cell fn_new( muse_env *env, void *context, muse_cell args );
 muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args );
 muse_cell fn_send( muse_env *env, void *context, muse_cell args );
 muse_cell fn_send_super( muse_env *env, void *context, muse_cell args );
+muse_cell fn_mk_cached_object( muse_env *env, void *context, muse_cell args );
+muse_cell fn_is_cached_object_p( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Algorithms Algorithms */
