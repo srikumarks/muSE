@@ -79,7 +79,7 @@ muse_cell *muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop )
 {
 	if ( !*alist )
 		return alist;
-	else if ( muse_eq( env, _head(_head(*alist)), prop ) )
+	else if ( muse_equal( env, _head(_head(*alist)), prop ) )
 		return alist;
 	else
 		return muse_assoc_iter( env, &_ptr(*alist)->cons.tail, prop );
