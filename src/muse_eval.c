@@ -484,7 +484,10 @@ MUSEAPI muse_cell muse_do( muse_env *env, muse_cell block )
 MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 {
 	int sp = _spos();
-	while ( _cellt(cell) == MUSE_LAZY_CELL )
+
+	/* The cell > 0 condition means quick-quoted cells
+	and MUSE_NIL are forced to themselves. */
+	while ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL )
 	{
 		_unwind(sp);
 
