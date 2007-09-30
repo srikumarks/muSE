@@ -41,7 +41,7 @@ typedef long long longlong_t;
 #if __i386
 #	define SAVE_STACK_POINTER( var ) \
 			void *var = NULL; \
-			asm("mov %0, %%esp;" : "=r"(var));
+			asm("movl %%esp, %0;" : "=r"(var));
 
 #	define CHANGE_STACK_POINTER(sp_value) \
 			do\
