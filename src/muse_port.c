@@ -526,12 +526,12 @@ white_space_t ez_skip_whitespace( muse_port_t f, int line, int col )
 
 static inline int _token_begin_list( int c )
 {
-	return c == '(' || c == '{';
+	return c == '(' || c == '{' || c == '[';
 }
 
 static inline int _token_end_list( int c )
 {
-	return c == ')' || c == '}';
+	return c == ')' || c == '}' || c == ']';
 }
 
 /**
@@ -1168,6 +1168,8 @@ static muse_cell read_special( muse_port_t f )
 	return read_bytes(f);
 }
 
+muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell args );
+
 /**
  * Reads the next symbolic expression at the current
  * stream position, ignoring white space and comment
@@ -1202,7 +1204,7 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 		f->mode = saved_mode;
 		return muse_quote(env,expr);
 	}
-	else if ( c == '(' || c == '{' )
+	else if ( _token_begin_list(c) )
 	{
 		/* List expression. */
 		port_ungetc( c, f );
@@ -1229,10 +1231,29 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 			*/
 			if ( (f->mode & MUSE_PORT_READ_EXPAND_BRACES)
 					&& (c == '{' || ((f->mode & MUSE_PORT_READ_DETECT_MACROS)
-										&& c == '(' 
+										&& (c == '(' || c == '[')
 										&& is_macro_sexpr(env,sexpr))) )
 			{
 				return _eval(sexpr);
+			}
+			else if ( env->parameters[MUSE_ENABLE_OBJC] && (c == '[') ) {
+				/* 
+				Objective C bridge:
+				 
+				First apply macro expansion if the head is a macro.
+				This way, we get a chance to modify the objc s-expression
+				before it gets transformed into the canonical function
+				call form. 
+				 */
+				if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && is_macro_sexpr(env,sexpr) )
+					sexpr = _eval(sexpr);
+#if __APPLE__
+				return fn_expand_objc_expression( env, NULL, sexpr );
+#else
+				/* If objc is not available (not supported on non-Apple platforms),
+					treat [] just like (). */
+				return sexpr;
+#endif
 			}
 			else
 				return sexpr;

@@ -12,8 +12,8 @@
 #ifndef __MUSE_CONFIG_H__
 #define __MUSE_CONFIG_H__
 
-#define MUSE_VERSION 0x0002
-#define MUSE_VERSION_STRING "0.2cp"
+#define MUSE_VERSION 0x0003
+#define MUSE_VERSION_STRING "250"
 
 #ifndef FUSSY_RELEASE
 /*	To enable FUSSY_RELEASE builds, uncomment the following #define. */

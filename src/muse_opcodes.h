@@ -190,6 +190,7 @@ struct _muse_env
 	muse_boolean		collecting_garbage;
 	struct _muse_net_t	*net;
 	muse_port_t			stdports[3];
+	void				*objc_pool;
 };
 
 extern const char *g_muse_typenames[];
@@ -554,6 +555,10 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args )
 void post_message( muse_process_frame_t *process, muse_cell msg );
 void enter_atomic(muse_env *env);
 void leave_atomic(muse_env *env);
+
+/* Objective-C functions. */
+void init_objc_bridge( muse_env *env );
+void destroy_objc_bridge( muse_env *env );
 
 END_MUSE_C_FUNCTIONS
 

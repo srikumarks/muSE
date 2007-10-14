@@ -371,7 +371,7 @@ int main( int argc, char **argv )
 		/* Its not an executable. Start the REPL. */
 		muse_repl(env);
 	}
-	
+
 	muse_destroy_env(env);
 	return 0;
 }

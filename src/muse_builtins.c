@@ -371,6 +371,10 @@ muse_cell syntax_while( muse_env *env, void *context, muse_cell args )
 	muse_cell result		= MUSE_NIL;
 	int sp = _spos();
 	
+	MUSE_DIAGNOSTICS({
+		muse_message( env, L"(while ...)", L"The 'while' loop construct is now deprecated.\nUse tail recursion instead." );
+	});
+	
 	while ( _eval(bool_expr) )
 	{
 		_unwind(sp);
@@ -404,6 +408,10 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 	muse_boolean result_expr_given = MUSE_FALSE;
 	int sp = _spos();
 
+	MUSE_DIAGNOSTICS({
+		muse_message( env, L"(for ...)", L"The 'for' loop construct is now deprecated.\nUse tail recursion instead." );
+	});
+	
 	/* A result expression after the loop body is optional. */
 	if ( args )
 	{

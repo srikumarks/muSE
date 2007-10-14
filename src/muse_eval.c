@@ -412,6 +412,25 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 				result = lazy ? _setcellt(_cons(fn,args), MUSE_LAZY_CELL)
 							  : muse_apply_lambda( env, fn, args );
 				break;
+			case MUSE_SYMBOL_CELL		:
+				/* The thing in the function position can be an "object" - i.e. a symbol to which
+				properties are attached. In this case, we interpret the remaining arguments in the
+				following way -
+					(obj 'property) -> gives the value of the specified property of the object.
+					(obj 'property value) -> sets the specified property of the object to the given value.
+				In both cases, the expression evaluates to the final value of the property.
+				*/
+				{
+					muse_cell pty = args_already_evaluated ? _next(&args) : _evalnext(&args);
+					if ( args ) {
+						muse_cell val = args_already_evaluated ? _next(&args) : _evalnext(&args);
+						result = _tail( muse_put_prop( env, fn, pty, val ) );
+					} else {
+						result =_tail( muse_search_object( env, fn, pty ) );
+					}
+				}
+				break;
+				
 			default						:
 				/*	If the first argument is not a function, simply return the sexpr. 
 					In this case, apply behaves like list. */

@@ -1,0 +1,93 @@
+// !$*UTF8*$!
+{
+	08FB7793FE84155DC02AAC07 /* Project object */ = {
+		activeBuildConfigurationName = Release;
+		activeBuildStyle = C4EC53410BFECDBB007981F5 /* Development */;
+		activeExecutable = C420F6AC0BA53C8E00FAF5C4 /* muse */;
+		activeTarget = 8DD76F960486AA7600D96B5E /* muse */;
+		addToTargets = (
+			8DD76F960486AA7600D96B5E /* muse */,
+		);
+		codeSenseManager = C420F6B30BA53CAD00FAF5C4 /* Code sense */;
+		executables = (
+			C420F6AC0BA53C8E00FAF5C4 /* muse */,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					203,
+					20,
+					48.1626,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 201248188;
+			PBXWorkspaceStateSaveDate = 201248188;
+		};
+		sourceControlManager = C420F6B20BA53CAD00FAF5C4 /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	32A70AAB03705E1F00C91783 /* muse_Prefix.pch */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {506, 319}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {441, 319}}";
+		};
+	};
+	8DD76F960486AA7600D96B5E /* muse */ = {
+		activeExec = 0;
+		executables = (
+			C420F6AC0BA53C8E00FAF5C4 /* muse */,
+		);
+	};
+	C420F6AC0BA53C8E00FAF5C4 /* muse */ = {
+		isa = PBXExecutable;
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = muse;
+		sourceDirectories = (
+		);
+	};
+	C420F6B20BA53CAD00FAF5C4 /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+		scmType = "";
+	};
+	C420F6B30BA53CAD00FAF5C4 /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+}
