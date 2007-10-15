@@ -8,6 +8,76 @@
 
 /* Begin PBXBuildFile section */
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
+		A977A7D10CC2E83300EA48A7 /* muse.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6B70BA53CB900FAF5C4 /* muse.c */; };
+		A977A7D20CC2E83A00EA48A7 /* muse.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6B90BA53CB900FAF5C4 /* muse.h */; };
+		A977A7D30CC2E83B00EA48A7 /* muse_builtin_algo.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BA0BA53CB900FAF5C4 /* muse_builtin_algo.c */; };
+		A977A7D40CC2E83D00EA48A7 /* muse_builtin_bytes.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BB0BA53CB900FAF5C4 /* muse_builtin_bytes.c */; };
+		A977A7D50CC2E83F00EA48A7 /* muse_builtin_cells.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BC0BA53CB900FAF5C4 /* muse_builtin_cells.c */; };
+		A977A7D60CC2E84000EA48A7 /* muse_builtin_class.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BD0BA53CB900FAF5C4 /* muse_builtin_class.c */; };
+		A977A7D70CC2E84100EA48A7 /* muse_builtin_comparisons.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BE0BA53CB900FAF5C4 /* muse_builtin_comparisons.c */; };
+		A977A7D80CC2E84300EA48A7 /* muse_builtin_continuation.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BF0BA53CB900FAF5C4 /* muse_builtin_continuation.c */; };
+		A977A7D90CC2E84500EA48A7 /* muse_builtin_fileport.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C00BA53CB900FAF5C4 /* muse_builtin_fileport.c */; };
+		A977A7DA0CC2E84600EA48A7 /* muse_builtin_hashtable.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C10BA53CB900FAF5C4 /* muse_builtin_hashtable.c */; };
+		A977A7DB0CC2E84800EA48A7 /* muse_builtin_HOF.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C20BA53CB900FAF5C4 /* muse_builtin_HOF.c */; };
+		A977A7DC0CC2E84900EA48A7 /* muse_builtin_io.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C30BA53CB900FAF5C4 /* muse_builtin_io.c */; };
+		A977A7DD0CC2E84A00EA48A7 /* muse_builtin_lambda.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C40BA53CB900FAF5C4 /* muse_builtin_lambda.c */; };
+		A977A7DE0CC2E84B00EA48A7 /* muse_builtin_math.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C60BA53CB900FAF5C4 /* muse_builtin_math.c */; };
+		A977A7E00CC2E84E00EA48A7 /* muse_builtin_memport.c in Sources */ = {isa = PBXBuildFile; fileRef = C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */; };
+		A977A7E10CC2E85000EA48A7 /* muse_builtin_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C80BA53CB900FAF5C4 /* muse_builtin_misc.c */; };
+		A977A7E20CC2E85700EA48A7 /* muse_builtin_networking.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C90BA53CB900FAF5C4 /* muse_builtin_networking.c */; };
+		A977A7E30CC2E85900EA48A7 /* muse_builtin_plist.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CA0BA53CB900FAF5C4 /* muse_builtin_plist.c */; };
+		A977A7E40CC2E85C00EA48A7 /* muse_builtin_vector.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CB0BA53CB900FAF5C4 /* muse_builtin_vector.c */; };
+		A977A7E50CC2E85D00EA48A7 /* muse_builtin_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CC0BA53CB900FAF5C4 /* muse_builtin_xml.c */; };
+		A977A7E80CC2E86B00EA48A7 /* muse_builtins.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CD0BA53CB900FAF5C4 /* muse_builtins.c */; };
+		A977A7EA0CC2E87100EA48A7 /* muse_cells.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CF0BA53CB900FAF5C4 /* muse_cells.c */; };
+		A977A7EB0CC2E87800EA48A7 /* muse_eval.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D10BA53CB900FAF5C4 /* muse_eval.c */; };
+		A977A7EC0CC2E87A00EA48A7 /* muse_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D20BA53CB900FAF5C4 /* muse_misc.c */; };
+		A977A7ED0CC2E87C00EA48A7 /* muse_objc.m in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D30BA53CB900FAF5C4 /* muse_objc.m */; };
+		A977A7F00CC2E88400EA48A7 /* muse_plist.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D60BA53CB900FAF5C4 /* muse_plist.c */; };
+		A977A7F10CC2E88700EA48A7 /* muse_plugin.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D70BA53CB900FAF5C4 /* muse_plugin.c */; };
+		A977A7F20CC2E88900EA48A7 /* muse_port.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6D90BA53CB900FAF5C4 /* muse_port.h */; };
+		A977A7F30CC2E88F00EA48A7 /* muse_port.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D80BA53CB900FAF5C4 /* muse_port.c */; };
+		A977A7F40CC2E89100EA48A7 /* muse_repl.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */; };
+		A977A7F50CC2E89400EA48A7 /* muse_win32.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6DB0BA53CB900FAF5C4 /* muse_win32.h */; };
+		A977A7F60CC2E89B00EA48A7 /* MuseEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */; };
+		A977A7F70CC2E89E00EA48A7 /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
+		A977A8760CC2E8CA00EA48A7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
+		A977A8FF0CC2ECA300EA48A7 /* muse.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6B90BA53CB900FAF5C4 /* muse.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9000CC2ECB900EA48A7 /* muse_config.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6D00BA53CB900FAF5C4 /* muse_config.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9010CC2ECBB00EA48A7 /* muse_opcodes.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6D40BA53CB900FAF5C4 /* muse_opcodes.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9020CC2ECBC00EA48A7 /* muse_platform.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6D50BA53CB900FAF5C4 /* muse_platform.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9030CC2ECC300EA48A7 /* muse_port.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6D90BA53CB900FAF5C4 /* muse_port.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9040CC2ECC400EA48A7 /* muse_win32.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6DB0BA53CB900FAF5C4 /* muse_win32.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9050CC2ECC500EA48A7 /* MuseEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A977A9220CC2EE6B00EA48A7 /* muse.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6B70BA53CB900FAF5C4 /* muse.c */; };
+		A977A9230CC2EE6C00EA48A7 /* muse_builtin_algo.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BA0BA53CB900FAF5C4 /* muse_builtin_algo.c */; };
+		A977A9240CC2EE6D00EA48A7 /* muse_builtin_bytes.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BB0BA53CB900FAF5C4 /* muse_builtin_bytes.c */; };
+		A977A9250CC2EE6E00EA48A7 /* muse_builtin_cells.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BC0BA53CB900FAF5C4 /* muse_builtin_cells.c */; };
+		A977A9260CC2EE6F00EA48A7 /* muse_builtin_class.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BD0BA53CB900FAF5C4 /* muse_builtin_class.c */; };
+		A977A9270CC2EE7000EA48A7 /* muse_builtin_comparisons.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BE0BA53CB900FAF5C4 /* muse_builtin_comparisons.c */; };
+		A977A9280CC2EE7100EA48A7 /* muse_builtin_continuation.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BF0BA53CB900FAF5C4 /* muse_builtin_continuation.c */; };
+		A977A9290CC2EE7100EA48A7 /* muse_builtin_fileport.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C00BA53CB900FAF5C4 /* muse_builtin_fileport.c */; };
+		A977A92A0CC2EE7200EA48A7 /* muse_builtin_hashtable.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C10BA53CB900FAF5C4 /* muse_builtin_hashtable.c */; };
+		A977A92B0CC2EE7300EA48A7 /* muse_builtin_HOF.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C20BA53CB900FAF5C4 /* muse_builtin_HOF.c */; };
+		A977A92C0CC2EE7400EA48A7 /* muse_builtin_io.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C30BA53CB900FAF5C4 /* muse_builtin_io.c */; };
+		A977A92D0CC2EE7500EA48A7 /* muse_builtin_lambda.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C40BA53CB900FAF5C4 /* muse_builtin_lambda.c */; };
+		A977A92E0CC2EE7600EA48A7 /* muse_builtin_math.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C60BA53CB900FAF5C4 /* muse_builtin_math.c */; };
+		A977A92F0CC2EE7700EA48A7 /* muse_builtin_memport.c in Sources */ = {isa = PBXBuildFile; fileRef = C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */; };
+		A977A9300CC2EE7800EA48A7 /* muse_builtin_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C80BA53CB900FAF5C4 /* muse_builtin_misc.c */; };
+		A977A9310CC2EE7900EA48A7 /* muse_builtin_networking.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6C90BA53CB900FAF5C4 /* muse_builtin_networking.c */; };
+		A977A9320CC2EE7A00EA48A7 /* muse_builtin_plist.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CA0BA53CB900FAF5C4 /* muse_builtin_plist.c */; };
+		A977A9330CC2EE7B00EA48A7 /* muse_builtin_vector.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CB0BA53CB900FAF5C4 /* muse_builtin_vector.c */; };
+		A977A9340CC2EE7D00EA48A7 /* muse_builtin_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CC0BA53CB900FAF5C4 /* muse_builtin_xml.c */; };
+		A977A9350CC2EE7E00EA48A7 /* muse_builtins.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CD0BA53CB900FAF5C4 /* muse_builtins.c */; };
+		A977A9360CC2EE8000EA48A7 /* muse_cells.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6CF0BA53CB900FAF5C4 /* muse_cells.c */; };
+		A977A9370CC2EE8100EA48A7 /* muse_eval.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D10BA53CB900FAF5C4 /* muse_eval.c */; };
+		A977A9380CC2EE8200EA48A7 /* muse_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D20BA53CB900FAF5C4 /* muse_misc.c */; };
+		A977A9390CC2EE8300EA48A7 /* muse_objc.m in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D30BA53CB900FAF5C4 /* muse_objc.m */; };
+		A977A93A0CC2EE8500EA48A7 /* muse_plist.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D60BA53CB900FAF5C4 /* muse_plist.c */; };
+		A977A93B0CC2EE8600EA48A7 /* muse_plugin.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D70BA53CB900FAF5C4 /* muse_plugin.c */; };
+		A977A93C0CC2EE8700EA48A7 /* muse_port.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D80BA53CB900FAF5C4 /* muse_port.c */; };
+		A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */; };
+		A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
 		A9BAAA120BAA6D04003F0B9B /* MuseEnvironment.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */; };
 		A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
 		C420F6DC0BA53CB900FAF5C4 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6B60BA53CB900FAF5C4 /* main.c */; };
@@ -49,6 +119,16 @@
 		C4EC539B0BFECE09007981F5 /* muse_builtin_memport.c in Sources */ = {isa = PBXBuildFile; fileRef = C4EC539A0BFECE09007981F5 /* muse_builtin_memport.c */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A977A8F80CC2EC4F00EA48A7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 08FB7793FE84155DC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A977A7CC0CC2E7DD00EA48A7;
+			remoteInfo = libmuse;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		8DD76F9E0486AA7600D96B5E /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -68,12 +148,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		A977A91C0CC2EDDA00EA48A7 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		08FB779EFE84155DC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
-		32A70AAB03705E1F00C91783 /* muse_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = muse_Prefix.pch; sourceTree = "<group>"; };
 		8DD76FA10486AA7600D96B5E /* muse */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muse; sourceTree = BUILT_PRODUCTS_DIR; };
+		A977A7CD0CC2E7DD00EA48A7 /* libmuse.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libmuse.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		A977A8930CC2E99C00EA48A7 /* muse-framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "muse-framework-Info.plist"; sourceTree = "<group>"; };
+		A977A8F30CC2EC3400EA48A7 /* muse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = muse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MuseEnvironment.h; sourceTree = "<group>"; };
 		A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MuseEnvironment.m; sourceTree = "<group>"; };
 		C420F6B60BA53CB900FAF5C4 /* main.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
@@ -124,6 +215,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A977A7CB0CC2E7DD00EA48A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A977A8760CC2E8CA00EA48A7 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A977A8F10CC2EC3400EA48A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -134,6 +240,7 @@
 				08FB7795FE84155DC02AAC07 /* Source */,
 				08FB779DFE84155DC02AAC07 /* External Frameworks and Libraries */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
+				A977A8930CC2E99C00EA48A7 /* muse-framework-Info.plist */,
 			);
 			name = muse;
 			sourceTree = "<group>";
@@ -141,7 +248,6 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				32A70AAB03705E1F00C91783 /* muse_Prefix.pch */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -158,6 +264,8 @@
 			isa = PBXGroup;
 			children = (
 				8DD76FA10486AA7600D96B5E /* muse */,
+				A977A7CD0CC2E7DD00EA48A7 /* libmuse.dylib */,
+				A977A8F30CC2EC3400EA48A7 /* muse.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -211,6 +319,34 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXHeadersBuildPhase section */
+		A977A7C90CC2E7DD00EA48A7 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A977A7D20CC2E83A00EA48A7 /* muse.h in Headers */,
+				A977A7F20CC2E88900EA48A7 /* muse_port.h in Headers */,
+				A977A7F50CC2E89400EA48A7 /* muse_win32.h in Headers */,
+				A977A7F60CC2E89B00EA48A7 /* MuseEnvironment.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A977A8EE0CC2EC3400EA48A7 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A977A8FF0CC2ECA300EA48A7 /* muse.h in Headers */,
+				A977A9000CC2ECB900EA48A7 /* muse_config.h in Headers */,
+				A977A9010CC2ECBB00EA48A7 /* muse_opcodes.h in Headers */,
+				A977A9020CC2ECBC00EA48A7 /* muse_platform.h in Headers */,
+				A977A9030CC2ECC300EA48A7 /* muse_port.h in Headers */,
+				A977A9040CC2ECC400EA48A7 /* muse_win32.h in Headers */,
+				A977A9050CC2ECC500EA48A7 /* MuseEnvironment.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
 /* Begin PBXNativeTarget section */
 		8DD76F960486AA7600D96B5E /* muse */ = {
 			isa = PBXNativeTarget;
@@ -230,6 +366,43 @@
 			productReference = 8DD76FA10486AA7600D96B5E /* muse */;
 			productType = "com.apple.product-type.tool";
 		};
+		A977A7CC0CC2E7DD00EA48A7 /* libmuse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A977A7CE0CC2E80D00EA48A7 /* Build configuration list for PBXNativeTarget "libmuse" */;
+			buildPhases = (
+				A977A7C90CC2E7DD00EA48A7 /* Headers */,
+				A977A7CA0CC2E7DD00EA48A7 /* Sources */,
+				A977A7CB0CC2E7DD00EA48A7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = libmuse;
+			productName = museli;
+			productReference = A977A7CD0CC2E7DD00EA48A7 /* libmuse.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		A977A8F20CC2EC3400EA48A7 /* muse-framework */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A977A8FC0CC2EC6D00EA48A7 /* Build configuration list for PBXNativeTarget "muse-framework" */;
+			buildPhases = (
+				A977A8EE0CC2EC3400EA48A7 /* Headers */,
+				A977A8EF0CC2EC3400EA48A7 /* Resources */,
+				A977A8F00CC2EC3400EA48A7 /* Sources */,
+				A977A8F10CC2EC3400EA48A7 /* Frameworks */,
+				A977A91C0CC2EDDA00EA48A7 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A977A8F90CC2EC4F00EA48A7 /* PBXTargetDependency */,
+			);
+			name = "muse-framework";
+			productName = "muse-framework";
+			productReference = A977A8F30CC2EC3400EA48A7 /* muse.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -241,9 +414,21 @@
 			projectDirPath = "";
 			targets = (
 				8DD76F960486AA7600D96B5E /* muse */,
+				A977A7CC0CC2E7DD00EA48A7 /* libmuse */,
+				A977A8F20CC2EC3400EA48A7 /* muse-framework */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A977A8EF0CC2EC3400EA48A7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8DD76F990486AA7600D96B5E /* Sources */ = {
@@ -283,7 +468,87 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A977A7CA0CC2E7DD00EA48A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A977A7D40CC2E83D00EA48A7 /* muse_builtin_bytes.c in Sources */,
+				A977A7D50CC2E83F00EA48A7 /* muse_builtin_cells.c in Sources */,
+				A977A7D60CC2E84000EA48A7 /* muse_builtin_class.c in Sources */,
+				A977A7D70CC2E84100EA48A7 /* muse_builtin_comparisons.c in Sources */,
+				A977A7D80CC2E84300EA48A7 /* muse_builtin_continuation.c in Sources */,
+				A977A7D90CC2E84500EA48A7 /* muse_builtin_fileport.c in Sources */,
+				A977A7DA0CC2E84600EA48A7 /* muse_builtin_hashtable.c in Sources */,
+				A977A7DB0CC2E84800EA48A7 /* muse_builtin_HOF.c in Sources */,
+				A977A7DC0CC2E84900EA48A7 /* muse_builtin_io.c in Sources */,
+				A977A7DD0CC2E84A00EA48A7 /* muse_builtin_lambda.c in Sources */,
+				A977A7DE0CC2E84B00EA48A7 /* muse_builtin_math.c in Sources */,
+				A977A7E00CC2E84E00EA48A7 /* muse_builtin_memport.c in Sources */,
+				A977A7E10CC2E85000EA48A7 /* muse_builtin_misc.c in Sources */,
+				A977A7E20CC2E85700EA48A7 /* muse_builtin_networking.c in Sources */,
+				A977A7E30CC2E85900EA48A7 /* muse_builtin_plist.c in Sources */,
+				A977A7E40CC2E85C00EA48A7 /* muse_builtin_vector.c in Sources */,
+				A977A7E50CC2E85D00EA48A7 /* muse_builtin_xml.c in Sources */,
+				A977A7D10CC2E83300EA48A7 /* muse.c in Sources */,
+				A977A7D30CC2E83B00EA48A7 /* muse_builtin_algo.c in Sources */,
+				A977A7E80CC2E86B00EA48A7 /* muse_builtins.c in Sources */,
+				A977A7EA0CC2E87100EA48A7 /* muse_cells.c in Sources */,
+				A977A7EB0CC2E87800EA48A7 /* muse_eval.c in Sources */,
+				A977A7EC0CC2E87A00EA48A7 /* muse_misc.c in Sources */,
+				A977A7ED0CC2E87C00EA48A7 /* muse_objc.m in Sources */,
+				A977A7F00CC2E88400EA48A7 /* muse_plist.c in Sources */,
+				A977A7F10CC2E88700EA48A7 /* muse_plugin.c in Sources */,
+				A977A7F30CC2E88F00EA48A7 /* muse_port.c in Sources */,
+				A977A7F40CC2E89100EA48A7 /* muse_repl.c in Sources */,
+				A977A7F70CC2E89E00EA48A7 /* MuseEnvironment.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A977A8F00CC2EC3400EA48A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A977A9220CC2EE6B00EA48A7 /* muse.c in Sources */,
+				A977A9230CC2EE6C00EA48A7 /* muse_builtin_algo.c in Sources */,
+				A977A9240CC2EE6D00EA48A7 /* muse_builtin_bytes.c in Sources */,
+				A977A9250CC2EE6E00EA48A7 /* muse_builtin_cells.c in Sources */,
+				A977A9260CC2EE6F00EA48A7 /* muse_builtin_class.c in Sources */,
+				A977A9270CC2EE7000EA48A7 /* muse_builtin_comparisons.c in Sources */,
+				A977A9280CC2EE7100EA48A7 /* muse_builtin_continuation.c in Sources */,
+				A977A9290CC2EE7100EA48A7 /* muse_builtin_fileport.c in Sources */,
+				A977A92A0CC2EE7200EA48A7 /* muse_builtin_hashtable.c in Sources */,
+				A977A92B0CC2EE7300EA48A7 /* muse_builtin_HOF.c in Sources */,
+				A977A92C0CC2EE7400EA48A7 /* muse_builtin_io.c in Sources */,
+				A977A92D0CC2EE7500EA48A7 /* muse_builtin_lambda.c in Sources */,
+				A977A92E0CC2EE7600EA48A7 /* muse_builtin_math.c in Sources */,
+				A977A92F0CC2EE7700EA48A7 /* muse_builtin_memport.c in Sources */,
+				A977A9300CC2EE7800EA48A7 /* muse_builtin_misc.c in Sources */,
+				A977A9310CC2EE7900EA48A7 /* muse_builtin_networking.c in Sources */,
+				A977A9320CC2EE7A00EA48A7 /* muse_builtin_plist.c in Sources */,
+				A977A9330CC2EE7B00EA48A7 /* muse_builtin_vector.c in Sources */,
+				A977A9340CC2EE7D00EA48A7 /* muse_builtin_xml.c in Sources */,
+				A977A9350CC2EE7E00EA48A7 /* muse_builtins.c in Sources */,
+				A977A9360CC2EE8000EA48A7 /* muse_cells.c in Sources */,
+				A977A9370CC2EE8100EA48A7 /* muse_eval.c in Sources */,
+				A977A9380CC2EE8200EA48A7 /* muse_misc.c in Sources */,
+				A977A9390CC2EE8300EA48A7 /* muse_objc.m in Sources */,
+				A977A93A0CC2EE8500EA48A7 /* muse_plist.c in Sources */,
+				A977A93B0CC2EE8600EA48A7 /* muse_plugin.c in Sources */,
+				A977A93C0CC2EE8700EA48A7 /* muse_port.c in Sources */,
+				A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */,
+				A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A977A8F90CC2EC4F00EA48A7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A977A7CC0CC2E7DD00EA48A7 /* libmuse */;
+			targetProxy = A977A8F80CC2EC4F00EA48A7 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1DEB927508733DD40010E9CD /* Debug */ = {
@@ -349,6 +614,96 @@
 			};
 			name = Release;
 		};
+		A977A7CF0CC2E80D00EA48A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = muse;
+				ZERO_LINK = YES;
+			};
+			name = Debug;
+		};
+		A977A7D00CC2E80D00EA48A7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = muse;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		A977A8FD0CC2EC6D00EA48A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_VERSION = A;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_SYMBOL_SEPARATION = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = NO;
+				GCC_PREFIX_HEADER = "";
+				INFOPLIST_FILE = "muse-framework-Info.plist";
+				INSTALL_PATH = "$(HOME)/Library/Frameworks";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					AppKit,
+				);
+				PREBINDING = NO;
+				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
+				PRODUCT_NAME = muse;
+				ZERO_LINK = YES;
+			};
+			name = Debug;
+		};
+		A977A8FE0CC2EC6D00EA48A7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_VERSION = A;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_ENABLE_SYMBOL_SEPARATION = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = NO;
+				GCC_PREFIX_HEADER = "";
+				INFOPLIST_FILE = "muse-framework-Info.plist";
+				INSTALL_PATH = "$(HOME)/Library/Frameworks";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					AppKit,
+				);
+				PREBINDING = NO;
+				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
+				PRODUCT_NAME = muse;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -366,6 +721,24 @@
 			buildConfigurations = (
 				1DEB927908733DD40010E9CD /* Debug */,
 				1DEB927A08733DD40010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A977A7CE0CC2E80D00EA48A7 /* Build configuration list for PBXNativeTarget "libmuse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A977A7CF0CC2E80D00EA48A7 /* Debug */,
+				A977A7D00CC2E80D00EA48A7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A977A8FC0CC2EC6D00EA48A7 /* Build configuration list for PBXNativeTarget "muse-framework" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A977A8FD0CC2EC6D00EA48A7 /* Debug */,
+				A977A8FE0CC2EC6D00EA48A7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
