@@ -20,7 +20,7 @@
 /*@{*/
 muse_boolean muse_network_startup( muse_env *env );
 void muse_network_shutdown( muse_env *env );
-muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell args );
+muse_cell fn_open( muse_env *env, void *context, muse_cell args );
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args );
 muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args );
 muse_cell fn_multicast_group( muse_env *env, void *context, muse_cell args );
@@ -33,6 +33,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	include <signal.h>
 #	include <sys/socket.h>
 #	include <sys/filio.h>
+#	include <netdb.h>
 #	include <netinet/in.h>
 #	include <arpa/inet.h>
 #	define SOCKET int
@@ -294,91 +295,58 @@ static muse_port_type_t g_socket_type =
 };
 
 /**
- * (with-connection-to-server server-port-string service-fn).
- * Connects to the given server on the given port and invokes the
- * given service-fn with the reader and writer for the connection.
- * Works only with s-expression streams.
- * 
- * For example -
- * @code
- * (with-connection-to-server "123.234.134.23:8080"
- *     (fn (port)
- *        (write port '(hello world))
- *        (case (read port)
- *           ('hi (print "Success!\n"))
- *           (()  (print "Failed!\n")))))
- * @endcode
- * 
- * @see fn_with_incoming_connections_to_port()
+ * (open "server.somewhere.com" port)
+ * (open "231.41.59.26" 31415)
+ *
+ * Opens a TCP connection to the given server on the given port
+ * and returns a port object using which you can communicate with
+ * the server. The port can be closed by calling (close p). If a
+ * port number is omitted, 31415 (= \p MUSE_DEFAULT_MULTICAST_PORT)
+ * is used as the default.
  */
-muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell args )
+muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 {
 	int sp					= _spos();
 	muse_cell result		= MUSE_NIL;
-	muse_cell serverport	= _evalnext(&args);
+	muse_cell servername	= _evalnext(&args);
+	muse_cell portnum		= _evalnext(&args);
 
 	muse_cell portcell		= _mk_functional_object( &g_socket_type.obj, MUSE_NIL );
 	socketport_t *port		= (socketport_t*)_port(portcell);
 	
-	char serverStringAddress[32];
-	char *serverPortAddress;
+	in_addr_t addr = INADDR_NONE;
+	char serverStringAddress[256];
+	short portshort = 0;
 	int length = 0;
-	const muse_char *serverWstringAddress = _text_contents( serverport, &length );
-	if ( length > 17 )
-	{
-		MUSE_DIAGNOSTICS({
-			muse_message( env,L"(with-connection-to-server >>addr<< ...)",
-						  L"Invalid server address spec '%s'\n"
-						  L"Address must have the form NNN.NNN.NNN.NNN:PPPP\n", 
-						  serverWstringAddress );
-		});
-		goto UNDO_CONN;
-	}
+	const muse_char *serverWstringAddress = _text_contents( servername, &length );
+	muse_unicode_to_utf8( serverStringAddress, 256, serverWstringAddress, length );
 	
-	muse_unicode_to_utf8( serverStringAddress, 32, _text_contents(serverport,NULL), length );
-	serverPortAddress = strchr( serverStringAddress, ':' );
-	if ( serverPortAddress )
-	{
-		serverPortAddress[0] = '\0';
-		++serverPortAddress;
-		/* We have now split the server:port string to separate
-			server and port strings. */
+	portshort = (short)(portnum ? _intvalue(portnum) : MUSE_DEFAULT_MULTICAST_PORT);
+	
+	addr = inet_addr( serverStringAddress );
+	if ( addr == INADDR_NONE ) {
+		/* Address not in 123.234.12.23 form. Treat it as a name and look it up in the name server. */
+		struct hostent *ent = gethostbyname( serverStringAddress );
+		if ( ent == NULL ) {
+			/* Invalid server address. */
+			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%d' failed!\n", serverStringAddress, portshort ); herror("inet error:"); });
+			goto UNDO_CONN;
+		}
+		if ( ent->h_length > 0 ) {
+			addr = *(uint32_t*)ent->h_addr;
+		} else {
+			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Invalid address '%s:%d'!\n", serverStringAddress, portshort ); });
+			goto UNDO_CONN;
+		}
 	}
 	
 	port->address.sin_family		= AF_INET;
-	port->address.sin_addr.s_addr	= inet_addr(serverStringAddress);
-	port->address.sin_port			= htons( (short)(serverPortAddress ? atoi(serverPortAddress) : MUSE_DEFAULT_MULTICAST_PORT) );
+	port->address.sin_addr.s_addr	= addr;
+	port->address.sin_port			= htons( portshort );
 	
 	port->socket = socket(AF_INET, SOCK_STREAM, 0);
-	
-	/**
-	 * NOTE:
-	 *
-	 * Windows doesn't close blocking sockets properly if you ask it
-	 * to do a "graceful close". This affects the other side of the network.
-	 * For example, Java doesn't get to throw an IOException upon a 
-	 * sincere plain ::closesocket() call and just hangs on the
-	 * InputStream's read() method. The painful part is that this behaviour 
-	 * is not consistent from socket to socket. For one socket the close
-	 * operation might succeed gracefully whereas for another it might fail,
-	 * for no particular fault of yours.
-	 *
-	 * Therefore the default way we'll close client sockets in Windows is 
-	 * by setting it to do a "hard close". 
-	 * 
-	 * To do such a "hard close", you set the SO_LINGER parameter of the socket 
-	 * and give a zero timeout period. This is what the following ::setsockopt()
-	 * call does.
-	 *
-	 * CORRECTION: Sorry! It doesn't seem to be a Windows problem.It is supposed
-	 * to be standard socket behaviour. The ::closesocket() call will ultimately
-	 * result in the local socket being close only after the remote socket closes.
-	 * How does the remote socket know when to close? He should check the return
-	 * value of the ::read() call. When ::read() returns 0, it is supposed to 
-	 * indicate closing time (other possibility is a ::shutdown()). But Java doesn't
-	 * return from read at all!!
-	 */
-	
+
+	/* Set a zero timeout period using the SO_LINGER parameter. */
     if ( port->socket > 0 ) 
 	{
         struct linger lingerParams = { 1, 0 };
@@ -386,34 +354,26 @@ muse_cell fn_with_connection_to_server( muse_env *env, void *context, muse_cell 
         setsockopt( port->socket, SOL_SOCKET, SO_LINGER, (const char *)&lingerParams, sizeof(struct linger) );
 		ioctlsocket( port->socket, FIONBIO, &nbmode );
     }
-	
+
 	/* Connect to the server. Connection will proceed asynchronously. 
 	We poll the network for writeability of this socket in order to determine
 	whether it is connected. */
 	prepare_for_network_poll( env, port->socket, 1 );
 	connect( port->socket, (struct sockaddr*)&(port->address), sizeof(port->address) );
-
-	if ( !poll_network( env, port->socket, 1 ) )
+	
+	if ( !poll_network( env, port->socket, 1 ) ) 
 	{
-		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%s' failed!\n", serverStringAddress, serverPortAddress ); });
+		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%d' failed!\n", serverStringAddress, portshort ); });
 		goto UNDO_CONN;
 	}
-	
+
 	port->base.mode = MUSE_PORT_READ_WRITE;
 
-	/* Connection succeeded. Call the service function. */
-	{
-		muse_cell handler = _evalnext(&args);
-		muse_cell port_args = _cons( portcell, MUSE_NIL );
-		
-		result = _apply( handler, port_args, MUSE_TRUE );
-		
-		/* Save the result. */
-		_unwind(sp);
-		_spush(result);
-	}
-	
-	
+	/* Connection succeeded. Return the port. */
+	_unwind(sp);
+	_spush(portcell);
+	return portcell;
+
 UNDO_CONN:
 	/* Close the connection and return. */
 	if ( port )
@@ -421,7 +381,7 @@ UNDO_CONN:
 		port_close( (muse_port_t)port );
 	}
 	
-	return result;
+	return MUSE_NIL;
 }
 
 
@@ -945,7 +905,7 @@ void muse_define_builtin_networking(muse_env *env)
 
 	static const struct funs_t k_networking_funs[] =
 	{
-		{		L"with-connection-to-server",			fn_with_connection_to_server			},
+		{		L"open",								fn_open									},
 		{		L"with-incoming-connections-to-port",	fn_with_incoming_connections_to_port	},
 		{		L"wait-for-input",						fn_wait_for_input						},
 		{		L"multicast-group",						fn_multicast_group						},
