@@ -54,6 +54,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 
 #ifdef MUSE_PLATFORM_WINDOWS
 #	define MUSE_SO_REUSE SO_REUSEADDR
+typedef unsigned long in_addr_t;
 
 /** For Windows, we have to explicitly startup the socket
 library! What a stupid thing to have to do! */
@@ -227,9 +228,12 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 {
 	socketport_t *p = (socketport_t*)s;
 	
-	muse_int result;
+	muse_int result = SOCKET_ERROR;
 	
-	result = poll_network( p->base.env, p->socket, 0 ) ? recv( p->socket, buffer, (int)nbytes, 0 ) : SOCKET_ERROR;
+	while ( result <= 0 && poll_network( p->base.env, p->socket, 0 ) ) 
+	{
+		result = recv( p->socket, buffer, (int)nbytes, 0 );
+	}
 	
 	if ( result <= 0 )
 	{
@@ -333,7 +337,7 @@ muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 			goto UNDO_CONN;
 		}
 		if ( ent->h_length > 0 ) {
-			addr = *(uint32_t*)ent->h_addr;
+			addr = *(in_addr_t*)ent->h_addr;
 		} else {
 			MUSE_DIAGNOSTICS3({ fprintf( stderr, "Invalid address '%s:%d'!\n", serverStringAddress, portshort ); });
 			goto UNDO_CONN;
