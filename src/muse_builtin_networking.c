@@ -41,6 +41,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	define INVALID_SOCKET (-1)
 #	define closesocket(x) close(x)
 #	define ioctlsocket(a,b,c) ioctl(a,b,c)
+extern int errno;
 #else
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
@@ -230,9 +231,17 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 	
 	muse_int result = SOCKET_ERROR;
 	
-	while ( result <= 0 && poll_network( p->base.env, p->socket, 0 ) ) 
+	while ( result < 0 && poll_network( p->base.env, p->socket, 0 ) )
 	{
 		result = recv( p->socket, buffer, (int)nbytes, 0 );
+		if ( result == 0 ) {
+			/* Socket closed from the other end. */
+			break;
+		} else if ( result < 0 ) {
+			/* The poll_network() hasn't updated to the new state 
+			that no more data is available. So clear the state flag. */
+			FD_CLR( p->socket, &(p->base.env->net->fdsets[0]) );
+		}
 	}
 	
 	if ( result <= 0 )
@@ -379,6 +388,7 @@ muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 	return portcell;
 
 UNDO_CONN:
+	_unwind(sp);
 	/* Close the connection and return. */
 	if ( port )
 	{
