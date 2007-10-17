@@ -623,6 +623,10 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 					break;
 				}
 
+				/* When we are switching to handlers of shallower traps,
+				it shouldn't matter if a handler has already been tried.
+				We should try all shallower handlers again. */
+				trap->tried_handlers = MUSE_NIL;
 				handlers = trap->handlers;
 			}
 		}
@@ -806,7 +810,9 @@ muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
 	trap_point_t *trap = _tpdata(trapval);
 
 	if ( trap )
+	{
 		resume_invoke( env, &(trap->escape), _qq(handler_args) );
+	}
 	else
 	{
 		muse_message( env, L"(retry ...)", L"No alternatives to try!\nEnclose in (try ...) block and provide alternatives." );
