@@ -331,7 +331,14 @@ muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 	char serverStringAddress[256];
 	short portshort = 0;
 	int length = 0;
-	const muse_char *serverWstringAddress = _text_contents( servername, &length );
+	const muse_char *serverWstringAddress;
+	
+	/* If we're given a symbol for the server name, we use the string form of
+	the symbol and look it up in the DNS. */
+	if ( _cellt(servername) == MUSE_SYMBOL_CELL )
+		servername = _symname(servername);
+		
+	serverWstringAddress = _text_contents( servername, &length );
 	muse_unicode_to_utf8( serverStringAddress, 256, serverWstringAddress, length );
 	
 	portshort = (short)(portnum ? _intvalue(portnum) : MUSE_DEFAULT_MULTICAST_PORT);
