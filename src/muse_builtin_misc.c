@@ -190,3 +190,78 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 }
 
 #endif
+
+
+/**
+ * Finds the first position of the given character in the given string.
+ * the return value will either point to the character or be 0 if the
+ * end of string was reached without encountering the character.
+ */
+static const muse_char *findnext( const muse_char *str, muse_char c )
+{
+	while ( str[0] && str[0] != c ) ++str;
+	return str;
+}
+
+struct separator_state_t {
+	const muse_char *str;
+	const muse_char *sep;
+	const muse_char *currsep;
+};
+
+muse_cell fieldgen( muse_env *env, void *context, int i, muse_boolean *eol )
+{
+	struct separator_state_t *s = (struct separator_state_t*)context;
+	
+	if ( s->str[0] == 0 )
+	{
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+	
+	(*eol) = MUSE_FALSE;
+	
+	{
+		const muse_char *end = findnext( s->str, s->currsep[0] );
+		muse_cell field = muse_mk_text(env, s->str, end );
+		if ( end[0] ) s->str = end + 1; else s->str = end;
+		
+		/* Cycle through the seequence of separators given. */
+		s->currsep++;
+		if ( s->currsep[0] == 0 ) s->currsep = s->sep;
+		
+		return field;
+	}
+}
+
+
+/**
+ * (split "one;two;;three;" ";") -> ("one" "two" "" "three" "")
+ * (split "one=1;two=2;three=3" "=;") -> ("one" "1" "two" "2" "three" "3")
+ *
+ * The first argument is the string to split and the second 
+ * argument is a character separator. 
+ *
+ * You can define a recursive splitter like this -
+ * @code
+(define (split-rec str (sep . seps))
+	(if seps
+		(map (fn (s) (split-rec s seps)) (split str sep))
+		(split str sep)))  
+ * @endcode
+ * so that @code (split-rec "a=1&b=2&c=3" '("&" "=")) @endcode
+ * will give you @code (("a" "1") ("b" "2") ("c" "3")) @endcode.
+ */
+muse_cell fn_split( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell strc = _evalnext(&args);
+	muse_cell sep = _evalnext(&args);
+	muse_cell result = MUSE_NIL;
+	
+	struct separator_state_t state;
+	state.str = _text_contents(strc,NULL);
+	state.sep = _text_contents(sep,NULL);
+	state.currsep = state.sep;
+
+	return muse_generate_list( env, fieldgen, &state );
+}

@@ -176,6 +176,7 @@ static const struct _builtins
 {		L"load-plugin",				fn_load_plugin				},
 {		L"list-files",				fn_list_files				},
 {		L"list-folders",			fn_list_folders				},
+{		L"split",					fn_split					},
 	
 {		NULL,			NULL				}
 };
