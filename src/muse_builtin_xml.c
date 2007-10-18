@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 static void write_xml_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
-static void write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
 static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
 
 /**
@@ -130,12 +130,14 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
 
 			if ( children )
 			{
+				int nested_tag_count = 0;
 				port_putc( '>', port );
 				while ( children )
 				{
-					write_xml_child_node( env, port, _next(&children), depth+1 );
+					nested_tag_count += write_xml_child_node( env, port, _next(&children), depth+1 );
 				}
-				indent( env,port,depth);
+				if ( nested_tag_count > 0 )
+					indent( env,port,depth);
 				port_putc( '<', port );
 				port_putc( '/', port );
 				muse_pwrite( port, tag );
@@ -184,7 +186,7 @@ static void write_tag_attrs( muse_env *env, muse_port_t port, muse_cell attrs )
 	}
 }
 
-static void write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth )
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth )
 {
 	if ( _cellt(xmlnode) == MUSE_TEXT_CELL )
 	{
@@ -200,10 +202,12 @@ static void write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnod
 			else
 				port_putc( c, p );
 		}
+		return 0;
 	}
 	else
 	{
 		write_xml_node( env, p, xmlnode, depth );
+		return 1;
 	}
 }
 
