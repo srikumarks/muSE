@@ -761,6 +761,13 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 
 	muse_cell result = MUSE_NIL;
 
+	/* The next pointer isn't linked yet. Do that. */
+	{
+		trap_point_t *tpprev = _tpdata(tp->prev);
+		if ( tpprev )
+			tpprev->next = trapval;
+	}
+
 	_define( _builtin_symbol( MUSE_TRAP_POINT ), trapval );
 
 	if ( resume_capture( env, &(tp->escape), setjmp(tp->escape.state) ) == 0 )
@@ -787,10 +794,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 
 	/* We need to invoke the finalizers of all the trap points
 	that led us up to this point, starting from the deepest one. */
-	if ( tp->finalizers )
-	{
-		trap_point_finalize( env, tp );
-	}
+	trap_point_finalize( env, tp );
 	
 	tp->tried_handlers = MUSE_NIL;
 	_define( _builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
