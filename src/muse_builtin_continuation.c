@@ -451,10 +451,17 @@ typedef struct _trap_point_t
 	muse_functional_object_t base;
 	resume_point_t escape;	/**< The resume point to invoke to return from the try block. */
 	muse_cell handlers;		/**< A list of unevaluated handlers. */
-	muse_cell prev;			/**< The previous trap point. */
+	muse_cell prev;			/**< The previous shallower trap point. */
+	muse_cell next;			/**< The next deeper trap point. */
 	muse_cell tried_handlers; /**< The list of handlers already tried. 
 									 Used to prevent re-entry into the same handler
 									 that might result in an infinite loop and stack blow up. */
+	muse_cell finalizers;  /**< Often, you want some resource cleanup operation to
+								happen when the try block exits. For this purpose,
+								we keep a "finalizers" list to which you can add
+								thunks by invoking (finally (fn () ...) ...).
+								Finalizers are evaluated in the reverse order in which
+								they are created. */
 } trap_point_t;
 
 #define _tpdata(trap) trap_point_data(env,trap)
@@ -510,6 +517,30 @@ static void trap_point_mark( muse_env *env, void *p )
 	muse_mark( env, trap->handlers );
 	muse_mark( env, trap->tried_handlers );
 	muse_mark( env, trap->prev );
+	muse_mark( env, trap->next );
+	muse_mark( env, trap->finalizers );
+}
+
+/**
+ * Starts from the deepest trap point, runs its finalizers,
+ * then all the way up to the try block that is exiting.
+ */
+static void trap_point_finalize( muse_env *env, trap_point_t *trap )
+{
+	/* Deepest first. */
+	if ( trap->next )
+		trap_point_finalize( env, _tpdata(trap->next) );
+		
+	/* Disconnect the finished trap point. */
+	trap->next = MUSE_NIL;
+	
+	while ( trap->finalizers )
+	{
+		muse_cell f = trap->finalizers;
+		muse_cell thunk = _next(&(trap->finalizers));
+		_apply(thunk,MUSE_NIL,MUSE_TRUE);
+		_returncell(f); /* Cell used by runtime and not accessible to system. */
+	}
 }
 
 static muse_cell fn_trap_point( muse_env *env, void *trap_point, muse_cell args )
@@ -754,6 +785,13 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 		}
 	}
 
+	/* We need to invoke the finalizers of all the trap points
+	that led us up to this point, starting from the deepest one. */
+	if ( tp->finalizers )
+	{
+		trap_point_finalize( env, tp );
+	}
+	
 	tp->tried_handlers = MUSE_NIL;
 	_define( _builtin_symbol( MUSE_TRAP_POINT ), tp->prev );
 	return result;
@@ -820,4 +858,21 @@ muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
 	}
 
 	return MUSE_NIL; /* Never returns! */
+}
+
+/**
+ * Installs a finalizer for the current trap state.
+ * A finally block's body will be captured in a closure
+ * and installed as a finalizer thunk.
+ */
+muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
+{
+	/* Get the current trap point. */
+	muse_cell trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+	trap_point_t *trap = _tpdata(trapval);
+	
+	muse_cell finalizer = _force(_eval( syntax_lambda(env,NULL,_cons(MUSE_NIL,args)) ));
+	trap->finalizers = _cons( finalizer, trap->finalizers );
+	
+	return finalizer;
 }

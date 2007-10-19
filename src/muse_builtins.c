@@ -36,10 +36,13 @@ static const struct _builtins
 {		L"apply",		fn_apply			},
 {		L"apply/keywords",	fn_apply_w_keywords	},
 {		L"call/keywords",	fn_call_w_keywords	},
+
+/************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
 {		L"try",			syntax_try				},
 {		L"raise",		fn_raise			},
 {		L"retry",		fn_retry			},
+{		L"finally",		syntax_finally		},
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
