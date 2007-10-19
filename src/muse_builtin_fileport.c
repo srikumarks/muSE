@@ -72,6 +72,7 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 		if ( !p->file )
 		{
 			p->base.error = -1;
+			p->base.eof = -1;
 			return;
 		}
 		p->desc = fileno( p->file );
