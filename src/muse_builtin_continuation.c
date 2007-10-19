@@ -875,8 +875,15 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 	muse_cell trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
 	trap_point_t *trap = _tpdata(trapval);
 	
-	muse_cell finalizer = _force(_eval( syntax_lambda(env,NULL,_cons(MUSE_NIL,args)) ));
-	trap->finalizers = _cons( finalizer, trap->finalizers );
-	
-	return finalizer;
+	if ( trap )
+	{
+		muse_cell finalizer = _force(_eval( syntax_lambda(env,NULL,_cons(MUSE_NIL,args)) ));
+		trap->finalizers = _cons( finalizer, trap->finalizers );	
+		return finalizer;
+	}
+	else
+	{
+		MUSE_DIAGNOSTICS2({ muse_message( env, L"(finally ...)", L"No enclosing (try ...) block!" ); });
+		return MUSE_NIL;
+	}
 }
