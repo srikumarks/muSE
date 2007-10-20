@@ -302,6 +302,14 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 	}
 #endif
 
+muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args );
+
+static muse_cell fn_repl( muse_env *env, void *context, muse_cell args ) 
+{ 
+	muse_repl(env); 
+	return MUSE_NIL; 
+}
+
 /**
  * Usage:
  * A)	fullpath-to-muse/muse --exec execfile source1.scm source2.scm ...
@@ -356,20 +364,20 @@ int main( int argc, char **argv )
 			data.argv = argv+1;
 			
 			args = muse_generate_list( env, args_list_generator, &data );
-			_apply( fn_main, args, MUSE_TRUE );
+			try_apply( env, fn_main, args );
 		}
 		else
 		{
 			/* Drop into the REPL if there is no main function defined.
 			This way, we can load some library functions that we
 			always need and are defined at the scheme level. */
-			muse_repl(env);
+			try_apply( env, _mk_nativefn(fn_repl,NULL), MUSE_NIL );
 		}
 	}
 	else
 	{
 		/* Its not an executable. Start the REPL. */
-		muse_repl(env);
+		try_apply( env, _mk_nativefn(fn_repl,NULL), MUSE_NIL );
 	}
 
 	muse_destroy_env(env);

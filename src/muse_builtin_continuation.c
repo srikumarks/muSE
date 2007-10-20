@@ -478,16 +478,19 @@ static trap_point_t *trap_point_data( muse_env *env, muse_cell trap )
  */
 static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
 {
-	resume_point_t *rp = (resume_point_t*)context;
-	
-	if ( rp->resumingtrap ) {
-		trap_point_t *tp = _tpdata(rp->resumingtrap);
-		if ( tp ) {
-			_step(&(tp->tried_handlers));
+	if ( !muse_doing_gc(env) )
+	{
+		resume_point_t *rp = (resume_point_t*)context;
+		
+		if ( rp->resumingtrap ) {
+			trap_point_t *tp = _tpdata(rp->resumingtrap);
+			if ( tp ) {
+				_step(&(tp->tried_handlers));
+			}
 		}
+		
+		resume_invoke( env, rp, _evalnext(&args) );
 	}
-	
-	resume_invoke( env, rp, _evalnext(&args) );
 	
 	return MUSE_NIL;
 }
@@ -886,4 +889,103 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 		MUSE_DIAGNOSTICS2({ muse_message( env, L"(finally ...)", L"No enclosing (try ...) block!" ); });
 		return MUSE_NIL;
 	}
+}
+
+/**
+ * Displays a list of handlers you can try.
+ */
+int print_handler_choices( muse_env *env, trap_point_t *tp, muse_port_t p, int nchoices )
+{
+	muse_cell handlers = tp->handlers;
+	while ( handlers )
+	{
+		muse_cell h = _next(&handlers);
+		muse_cell tried = tp->tried_handlers;
+		muse_cell *triedp = muse_find_list_element(env, &tried, h);
+		if ( triedp == NULL )
+		{
+			char buf[8];
+			int len = sprintf(buf,"\n%d:\t", ++nchoices);
+			port_write( buf, len, p );
+			if ( _cellt(h) == MUSE_LAMBDA_CELL )
+				muse_pwrite( p, _head(h) );
+			else
+				muse_pwrite( p, h );
+		}
+	}
+	
+	if ( tp->next )
+		return print_handler_choices( env, _tpdata(tp->next), p, nchoices );
+	else
+		return nchoices;
+}
+
+/**
+ * Accepts any exception and asks the user to make a choice about what to do
+ * by dropping into a nested REPL.
+ */
+muse_cell fn_top_level_handler( muse_env *env, void *context, muse_cell args )
+{
+	char msg[256];
+	int len;
+
+	muse_port_t mstderr = muse_stdport( env, MUSE_STDERR_PORT );
+	muse_port_t mstdin = muse_stdport( env, MUSE_STDIN_PORT );
+	
+	muse_cell exinfo = _evalnext(&args);
+	
+	muse_assert( exinfo != MUSE_NIL && "Impossible for exceptions to be ()!" );
+	
+	{
+		len = sprintf( msg, ">>>>>>>>>\nUnhandled exception: " );
+		port_write( msg, len, mstderr );
+		muse_pwrite(mstderr,exinfo);
+		len = sprintf( msg, "\nOptions:" );
+		port_write( msg, len, mstderr );
+	}
+	
+	{
+		muse_cell trap = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+		trap_point_t *tp = _tpdata(trap);
+		
+		int choices = print_handler_choices( env, tp, mstderr, 0 );
+		
+		if ( choices == 0 )
+		{
+			len = sprintf( msg, "  <<none>>" );
+			port_write( msg, len, mstderr );
+		}
+	}
+	
+	len = sprintf( msg, "\nException info available in symbol '_'.\n" );
+	port_write( msg, len, mstderr );
+	port_write( "ex> ", 4, mstderr );
+	port_flush( mstderr );
+	
+	{
+		muse_cell expr = muse_pread(mstdin);
+		len = sprintf( msg, "<<<<<<<<<<<\n" );
+		port_write( msg, len, mstderr );
+		port_flush( mstderr );
+		
+		return _force(_eval(expr));
+	}
+}
+
+/**
+ * Wraps an apply in a try block with the default top-level handler.
+ */
+muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args )
+{
+	muse_port_t p = muse_stdport(env,MUSE_STDERR_PORT);
+	muse_cell wrapped_expr = muse_list( env, "Sc(SS(cS))", 
+										L"try",
+										_cons( fn, args ),
+										L"fn",
+										L"_",
+										_mk_nativefn(fn_top_level_handler,NULL),
+										L"_"
+										);
+	port_putc('\n',p);
+	return _force(_eval(wrapped_expr));
 }
