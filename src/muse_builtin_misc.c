@@ -139,6 +139,21 @@ static muse_cell generate_files( muse_env *env, FILE *info, int i, muse_boolean 
 	}
 }
 
+static int copy_with_space_escapes( int N, char *buffer, const muse_char *str )
+{
+	int count = 0;
+	
+	while ( count < N && (*str) ) {
+		if ( isspace(*str) ) {
+			buffer[count++] = '\\';
+		}
+		buffer[count++] = (char)(*str++);
+	}
+	
+	buffer[count] = '\0';
+	return count;
+}
+
 /**
  * (list-files [pattern]).
  * Returns a list of files that patch the given pattern. 
@@ -154,8 +169,28 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 {
 	FILE *f;
 	char cmd[4096];
-	snprintf( cmd, 4096, "ls -p %S | grep -v /", _text_contents( _evalnext(&args), NULL ) );
+	int len = 0;
+	
+	const muse_char *path = _text_contents( _evalnext(&args), NULL );
+	
+	const muse_char *wild = wcschr( path, '*' );
+	
+	if ( wild )
+	{
+		len += snprintf( cmd, 4096, "ls -p " );
+		len += copy_with_space_escapes( wild-path, cmd + len, path );
+		len += snprintf( cmd+len, 4096-len, " | grep '%ls$'", wild+1 );
+	}
+	else
+	{
+		/* No wild card. We can directly get contents. */
+		len = snprintf( cmd, 4096, "ls -p " );
+		len += copy_with_space_escapes( 4096-len, cmd + len, path );
+		len += snprintf( cmd+len, 4096-len, " | grep -v /" );
+	}
 
+	printf( "command = [%s]\n", cmd );
+	
 	f = popen( cmd, "r" );
 	if ( f )
 		return muse_generate_list( env, (muse_list_generator_t)generate_files, f );
@@ -169,7 +204,7 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
  * the given parent folder.
  * For example:
  * @code
- * (list-folders "../*")
+ * (list-folders "../")
  * @endcode
  * will list the folders above the current folder.
  * Note that the returned list only has the folder names and not
@@ -180,7 +215,12 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 {
 	FILE *f;
 	char cmd[4096];
-	snprintf( cmd, 4096, "ls -p %S | grep /", _text_contents( _evalnext(&args), NULL ) );
+	int len = 0;
+	const muse_char *path = _text_contents( _evalnext(&args), NULL );
+
+	len = snprintf( cmd, 4096, "ls -p " );
+	len += copy_with_space_escapes( 4096-len, cmd + len, path );
+	len += snprintf( cmd+len, 4096-len, " | grep /" );
 
 	f = popen( cmd, "r" );
 	if ( f )
