@@ -13,7 +13,7 @@
 #define __MUSE_CONFIG_H__
 
 #define MUSE_VERSION 0x0003
-#define MUSE_VERSION_STRING "250"
+#define MUSE_VERSION_STRING "338"
 
 #ifndef FUSSY_RELEASE
 /*	To enable FUSSY_RELEASE builds, uncomment the following #define. */

@@ -868,9 +868,25 @@ muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
 }
 
 /**
+ * (finally ...block...)
+ *
  * Installs a finalizer for the current trap state.
  * A finally block's body will be captured in a closure
- * and installed as a finalizer thunk.
+ * and installed as a finalizer thunk. This thunk will be
+ * invoked at the point when the immediately enclosing
+ * \ref syntax_try "try" block completes - normally or
+ * abnormally. \c finally thus provides a cleanup mechanism
+ * for resources that might otherwise be left lingering
+ * around.
+ *
+ * Note that \c finally is not a clause <em>outside</em>
+ * the expression protected by a \c try, but actually
+ * occurs and is evaluated within the protected code
+ * block. Therefore it can occur not merely within the
+ * syntactic scope of a try expression, but actually
+ * anywhere (and any number of times) within the 
+ * execution scope of the try expression - including
+ * any functions called within the expression. 
  */
 muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 {

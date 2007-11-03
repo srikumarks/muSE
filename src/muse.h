@@ -90,7 +90,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
- *	- \ref syntax_try "try", \ref fn_raise "raise", \ref fn_retry "retry"
+ *	- \ref syntax_try "try", \ref fn_raise "raise", \ref fn_retry "retry", \ref syntax_finally "finally"
  * 
  * @subsection ML_MathOps Mathematical operators
  *	- Binary operators 

@@ -333,7 +333,7 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
  *     (close f))
  * @endcode
  */
-static muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
+muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
 {
 	return _mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args );
 }

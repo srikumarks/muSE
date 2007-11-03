@@ -187,7 +187,7 @@ static muse_boolean poll_network( muse_env *env, SOCKET s, int cat )
  *
  * Made possible through the functions
  *	- \ref fn_with_incoming_connections_to_port "with-incoming-connections-to-port" and
- *	- \ref fn_with_connection_to_server "with-connection-to-server"
+ *	- \ref fn_open "open"
  */
 /*@{*/
 typedef struct
@@ -426,7 +426,7 @@ typedef struct muse_server_stream_socket__
  * If the service function returns (), the server is terminated,
  * otherwise the server will accept the next connection and service it.
  *
- * @see fn_with_connection_to_server()
+ * @see fn_open()
  */
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args )
 {
