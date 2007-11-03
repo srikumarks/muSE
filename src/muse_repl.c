@@ -36,10 +36,10 @@ MUSEAPI void muse_repl(muse_env *env)
  			 "muSE (muvee Symbolic Expressions) version %s\n"
 			 "See LICENSE.txt or http://muvee-symbolic-expressions.googlecode.com/svn/trunk/LICENSE.txt\n"
 			 "for terms and conditions under which this software is distributed.\n"
-			 "\n%s"
+			 "%s"
 			 "--------------------------------------------------------------------------------\n",
 			 MUSE_VERSION_STRING,
-			 env->parameters[MUSE_ENABLE_OBJC] ? "(enabled: objc)\n" : "\n" );
+			 env->parameters[MUSE_ENABLE_OBJC] ? "(enabled: objc)\n" : "" );
 
 	while ( !feof(stdin) )
 	{
