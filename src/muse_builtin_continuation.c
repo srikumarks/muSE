@@ -593,7 +593,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 	{
 		muse_cell handlers = trap->handlers;
 
-		while ( handlers )
+		do
 		{
 			/* Ignore all the handlers that are being tried now. */
 			while ( handlers && muse_find_list_element( env, &(trap->tried_handlers), _head(handlers) ) )
@@ -664,6 +664,7 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 				handlers = trap->handlers;
 			}
 		}
+		while (handlers);
 	}
 
 	/* No handler succeeded in handling the exception. */
