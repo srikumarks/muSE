@@ -351,6 +351,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_builtin_module.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_builtin_networking.c"
 				>
 			</File>

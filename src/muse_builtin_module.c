@@ -12,6 +12,7 @@
  */
 
 #include "muse_builtins.h"
+#include "muse_port.h"
 #include <stdlib.h>
 #include <memory.h>
 
