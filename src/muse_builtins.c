@@ -203,6 +203,7 @@ void muse_load_builtin_fns(muse_env *env)
 	muse_define_builtin_type_vector(env);
 	muse_define_builtin_type_hashtable(env);
 	muse_define_builtin_type_bytes(env);
+	muse_define_builtin_type_module(env);
 	muse_define_builtin_fileport(env);
 	muse_define_builtin_memport(env);
 	muse_define_builtin_networking(env);

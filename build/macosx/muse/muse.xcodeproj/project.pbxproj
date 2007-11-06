@@ -78,6 +78,9 @@
 		A977A93C0CC2EE8700EA48A7 /* muse_port.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D80BA53CB900FAF5C4 /* muse_port.c */; };
 		A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */; };
 		A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
+		A9A10A3C0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
+		A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
+		A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
 		A9BAAA120BAA6D04003F0B9B /* MuseEnvironment.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */; };
 		A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
 		C420F6DC0BA53CB900FAF5C4 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6B60BA53CB900FAF5C4 /* main.c */; };
@@ -165,6 +168,7 @@
 		A977A7CD0CC2E7DD00EA48A7 /* libmuse.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libmuse.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		A977A8930CC2E99C00EA48A7 /* muse-framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "muse-framework-Info.plist"; sourceTree = "<group>"; };
 		A977A8F30CC2EC3400EA48A7 /* muse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = muse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = muse_builtin_module.c; sourceTree = "<group>"; };
 		A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MuseEnvironment.h; sourceTree = "<group>"; };
 		A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MuseEnvironment.m; sourceTree = "<group>"; };
 		C420F6B60BA53CB900FAF5C4 /* main.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
@@ -295,6 +299,7 @@
 				C420F6CA0BA53CB900FAF5C4 /* muse_builtin_plist.c */,
 				C420F6CB0BA53CB900FAF5C4 /* muse_builtin_vector.c */,
 				C420F6CC0BA53CB900FAF5C4 /* muse_builtin_xml.c */,
+				A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */,
 				C420F6CD0BA53CB900FAF5C4 /* muse_builtins.c */,
 				C420F6CE0BA53CB900FAF5C4 /* muse_builtins.h */,
 				C420F6CF0BA53CB900FAF5C4 /* muse_cells.c */,
@@ -465,6 +470,7 @@
 				C420F7000BA53CB900FAF5C4 /* muse_repl.c in Sources */,
 				A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */,
 				C4EC539B0BFECE09007981F5 /* muse_builtin_memport.c in Sources */,
+				A9A10A3C0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -501,6 +507,7 @@
 				A977A7F30CC2E88F00EA48A7 /* muse_port.c in Sources */,
 				A977A7F40CC2E89100EA48A7 /* muse_repl.c in Sources */,
 				A977A7F70CC2E89E00EA48A7 /* MuseEnvironment.m in Sources */,
+				A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -537,6 +544,7 @@
 				A977A93C0CC2EE8700EA48A7 /* muse_port.c in Sources */,
 				A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */,
 				A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */,
+				A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
