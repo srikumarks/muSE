@@ -66,8 +66,19 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 {
 	int bsp = _bspos();
 	module_t *m = (module_t*)ptr;
-	muse_cell mname = _next(&args);
-	muse_cell exports = _next(&args);
+	muse_cell mname, exports;
+	mname = _next(&args);
+	exports = _next(&args);
+	
+	MUSE_DIAGNOSTICS({
+		muse_expect( env, L"(module >>name<< ..)", L"v?", mname, MUSE_SYMBOL_CELL );
+		if ( _symval(mname) != mname ) {
+			/* Module already defined. */
+			muse_message( env, L"(module >>name<< ..)", L"Module name %m already in use.", mname ); 
+		}
+		muse_expect( env, L"(module name >>(exports..)<< ..)", L"v?", exports, MUSE_CONS_CELL );
+	});
+
 	m->length = muse_list_length( env, exports );
 	m->bindings = (module_binding_t*)calloc( m->length, sizeof(module_binding_t) );
 	
@@ -84,7 +95,10 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 		for ( ; i < m->length; ++i ) {
 			muse_cell sym = _next(&e);
 			module_binding_t *b = m->bindings + i;
-			muse_assert( _cellt(sym) == MUSE_SYMBOL_CELL );
+
+			MUSE_DIAGNOSTICS({
+				muse_expect( env, L"(module name (.. >>export<< ..) ..)", L"v?", sym, MUSE_SYMBOL_CELL );
+			});
 			
 			b->short_name = sym;
 			b->full_name = qualified_name( env, prefix_length+1, prefix, sym );
