@@ -11,6 +11,7 @@
 
 #include "muse_builtins.h"
 #include "muse_opcodes.h"
+#include "muse_port.h"
 #include <stdlib.h>
 #include <setjmp.h>
 #include <memory.h>
