@@ -553,6 +553,8 @@ typedef struct
 	muse_functional_object_type_t *type_info; /**< Type information that's constant for all instances. */
 } muse_functional_object_t;
 
+MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
+MUSEAPI void muse_destroy_object( muse_env *env, muse_functional_object_t *obj );
 MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
 MUSEAPI muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word );
 /*@}*/
@@ -645,6 +647,7 @@ MUSEAPI muse_cell	muse_pread( muse_port_t port );
 MUSEAPI void		muse_pwrite( muse_port_t port, muse_cell sexpr );
 MUSEAPI void		muse_pprint( muse_port_t port, muse_cell sexpr );
 MUSEAPI void		muse_mickey( muse_port_t in, muse_port_t out );
+MUSEAPI muse_port_t muse_create_memport( muse_env *env );
 /*@}*/
 
 /**
@@ -662,6 +665,7 @@ MUSEAPI muse_cell	muse_vector_get( muse_env *env, muse_cell vec, int index );
 MUSEAPI muse_cell	muse_vector_put( muse_env *env, muse_cell vec, int index, muse_cell value );
 /*@}*/
 /** @name Hashtables */
+/*@{*/
 MUSEAPI muse_cell	muse_mk_hashtable( muse_env *env, int length );
 MUSEAPI int			muse_hashtable_length( muse_env *env, muse_cell ht );
 MUSEAPI muse_cell	muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key );

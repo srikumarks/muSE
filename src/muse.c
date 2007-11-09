@@ -934,10 +934,7 @@ void free_unused_specials( muse_env *env, muse_cell *specials )
 						muse_functional_object_t *data = _fnobjdata(s);
 						if ( data )
 						{
-							if ( data->type_info->destroy )
-								data->type_info->destroy(env,data);
-
-							free(data);
+							muse_destroy_object( env, data );
 						}
 						else
 							_apply( s, MUSE_NIL, MUSE_FALSE );
@@ -1166,11 +1163,11 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 }
 
 /**
- * Creates a new functional object instance based on the given type
- * information. The type of the returned cell is a native function,
- * so that the object can be used in the function position.
+ * Just creates an object without allocating a cell for it.
+ * It is the caller's responsibility to call muse_destroy_object()
+ * once she's done with it.
  */
-MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
+MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
 {
 	muse_assert( type_info && type_info->magic_word == 'muSE' );
 	muse_assert( type_info->size >= sizeof(muse_functional_object_t) );
@@ -1181,13 +1178,33 @@ MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_obje
 		obj->type_info		= type_info;
 		if ( obj->type_info->init )
 			obj->type_info->init(env, obj, init_args);
-
-		{
-			muse_cell fn = _mk_nativefn( obj->type_info->fn, obj );
-			add_special(env,fn);
-			return fn;
-		}
+		return obj;
 	}
+}
+
+/**
+ * Counterpart of muse_create_object.
+ */
+MUSEAPI void muse_destroy_object( muse_env *env, muse_functional_object_t *obj )
+{
+	if ( obj ) {
+		if ( obj->type_info->destroy )
+			obj->type_info->destroy( env, obj );
+		free(obj);
+	}
+}
+
+/**
+ * Creates a new functional object instance based on the given type
+ * information. The type of the returned cell is a native function,
+ * so that the object can be used in the function position.
+ */
+MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
+{
+	muse_functional_object_t *obj = muse_create_object( env, type_info, init_args );
+	muse_cell fn = _mk_nativefn( obj->type_info->fn, obj );
+	add_special(env,fn);
+	return fn;
 }
 
 /**
