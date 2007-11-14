@@ -364,9 +364,7 @@ MUSEAPI void muse_destroy_env( muse_env *env )
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
-//GONE!	destroy_stack( &env->bindings_stack );
 	destroy_stack( &env->symbol_stack );
-//GONE!	destroy_stack( &env->stack );
 	destroy_heap( &env->heap );
 	free( env->parameters );
 	
