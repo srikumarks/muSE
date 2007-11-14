@@ -454,6 +454,11 @@ static muse_boolean xml_skip_proc( muse_port_t p )
 		return MUSE_FALSE;
 }
 
+MUSEAPI muse_cell muse_read_xml_node( muse_port_t p )
+{
+	return xml_read_tag( p->env, p );
+}
+
 static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
 {
 	int c;

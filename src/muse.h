@@ -648,6 +648,7 @@ MUSEAPI void		muse_pwrite( muse_port_t port, muse_cell sexpr );
 MUSEAPI void		muse_pprint( muse_port_t port, muse_cell sexpr );
 MUSEAPI void		muse_mickey( muse_port_t in, muse_port_t out );
 MUSEAPI muse_port_t muse_create_memport( muse_env *env );
+MUSEAPI muse_cell	muse_read_xml_node( muse_port_t in );
 /*@}*/
 
 /**
