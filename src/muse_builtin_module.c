@@ -287,7 +287,7 @@ muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 {
 	int bsp = _bspos();
 	while ( args ) {
-		muse_cell mod = _symval( _next(&args) );
+		muse_cell mod = _evalnext(&args);
 		module_t *m = (module_t*)_functional_object_data( mod, 'mmod' );
 		if ( m ) {
 			introduce_module( env, m, bsp == 0 ? MUSE_TRUE : MUSE_FALSE );
