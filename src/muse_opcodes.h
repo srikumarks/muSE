@@ -551,10 +551,16 @@ muse_boolean remove_process( muse_process_frame_t *process );
 muse_cell process_id( muse_process_frame_t *process );
 muse_boolean is_main_process( muse_env *env );
 void mark_process( muse_process_frame_t *p );
+void free_process( muse_process_frame_t *p );
 muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args );
 void post_message( muse_process_frame_t *process, muse_cell msg );
 void enter_atomic(muse_env *env);
 void leave_atomic(muse_env *env);
+
+/* Converts the given 16-bit unicode char to utf8 and stores
+it into the given buffer. Returns the number of bytes used. */
+int uc16_to_utf8( int uc16, unsigned char *utf8, int nbytes );
+int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 );
 
 /* Objective-C functions. */
 void init_objc_bridge( muse_env *env );

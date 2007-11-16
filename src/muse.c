@@ -361,6 +361,7 @@ MUSEAPI void muse_destroy_env( muse_env *env )
 	}
 
 	muse_gc(env, 0);
+	free_process( env->current_process );
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
 	env->builtin_symbols = NULL;
@@ -1155,6 +1156,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 			everything that isn't referenced. We have to release
 			everythign when shutting down. free_cells_needed <= 0
 			indicates that we're shutting down. */
+			_mark( process_id(env->current_process) );
 			free_unused_specials( env, &env->specials );
 		}
 	}
@@ -1615,10 +1617,7 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *p, muse_cell args )
 	if ( muse_doing_gc(env) && p->state_bits == MUSE_PROCESS_DEAD )
 	{
 		/* Cleanup process memory. */
-		destroy_stack( &p->locals );
-		destroy_stack( &p->bindings_stack );
-		destroy_stack( &p->stack );
-		free(p);
+		free_process(p);
 	}
 
 	return MUSE_NIL;
@@ -1636,6 +1635,17 @@ void mark_process( muse_process_frame_t *p )
 	mark_stack( env, &p->locals );
 	muse_mark( env, p->thunk );
 	muse_mark( env, p->mailbox );
+}
+
+/**
+ * Frees process data structure memory.
+ */
+void free_process( muse_process_frame_t *p )
+{
+	destroy_stack( &p->locals );
+	destroy_stack( &p->bindings_stack );
+	destroy_stack( &p->stack );
+	free(p);
 }
 
 /**
