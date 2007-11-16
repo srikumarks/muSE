@@ -806,6 +806,37 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 	return result;
 }
 
+static muse_cell raise_error( muse_env *env, muse_cell args )
+{
+	resume_point_t *rp = (resume_point_t*)calloc( 1, sizeof(resume_point_t) );
+	muse_cell resume_pt = _mk_destructor( fn_resume, rp );
+	muse_cell handler_args = _cons( resume_pt, args );
+
+	if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
+	{
+		return try_handlers( env, handler_args );
+	}
+	else
+	{
+		return rp->result;
+	}
+}
+
+/**
+ * Raises an error which can be resumed just like an exception raised
+ * using the @ref fn_raise "raise" operator. 
+ *
+ * The handler pattern that will match the raised error is given
+ * by - @code (ex error info) @endcode
+ *	- ex - The resume continuation.
+ *	- error - A symbol identifying the error.
+ *	- info - Arbitrary info to be passed on to handlers.
+ */
+MUSEAPI muse_cell muse_raise_error( muse_env *env, muse_cell error, muse_cell info ) 
+{
+	return raise_error( env, _cons( error, _cons( info, MUSE_NIL ) ) );
+}
+
 /**
  * (raise [exception-details])
  *
@@ -825,18 +856,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
  */ 
 muse_cell fn_raise( muse_env *env, void *context, muse_cell args ) 
 {
-	resume_point_t *rp = (resume_point_t*)calloc( 1, sizeof(resume_point_t) );
-	muse_cell resume_pt = _mk_destructor( fn_resume, rp );
-	muse_cell handler_args = _cons( resume_pt, muse_eval_list(env,args) );
-
-	if ( resume_capture( env, rp, setjmp(rp->state) ) == 0 )
-	{
-		return try_handlers( env, handler_args );
-	}
-	else
-	{
-		return rp->result;
-	}
+	return raise_error( env, muse_eval_list(env,args) );
 }
 
 /**

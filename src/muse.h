@@ -411,6 +411,7 @@ MUSEAPI muse_cell	muse_quote( muse_env *env, muse_cell args );
 MUSEAPI muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell values );
 MUSEAPI muse_cell	muse_callcc( muse_env *env, muse_cell proc );
 MUSEAPI muse_cell	muse_force( muse_env *env, muse_cell cell );
+MUSEAPI muse_cell	muse_raise_error( muse_env *env, muse_cell error, muse_cell info );
 /*@}*/
 
 /** @name Misc */
