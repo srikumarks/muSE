@@ -1103,7 +1103,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 		{
 			// If the process is in an atomic block, don't do GC,
 			// but simply grow the heap by the necessary amount.
-			if ( env->current_process->atomicity == 0 )
+			if ( env->current_process->atomicity == 1 )
 			{
 				/* 1. Save the current mark vector. */
 				keep_marks( heap );
