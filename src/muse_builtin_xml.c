@@ -535,6 +535,36 @@ static char *xml_read_utf8_until( char eos, int *length, muse_port_t p )
 	return text;
 }
 
+static int read_unquoted_attrib_value(muse_port_t p, char val[256])
+{
+	int n = 0;
+
+	while ( !port_eof(p) && n < 256 ) {
+		int c = port_getc(p);
+		if ( !isspace(c) && c != '>' ) {
+			if ( c == '/' ) {
+				int c2 = port_getc(p);
+				if ( !isspace(c2) && c2 != '>' ) {
+					val[n++] = c;
+					val[n++] = c2;
+				} else {
+					port_ungetc( c2, p );
+					port_ungetc( c, p );
+					break;
+				}
+			} else {
+				val[n++] = c;
+			}
+		} else {
+			port_ungetc(c,p);
+			break;
+		}
+	}
+
+	val[n] = '\0';
+	return n;
+}
+
 static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
 {
 	int c;
@@ -617,8 +647,19 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_b
 					}
 					else
 					{
-						/* Its an error, but treat it like a flag. */
+						/* Its an unquoted attrib value - like 
+						attrib=value instead of attrib="value" or
+						attrib='value'. So read a run of alpha-numeric and
+						underscore characters and allow that to be used
+						as the value string instead. */
 						port_ungetc(q,p);
+
+						{
+							char val[256];
+							int n = read_unquoted_attrib_value(p, val);
+							return _cons( msym, muse_mk_text_utf8( env, val, val + n ) );
+						}
+
 						return _cons(msym, muse_builtin_symbol(env,MUSE_T));						
 					}
 				}
