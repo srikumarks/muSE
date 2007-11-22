@@ -22,7 +22,17 @@ muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 {
 	muse_cell sym	= _evalnext(&args);
 	muse_cell prop	= _evalnext(&args);
-	return _get_prop( sym, prop );
+	if ( _cellt(sym) == MUSE_SYMBOL_CELL )
+		return _get_prop( sym, prop );
+	else {
+		muse_functional_object_t *fobj = NULL;
+		muse_prop_view_t *prop_view = _fnobjview(sym,'prop',fobj);
+		if ( prop_view ) {
+			return prop_view->get_prop( env, fobj, prop );
+		} else {
+			return MUSE_NIL;
+		}
+	}
 }
 
 /**
@@ -36,7 +46,17 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 	muse_cell sym	= _evalnext(&args);
 	muse_cell prop	= _evalnext(&args);
 	muse_cell value = _evalnext(&args);
-	return _put_prop( sym, prop, value );
+	if ( _cellt(sym) == MUSE_SYMBOL_CELL ) 
+		return _put_prop( sym, prop, value );
+	else {
+		muse_functional_object_t *fobj = NULL;
+		muse_prop_view_t *prop_view = _fnobjview(sym,'prop',fobj);
+		if ( prop_view ) {
+			return prop_view->put_prop( env, fobj, prop, value );
+		} else {
+			return MUSE_NIL;
+		}
+	}
 }
 
 /**

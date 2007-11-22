@@ -268,77 +268,85 @@ static muse_cell *hashtable_get( muse_env *env, hashtable_t *h, muse_cell key, m
 	return muse_assoc_iter( env, h->buckets + bucket, key );
 }
 
+static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key ) {
+	hashtable_t *h = (hashtable_t*)self;
+	muse_int hash = 0;
+	muse_cell *kvpair = hashtable_get( env, h, key, &hash );
+
+	if ( *kvpair )
+		return _tail( _head( *kvpair ) );
+	else
+	{
+		/* key doesn't exist. Try to compute using the func spec. */
+		muse_cell value = MUSE_NIL;
+
+		/* Use the datafn to derive the value for the key. */
+		if ( h->datafn )
+			value = _force(muse_apply( env, h->datafn, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
+
+		/* Cache the value in the hashtable. */
+		if ( value )
+			hashtable_add( env, h, key, value, &hash );
+
+		return value;
+	}
+}
+
+static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, muse_cell value ) {
+	hashtable_t *h = (hashtable_t*)self;
+
+	muse_cell *kvpair = hashtable_get( env, h, key, NULL );
+	if ( *kvpair ) {
+		if ( value )
+		{
+			/* It already exists. Simply change the value to the new one. */
+			_sett( _head(*kvpair), value );
+			return value;
+		} 
+		else
+		{
+			/* The value is MUSE_NIL. Which means we have to remove
+			the kvpair from the hashtable. */
+			(*kvpair) = _tail( *kvpair );
+			--(h->count);
+			return MUSE_NIL;
+		}
+	} else {
+		if ( value )
+		{
+			/* It doesn't exist. Need to add a new entry.
+			Check to see if we need to rehash the table. 
+			We rehash if we have to do more than 2 linear
+			searches on the average for each access. */
+			hashtable_fast_add( env, h, kvpair, key, value );
+			return value;
+		}
+		else
+		{
+			/* The key isn't there in the hashtable and we've
+			been asked to remove it. So we don't need to do anything. */
+			return MUSE_NIL;
+		}
+	}
+}
+
+static muse_prop_view_t g_hashtable_prop_view = {
+	hashtable_get_prop,
+	hashtable_put_prop
+};
+
 muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 {
 	muse_assert( h != NULL && "Context 'h' must be a hashtable object!" );
 
 	{
 		muse_cell key = _evalnext(&args);
-		muse_int hash = 0;
-
-		/* Find the kvpair if it exists in the hash table. */
-		muse_cell *kvpair = hashtable_get( env, h, key, &hash );
-				
-		if ( args )
-		{
-			/* We've been asked to set a property. */
-			muse_cell value = _evalnext(&args);
-
-			/* First see if the key is already in the hash table. */
-			if ( *kvpair )
-			{
-				if ( value )
-				{
-					/* It already exists. Simply change the value to the new one. */
-					_sett( _head(*kvpair), value );
-					return value;
-				} 
-				else
-				{
-					/* The value is MUSE_NIL. Which means we have to remove
-					the kvpair from the hashtable. */
-					(*kvpair) = _tail( *kvpair );
-					--(h->count);
-					return MUSE_NIL;
-				}
-			}
-			else 
-			{
-				if ( value )
-				{
-					/* It doesn't exist. Need to add a new entry.
-					Check to see if we need to rehash the table. 
-					We rehash if we have to do more than 2 linear
-					searches on the average for each access. */
-					hashtable_fast_add( env, h, kvpair, key, value );
-					return value;
-				}
-				else
-				{
-					/* Behave as though the caller never supplied
-					the second argument - i.e. just get the hashtable's 
-					value for the given key. */
-				}
-			}
-		}
-		
-		/* We've been asked to get a property. */
-		if ( *kvpair )
-			return _tail( _head( *kvpair ) );
-		else
-		{
-			/* key doesn't exist. Try to compute using the func spec. */
-			muse_cell value = MUSE_NIL;
-
-			/* Use the datafn to derive the value for the key. */
-			if ( h->datafn )
-				value = _force(muse_apply( env, h->datafn, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_TRUE ));
-
-			/* Cache the value in the hashtable. */
-			if ( value )
-				hashtable_add( env, h, key, value, &hash );
-
-			return value;
+		if ( args ) {
+			/* Two argument form. */
+			return hashtable_put_prop( env, h, key, _evalnext(&args) );
+		} else {
+			/* One argument form. */
+			return hashtable_get_prop( env, h, key );
 		}
 	}
 }
@@ -576,6 +584,7 @@ static void *hashtable_view( muse_env *env, int id )
 		case 'mnad' : return &g_hashtable_monad_view;
 		case 'iter' : return hashtable_iterator;
 		case 'dtfn' : return hashtable_datafn;
+		case 'prop' : return &g_hashtable_prop_view;
 		default : return NULL;
 	}
 }

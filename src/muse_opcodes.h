@@ -291,6 +291,16 @@ static inline muse_functional_object_t *op_fnobjdata( muse_env *env, muse_cell c
 
 	return NULL;
 }
+#define _fnobjview(c,id,fobj) op_fnobjview(env,c,id,&fobj)
+static inline void *op_fnobjview( muse_env *env, muse_cell c, int id, muse_functional_object_t **fobj )
+{
+	(*fobj) = _fnobjdata(c);
+	if ( (*fobj) && (*fobj)->type_info->view ) {
+		return (*fobj)->type_info->view( env, id );
+	} else {
+		return NULL;
+	}
+}
 #define _intvalue(c) op_intvalue(env,c)
 static inline muse_int op_intvalue( muse_env *env, muse_cell c )
 {

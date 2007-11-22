@@ -752,6 +752,29 @@ typedef muse_cell (*muse_datafn_t)( muse_env *env, void *self, muse_cell datafn 
  * The return value will be the value of the data function before changing it to \p datafn.
  */
 
+/**
+ * A property view (id = 'prop') says that an object support get and set
+ * methods for properties. Ay object supporting the 'prop' view can be used
+ * with \ref fn_get "get" and \ref fn_put "put" functions.
+ */
+typedef struct {
+
+	muse_cell (*get_prop)( muse_env *env, void *self, muse_cell key );
+	/**<
+	 * Gets the value of the property associated with the given key.
+	 */
+
+	muse_cell (*put_prop)( muse_env *env, void *self, muse_cell key, muse_cell value );
+	/**<
+	 * Modifies the value of the property identified by \p key to the
+	 * given \p value. The return value can either be any value that the
+	 * object deems relevant. It is generally the value itself. The
+	 * return value should be documented in the specific object. Usually
+	 * one doesn't need the return value, but occasionally it might be
+	 * useful in an object specific way.
+	 */
+} muse_prop_view_t;
+
 END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_H__ */
