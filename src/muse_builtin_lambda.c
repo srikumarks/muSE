@@ -907,23 +907,29 @@ static muse_cell delay_expr( muse_env *env, muse_cell expr )
  */
 /*@{*/
 /**
- * (lazy expr) 
+ * (lazy fn arg1 arg2 ...) 
  *
- * Delays the evaluation of the given expression until the value of the
- * expression is required or "forced" by some other operation. Native
- * functions are not tail call optimized (except if they are objects)
- * so you can use this to place tail calls to native functions such
- * as \c apply.
+ * Delays the application of the given function to the given
+ * arguments. Each argument is itself evaluated right away before
+ * encapsulating the function call as a lazy application.
+ *
+ * Since native function calls are not tail call optimized, you
+ * can use \ref fn_lazy "lazy" to make a delayed tail call to
+ * the function.
  * 
- * This function has been named differently from R5RS (which uses "delay")
- * because it does not create a "promise" object. The forcing of the 
- * evaluation of the lazy expression happens automatically.
+ * For reading such an expression, think of the "lazy" as a
+ * tag that marks the remainder of the expression as lazy,
+ * rather than an operator applied to its arguments. The meaning
+ * of a (lazy f a1 a2 ..) expression is exactly the same as
+ * (f a1 a2 ...) except that the application is not performed
+ * immediately. Note that (lazy f) is the same as (f).
  *
  * @see \ref fn_lcons "lcons"
  */
 muse_cell fn_lazy( muse_env *env, void *context, muse_cell args )
 {
-	return delay_expr( env, _head(args) );
+	muse_cell eargs = muse_eval_list( env, args );
+	return _setcellt( eargs, MUSE_LAZY_CELL );
 }
 
 /**

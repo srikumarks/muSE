@@ -382,22 +382,14 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 		{
 			case MUSE_NATIVEFN_CELL		:
 				{
-					muse_functional_object_t *f = _fnobjdata(fn);
-					if ( lazy && f )
+					if ( args_already_evaluated )
 					{
-						result = _setcellt(_cons(fn,args_already_evaluated ? args : muse_eval_list(env, args)), MUSE_LAZY_CELL);
+						result = muse_apply_nativefn( env, fn, quick_quote_list(env, args) );
+						quick_unquote_list(env, args);
 					}
 					else
 					{
-						if ( args_already_evaluated )
-						{
-							result = muse_apply_nativefn( env, fn, quick_quote_list(env, args) );
-							quick_unquote_list(env, args);
-						}
-						else
-						{
-							result = muse_apply_nativefn( env, fn, args );
-						}
+						result = muse_apply_nativefn( env, fn, args );
 					}
 				}
 				break;
