@@ -1187,6 +1187,9 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 
 	ez_skip_whitespace(f,0,0);
 	
+	if ( port_eof(f) )
+		return PARSE_EOF;
+
 	c = port_getc(f);
 	
 	if ( c == '\'' )
