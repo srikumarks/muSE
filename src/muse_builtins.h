@@ -244,6 +244,7 @@ void muse_define_builtin_type_vector(muse_env *env);
 void muse_define_builtin_type_hashtable(muse_env *env);
 void muse_define_builtin_type_bytes( muse_env *env );
 void muse_define_builtin_type_module( muse_env *env );
+void muse_define_builtin_type_box(muse_env *env);
 /*@}*/
 
 void muse_define_builtin_networking(muse_env *env);

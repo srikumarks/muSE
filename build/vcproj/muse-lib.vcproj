@@ -299,6 +299,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_builtin_box.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_builtin_bytes.c"
 				>
 			</File>

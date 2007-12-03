@@ -111,6 +111,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
  *	- \ref ByteArray "byte arrays"
+ *	- \ref Boxes "boxes"
  *
  * @subsection ML_ObjectSystem Object system
  * 	- \ref fn_class "class"
@@ -672,6 +673,12 @@ MUSEAPI muse_cell	muse_mk_hashtable( muse_env *env, int length );
 MUSEAPI int			muse_hashtable_length( muse_env *env, muse_cell ht );
 MUSEAPI muse_cell	muse_hashtable_get( muse_env *env, muse_cell ht, muse_cell key );
 MUSEAPI muse_cell	muse_hashtable_put( muse_env *env, muse_cell ht, muse_cell key, muse_cell value );
+/*@}*/
+/** @name Boxes */
+/*@{*/
+MUSEAPI muse_cell	muse_mk_box( muse_env *env, muse_cell contents );
+MUSEAPI muse_cell	muse_box_get( muse_env *env, muse_cell box );
+MUSEAPI muse_cell	muse_box_set( muse_env *env, muse_cell box, muse_cell contents );
 /*@}*/
 /*@}*/
 
