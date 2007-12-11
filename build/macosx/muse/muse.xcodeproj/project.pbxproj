@@ -78,6 +78,9 @@
 		A977A93C0CC2EE8700EA48A7 /* muse_port.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6D80BA53CB900FAF5C4 /* muse_port.c */; };
 		A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6DA0BA53CB900FAF5C4 /* muse_repl.c */; };
 		A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
+		A979C6C60D0F43E90048872A /* muse_builtin_box.c in Sources */ = {isa = PBXBuildFile; fileRef = A979C6C50D0F43E90048872A /* muse_builtin_box.c */; };
+		A979C6C70D0F43E90048872A /* muse_builtin_box.c in Sources */ = {isa = PBXBuildFile; fileRef = A979C6C50D0F43E90048872A /* muse_builtin_box.c */; };
+		A979C6C80D0F43E90048872A /* muse_builtin_box.c in Sources */ = {isa = PBXBuildFile; fileRef = A979C6C50D0F43E90048872A /* muse_builtin_box.c */; };
 		A9A10A3C0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
 		A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
 		A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
@@ -164,10 +167,11 @@
 
 /* Begin PBXFileReference section */
 		08FB779EFE84155DC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
-		8DD76FA10486AA7600D96B5E /* muse */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muse; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DD76FA10486AA7600D96B5E /* muse */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "compiled.mach-o.executable"; path = muse; sourceTree = BUILT_PRODUCTS_DIR; };
 		A977A7CD0CC2E7DD00EA48A7 /* libmuse.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libmuse.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		A977A8930CC2E99C00EA48A7 /* muse-framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "muse-framework-Info.plist"; sourceTree = "<group>"; };
 		A977A8F30CC2EC3400EA48A7 /* muse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = muse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A979C6C50D0F43E90048872A /* muse_builtin_box.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = muse_builtin_box.c; sourceTree = "<group>"; };
 		A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = muse_builtin_module.c; sourceTree = "<group>"; };
 		A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MuseEnvironment.h; sourceTree = "<group>"; };
 		A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MuseEnvironment.m; sourceTree = "<group>"; };
@@ -300,6 +304,7 @@
 				C420F6CB0BA53CB900FAF5C4 /* muse_builtin_vector.c */,
 				C420F6CC0BA53CB900FAF5C4 /* muse_builtin_xml.c */,
 				A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */,
+				A979C6C50D0F43E90048872A /* muse_builtin_box.c */,
 				C420F6CD0BA53CB900FAF5C4 /* muse_builtins.c */,
 				C420F6CE0BA53CB900FAF5C4 /* muse_builtins.h */,
 				C420F6CF0BA53CB900FAF5C4 /* muse_cells.c */,
@@ -471,6 +476,7 @@
 				A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */,
 				C4EC539B0BFECE09007981F5 /* muse_builtin_memport.c in Sources */,
 				A9A10A3C0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
+				A979C6C60D0F43E90048872A /* muse_builtin_box.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -508,6 +514,7 @@
 				A977A7F40CC2E89100EA48A7 /* muse_repl.c in Sources */,
 				A977A7F70CC2E89E00EA48A7 /* MuseEnvironment.m in Sources */,
 				A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
+				A979C6C70D0F43E90048872A /* muse_builtin_box.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -545,6 +552,7 @@
 				A977A93D0CC2EE8800EA48A7 /* muse_repl.c in Sources */,
 				A977A93E0CC2EE8A00EA48A7 /* MuseEnvironment.m in Sources */,
 				A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
+				A979C6C80D0F43E90048872A /* muse_builtin_box.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
