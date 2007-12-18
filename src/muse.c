@@ -706,6 +706,9 @@ MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix
 		ss->bottom[bucket] = _cons( sym, ss->bottom[bucket] );
 	}
 
+	/* Set the head of the symbol to refer to the local index */
+	_seth( sym, _localcell(local_ix) );
+
 	return sym;
 }
 
@@ -833,7 +836,7 @@ MUSEAPI muse_cell muse_mk_anon_symbol(muse_env *env)
 												MUSE_NIL ),
 									 MUSE_NIL );
 	
-	_setht( sym, symval, symplist );	
+	_setht( sym, 0, symplist );	
 	_unwind( p );
 	
 	return sym;
