@@ -845,6 +845,27 @@ static muse_boolean is_symbol_char( int c )
  * Reads a symbol from the current stream position.
  * Only named symbols are possible to be read by this.
  * Anonymous symbols are never created by read.
+ *
+ * A special consideration is applied for symbols which
+ * begin with the '.' character. Such a symbol is interpreted
+ * to mean a reference to a property of the 'self' symbol
+ * and converted into the expression @code (-> self 'symbol) @endcode.
+ * For example, if you write @code .position @endcode,
+ * it will be replaced with @code (-> self 'position) @endcode.
+ * Note that this expression does not make sense unless
+ * the "self" symbol is in scope. Thus the '.' notation serves 
+ * as a short hand for accessing properties of classes and objects 
+ * only within their methods which you'd declare like -
+ * @code (fn (self ...args..) ...) @endcode
+ *
+ * You can also use the '.' notation to access properties of
+ * an arbitrary symbol outside the scope of its method by
+ * binding the symbol to "self" using "let".
+ * @code
+ * (let ((self <object-expression>))
+ *    (print "Value of (-> self 'property1) = " .property1)
+ *	  ...)
+ * @endcode
  */
 static ez_result_t _read_symbol( muse_port_t f, int col )
 {
@@ -852,12 +873,37 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 	int maxlen = 32;
 	int pos = 0;
 	int c = '\0';
-	char *s = (char*)calloc( maxlen+1, 1 );
+	char *s = NULL;
 	
 	col = ez_skip_whitespace(f,0,col).col;
 	
 	c = port_getc(f);
 	
+	if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && c == '.' )
+	{
+		// Symbols beginning with '.' character
+		// are converted into the expression 
+		// (-> self 'sym)
+		//
+		// Checking for MUSE_PORT_READ_DETECT_MACROS allows
+		// us to avoid expasion of this notation within quoted 
+		// expressions - where we should preserve the form as is
+		// and treat the '.' as part of the symbol being read.
+		ez_result_t r;
+
+		// Prevent the '.' notation from being interpreted again
+		// w.r.t. the rest of the symbol.
+		int saved_mode = f->mode;
+		f->mode &= ~MUSE_PORT_READ_DETECT_MACROS;
+		r = _read_symbol( f, col+1 );
+		f->mode = saved_mode;
+
+		r.expr = muse_list( env, "SS'c", L"->", L"self", r.expr );
+		return r;
+	}
+
+	s = (char*)calloc( maxlen+1, 1 );
+
 	while ( is_symbol_char(c) )
 	{
 		if ( pos == maxlen )
