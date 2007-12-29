@@ -47,14 +47,12 @@ static void anonymize_formals( muse_env *env, muse_cell syms )
 	}
 }
 
-static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean list_start );
-
 static muse_cell anonymize_copy_letvars( muse_env *env, muse_cell bindings )
 {
 	if ( bindings )
 	{
 		muse_cell b = _head(bindings);
-		muse_cell bcopy = _cons( _head(b), bind_copy_body( env, _tail(b), MUSE_FALSE ) );
+		muse_cell bcopy = _cons( _head(b), muse_bind_copy_expr( env, _tail(b), MUSE_FALSE ) );
 		anonymize_formals( env, _head(b) );
 		return _cons( bcopy, anonymize_copy_letvars( env, _tail(bindings)) );
 	}
@@ -73,7 +71,7 @@ static muse_cell anonymize_copy_case_body( muse_env *env, muse_cell body )
 			int sp = _spos();
 			int bsp = _bspos();
 			anonymize_formals( env, _head(case1) );
-			_sett( case1_copy, bind_copy_body( env, _tail(case1), MUSE_FALSE ) );
+			_sett( case1_copy, muse_bind_copy_expr( env, _tail(case1), MUSE_FALSE ) );
 			_unwind_bindings(bsp);
 			_unwind(sp);
 		}
@@ -86,7 +84,17 @@ static muse_cell anonymize_copy_case_body( muse_env *env, muse_cell body )
 	}
 }
 
-static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean list_start )
+/**
+ * A key function for implementing portions of closure creation.
+ * What it does is top create a copy of the given "body" expression
+ * binding all defined symbols to their values along the way. 
+ *
+ * @param body The expression whose copy needs to be created.
+ * @param list_start If the body expression is the head part of a list expression,
+ *   pass MUSE_TRUE, otherwise pass MUSE_FALSE. In general, you should pass
+ *   MUSE_FALSE.
+ */
+muse_cell muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_start )
 {
 	if ( body <= 0 )
 		return body;
@@ -97,19 +105,19 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 		{
 			muse_cell h, t;
 			
-			h = bind_copy_body( env, _head(body), MUSE_TRUE );
+			h = muse_bind_copy_expr( env, _head(body), MUSE_TRUE );
 			if ( list_start )
 			{
 				if ( _cellt(h) == MUSE_NATIVEFN_CELL )
 				{
-					muse_nativefn_t fn = _ptr(h)->fn.fn;
-					if ( fn == fn_quote )
+					muse_nativefn_cell fn = _ptr(h)->fn;
+					if ( fn.fn == fn_quote )
 					{
 						/* This is a quoted expression. Don't
 						do any substitution in the body. */
 						return body;
 					}
-					else if ( fn == syntax_lambda || fn == syntax_block || fn == syntax_generic_lambda || fn == syntax_generic_block )
+					else if ( fn.fn == syntax_lambda || fn.fn == syntax_block || fn.fn == syntax_generic_lambda || fn.fn == syntax_generic_block )
 					{
 						/* Need to copy body for subexpressions that are
 						both lexically as well as dynamically scoped. The
@@ -126,7 +134,7 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 							{
 								int bsp = _bspos();
 								anonymize_formals( env, formals );
-								c = bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE );
+								c = muse_bind_copy_expr( env, _tail(_tail(body)), MUSE_FALSE );
 								_unwind_bindings(bsp);
 							}
 							return _cons( h, _cons( muse_quote(env,formals), c ) );
@@ -135,26 +143,26 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 						{
 							int bsp = _bspos();
 							anonymize_formals( env, formals );
-							c = bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE );
+							c = muse_bind_copy_expr( env, _tail(_tail(body)), MUSE_FALSE );
 							_unwind_bindings(bsp);
 							return _cons( h, _cons( formals, c ) );
 						}
 					}
-					else if ( fn == syntax_let )
+					else if ( fn.fn == syntax_let )
 					{
 						muse_cell c = _cons( MUSE_NIL, MUSE_NIL );
 						int bsp = _bspos();
 						muse_cell vars = anonymize_copy_letvars( env, _head(_tail(body)) );
-						_setht( c, h, _cons( vars, bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE) ) );
+						_setht( c, h, _cons( vars, muse_bind_copy_expr( env, _tail(_tail(body)), MUSE_FALSE) ) );
 						_unwind_bindings(bsp);
 						return c;
 					}
-					else if ( fn == syntax_case )
+					else if ( fn.fn == syntax_case )
 					{
-						muse_cell obj = bind_copy_body(env,_head(_tail(body)), MUSE_FALSE);
+						muse_cell obj = muse_bind_copy_expr(env,_head(_tail(body)), MUSE_FALSE);
 						return _cons( h, _cons( obj, anonymize_copy_case_body(env,_tail(_tail(body))) ) );
 					}
-					else if ( fn == fn_define )
+					else if ( fn.fn == fn_define )
 					{
 						/* Note that in the case of fn_define, we don't unwind the bindings
 						stack because the new definition should be in effect for the 
@@ -162,7 +170,23 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 						muse_cell c = MUSE_NIL;
 						muse_cell name = _head(_tail(body));
 						anonymize_formals( env, name );
-						return _cons( h, _cons( name, bind_copy_body( env, _tail(_tail(body)), MUSE_FALSE ) ) );
+						return _cons( h, _cons( name, muse_bind_copy_expr( env, _tail(_tail(body)), MUSE_FALSE ) ) );
+					}
+					else if ( fn.context )
+					{
+						/* We test for the 'scop' view which lets native objects
+						introduce definitions within their scope. */
+						muse_functional_object_t *obj = NULL;
+						muse_scope_view_t *scope = (muse_scope_view_t*)_fnobjview( h, 'scop', obj );
+						if ( scope ) {
+							int sp = _spos();
+							int bsp = _bspos();
+							muse_cell body_subst = scope->begin( env, obj, _cons( h, _tail(body) ) );
+							scope->end( env, obj, bsp );
+							_unwind(sp);
+							_spush(body_subst);
+							return body_subst;
+						}
 					}
 				}
 			}
@@ -175,7 +199,7 @@ static muse_cell bind_copy_body( muse_env *env, muse_cell body, muse_boolean lis
 				}
 			}
 
-			t = bind_copy_body( env, _tail(body), MUSE_FALSE );
+			t = muse_bind_copy_expr( env, _tail(body), MUSE_FALSE );
 			return _cons( h, t );
 		}
 		case MUSE_SYMBOL_CELL :
@@ -292,7 +316,7 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 
 		anonymize_formals( env, formals );
 		
-		_sett( closure, bind_copy_body( env, body, MUSE_FALSE ) );
+		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
 
@@ -306,7 +330,7 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		int bsp = _bspos();
 		anonymize_formals( env, formals );
 		
-		_sett( closure, bind_copy_body( env, body, MUSE_FALSE ) );
+		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
 
@@ -895,7 +919,7 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 
 static muse_cell delay_expr( muse_env *env, muse_cell expr )
 {
-	muse_cell e = bind_copy_body(env,expr,MUSE_TRUE);
+	muse_cell e = muse_bind_copy_expr(env,expr,MUSE_TRUE);
 	if ( _isquote(e) )
 		return e;
 	else

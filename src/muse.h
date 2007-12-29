@@ -413,6 +413,7 @@ MUSEAPI muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_c
 MUSEAPI muse_cell	muse_callcc( muse_env *env, muse_cell proc );
 MUSEAPI muse_cell	muse_force( muse_env *env, muse_cell cell );
 MUSEAPI muse_cell	muse_raise_error( muse_env *env, muse_cell error, muse_cell info );
+MUSEAPI muse_cell	muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_start );
 /*@}*/
 
 /** @name Misc */
@@ -774,13 +775,47 @@ typedef struct {
 	muse_cell (*put_prop)( muse_env *env, void *self, muse_cell key, muse_cell value );
 	/**<
 	 * Modifies the value of the property identified by \p key to the
-	 * given \p value. The return value can either be any value that the
+	 * given \p value. The return value can be any value that the
 	 * object deems relevant. It is generally the value itself. The
 	 * return value should be documented in the specific object. Usually
 	 * one doesn't need the return value, but occasionally it might be
 	 * useful in an object specific way.
 	 */
 } muse_prop_view_t;
+
+/**
+ * An object can expose a scope view (id = 'scop') if it defines some
+ * special bindings within the scope of the expression 
+ * with the object in the function position.
+ */
+typedef struct {
+	muse_cell (*begin)( muse_env *env, void *self, muse_cell expr );
+		/**<
+		 * Called when an object is found at the head of an s-expression
+		 * during \ref muse_bind_copy_expr in order to do any special
+		 * handling of the tail part. The \p expr passed in already
+		 * has the head modified to the object whose \c begin is
+		 * being invoked, but the rest of the expression is passed
+		 * untouched. 
+		 *
+		 * Thre return value is expected to be an expression that will
+		 * be used in place of the original expression. The tail
+		 * part of the expression usualy needs to be bind-copied
+		 * using \ref muse_bind_copy_expr.
+		 */
+
+	void (*end)( muse_env *env, void *self, int bsp );
+		/**<
+		 * Signals the end of the scope of the object.
+		 * Any special bindings created in begin must be
+		 * undone in end.
+		 *
+		 * The bindings stack position is passed in \p bsp. 
+		 * This is the stack position before the begin.
+		 * It is up to the object to unwind the stack
+		 * to the given bsp.
+		 */
+} muse_scope_view_t;
 
 END_MUSE_C_FUNCTIONS
 

@@ -181,21 +181,76 @@ static void module_write( muse_env *env, void *ptr, void *port )
 	port_write( " ...}", 5, p );
 }
 
-/**
- * (MyMod symbol)
- *
- * Looks up the value of the symbol in the module's context.
- */
-muse_cell module_fn( muse_env *env, module_t *m, muse_cell args )
+static void introduce_module_local( muse_env *env, module_t *m )
 {
-	muse_cell sym = _evalnext(&args);
-	int i;
-	for ( i = 0; i < m->length; ++i ) {
-		module_binding_t *b = m->bindings + i;
-		if ( sym == b->short_name || sym == b->full_name )
-			return b->value;
+	int i = 0;
+	for ( ; i < m->length; ++i ) {
+		_pushdef( m->bindings[i].short_name, m->bindings[i].value );
 	}
-	return sym;
+}
+
+
+/**
+ * The passed expression's head is the object. We convert the
+ * expression into a "do" expression with the body bound using the
+ * module's symbols.
+ */
+static muse_cell module_scope_begin( muse_env *env, void *self, muse_cell expr )
+{
+	introduce_module_local( env, (module_t*)self );
+	{
+		muse_cell tailpart = muse_bind_copy_expr( env, _tail(expr), MUSE_FALSE );
+		_setht( expr, _mk_nativefn( syntax_do, NULL ), tailpart ); 
+		return expr;
+	}
+}
+
+static void module_scope_end( muse_env *env, void *self, int bsp )
+{
+	/* Nothing special to do. The lambda capture part
+	will do all the necessary stack unwinding. */
+	_unwind_bindings(bsp);
+}
+
+static muse_scope_view_t g_module_scope_view = 
+{
+	module_scope_begin,
+	module_scope_end
+};
+
+static void *module_view( muse_env *env, int id )
+{
+	if ( id == 'scop' )
+		return &g_module_scope_view;
+	else
+		return NULL;
+}
+
+/**
+ * (MyMod ...)
+ *
+ * Behaves exactly like \c do under all circumstances,
+ * except that the symbols in the body part are interpreted
+ * in the context of the module.
+ *
+ * When you use such an expression within a closure creating
+ * expression, the head is replaced with "do" since the body
+ * is already automatically bind-copied in the context of the
+ * module and there is no longer any necessity for the module
+ * object sitting at the head. So this function is called only
+ * when the module object is used outside of a closure capturing
+ * expression - i.e. either at the top level or inside any 
+ * immediately evaluated expression at the top level.
+ */
+muse_cell module_syntax( muse_env *env, module_t *m, muse_cell args )
+{
+	int bsp = _bspos();
+	introduce_module_local( env, m );
+	{
+		muse_cell result = muse_do( env, args );
+		_unwind_bindings(bsp);
+		return result;
+	}
 }
 
 static muse_functional_object_type_t g_module_type =
@@ -203,8 +258,8 @@ static muse_functional_object_type_t g_module_type =
 	'muSE',
 	'mmod',
 	sizeof(module_t),
-	(muse_nativefn_t)module_fn,
-	NULL,
+	(muse_nativefn_t)module_syntax,
+	module_view,
 	module_init,
 	module_mark,
 	module_destroy,
@@ -261,14 +316,11 @@ muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 	return mod;
 }
 
-static void introduce_module( muse_env *env, module_t *m, muse_boolean global )
+static void introduce_module_global( muse_env *env, module_t *m )
 {
 	int i = 0;
 	for ( ; i < m->length; ++i ) {
-		if ( global == MUSE_TRUE )
-			_define( m->bindings[i].short_name, m->bindings[i].value );
-		else
-			_pushdef( m->bindings[i].short_name, m->bindings[i].value );
+		_define( m->bindings[i].short_name, m->bindings[i].value );
 	}
 }
 
@@ -290,7 +342,10 @@ muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 		muse_cell mod = _evalnext(&args);
 		module_t *m = (module_t*)_functional_object_data( mod, 'mmod' );
 		if ( m ) {
-			introduce_module( env, m, bsp == 0 ? MUSE_TRUE : MUSE_FALSE );
+			if ( bsp == 0 )
+				introduce_module_global( env, m );
+			else
+				introduce_module_local( env, m );
 		}
 	}
 	
