@@ -325,14 +325,6 @@ MUSEAPI const muse_char *muse_typename( muse_cell thing )
 	return k_type_names[_cellt(thing)];
 }
 
-static void muse_exception(muse_env *env, muse_cell args)
-{
-	muse_cell ehsym = _csymbol(L"{exception-handler}");
-	muse_cell eh = _symval(ehsym);
-	if ( eh != ehsym )
-		_apply( eh, args, MUSE_TRUE );
-}
-
 #define _sprintf_object(buffer,maxlen,thing) muse_sprintf_object(env,buffer,maxlen,thing)
 static size_t muse_sprintf_object( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing );
 #define _sprintf_list(buffer,maxlen,thing) muse_sprintf_list(env,buffer,maxlen,thing)
@@ -643,7 +635,7 @@ MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_c
 			#if defined(_DEBUG)
 				DebugBreak();
 			#endif
-			muse_exception(env,MUSE_NIL); 
+			muse_raise_error(env, MUSE_NIL, MUSE_NIL); 
 		default:;
 		}
 	#else
