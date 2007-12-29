@@ -304,7 +304,7 @@ static void put_long_LE( unsigned char *bytes, muse_int i )
  * You can therefore use slicing to read data to a portion of a
  * byte array from a port using \ref fn_read_bytes "read-bytes".
  */
-static muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
+muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 {
 	muse_int offset = _intvalue( _evalnext(&args) );
 	muse_cell field_type = MUSE_NIL;
@@ -451,7 +451,7 @@ muse_functional_object_type_t g_bytes_type =
  * Evaluates to \p bytes if it is a valid byte data object and
  * to () if it isn't one.
  */
-static muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
+muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell b = _evalnext(&args);
 	bytes_t *data = _bytes_data(b);
@@ -462,7 +462,7 @@ static muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
 /**
  * (bytes-size bytes) -> int
  */
-static muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
+muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell b = _evalnext(&args);
 	bytes_t *bdata = _bytes_data(b);
@@ -475,7 +475,7 @@ static muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
 /**
  * Force the entire buffer down the throat of the port.
  */
-static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
+size_t port_write_force( muse_env *env, unsigned char *buffer, size_t size, muse_port_t p )
 {
 	size_t total = 0;
 
@@ -502,7 +502,7 @@ static size_t port_write_force( muse_env *env, unsigned char *buffer, size_t siz
  * can be specified to write a portion of the byte array
  * without having to allocate a new slice object.
  */
-static muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
+muse_cell fn_write_bytes( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell arg1 = _evalnext(&args);
 
@@ -573,7 +573,7 @@ static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size
  * is given, it reads from the port until eof and returns a
  * new bytes object containing the data.
  */
-static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
+muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell port_arg = MUSE_NIL, bytes_arg = MUSE_NIL;
 	muse_port_t p = NULL;
@@ -667,7 +667,7 @@ static muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
  *
  * Creates a new uninitialized byte array of the given size.
  */
-static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
+muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell b = _mk_functional_object( &g_bytes_type, args );
 
@@ -685,7 +685,7 @@ static muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
  * Copies \p size bytes from \p src starting at \p src-offset
  * to the \p dest buffer starting at \p dest-offset.
  */
-static muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
+muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
 {
 	muse_int size		= _intvalue( _evalnext(&args) );
 	bytes_t *src		= _bytes_data( _evalnext(&args) );
