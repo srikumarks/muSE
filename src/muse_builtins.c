@@ -147,6 +147,7 @@ static const struct _builtins
 {		L"send-super",	fn_send_super		},
 {		L"<-",			fn_send				},
 {		L"<<-",			fn_send_super		},
+{		L"isa?",		fn_isa_p			},
 	
 /************** Ports ***************/
 {		L"port?",		fn_port_p			},

@@ -464,9 +464,10 @@ MUSEAPI muse_cell muse_list_last( muse_env *env, muse_cell list )
  */
 MUSEAPI muse_cell muse_list_append( muse_env *env, muse_cell head, muse_cell tail )
 {
-	if ( head )
-	{
-		_sett( muse_list_last(env,head), tail );
+	if ( head ) {
+		if ( tail ) {
+			_sett( muse_list_last(env,head), tail );
+		}
 		return head;
 	}
 	else
