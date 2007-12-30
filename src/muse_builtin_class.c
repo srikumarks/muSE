@@ -353,9 +353,9 @@ static muse_cell common_ancestor( muse_env *env, muse_cell x, muse_cell type )
 				if ( ca ) return ca;
 				else _step(&supers);
 			}
-		} else {
-			return MUSE_NIL;
-		}
+		} 
+
+		return MUSE_NIL;
 	}
 }
 
