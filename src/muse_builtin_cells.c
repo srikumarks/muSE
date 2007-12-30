@@ -19,15 +19,29 @@ enum
 	DEFINE_OVERRIDE
 };
 
+static muse_boolean is_generic( muse_env *env, muse_cell gen )
+{
+	return ((_cellt(gen) == MUSE_LAMBDA_CELL) && (_quq(_head(gen)) == _csymbol(L"{{generic-args}}")))
+		? MUSE_TRUE 
+		: MUSE_FALSE;
+}
+
 /**
  * Does normal definition as well as extensions and overrides.
  */
 static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell gen, muse_cell fn )
 {
 	if ( (env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom)
-		|| (_cellt(gen) != MUSE_LAMBDA_CELL) 
-		|| (_quq(_head(gen)) != _csymbol(L"{{generic-args}}")) )
+		|| !is_generic(env,gen) )
 	{
+		/* Check if it is a dummy function declaration - like (define (f x y)) */
+		muse_boolean dummy_function = MUSE_FALSE;
+		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(gen) == MUSE_NIL ) {
+			/* It is a dummy function. We should replace the body of the
+			dummy function with the given body. */
+			dummy_function = MUSE_TRUE;
+		}
+
 		MUSE_DIAGNOSTICS({
 			if ( option > DEFINE_NORMAL && _cellt(gen) == MUSE_LAMBDA_CELL )
 				muse_message( env, option == DEFINE_EXTENSION 
@@ -35,7 +49,7 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 										: L"(define-override >>genfn<< ...)",
 									L"Expecting a generic function, but got a normal function instead!" );
 
-			if ( env->current_process->bindings_stack.top == env->current_process->bindings_stack.bottom && sym != gen )
+			if ( env->current_process->bindings_stack.top == env->current_process->bindings_stack.bottom && sym != gen && !dummy_function )
 				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined.", sym );
 		});
 
@@ -55,8 +69,27 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 
 		fn = _eval(fn);
 
-		_define( sym, fn );
-		return fn;
+		if ( dummy_function && _cellt(fn) == MUSE_LAMBDA_CELL ) {
+			MUSE_DIAGNOSTICS({
+				int bsp = _bspos();
+				if ( muse_bind_formals( env, _head(gen), _head(fn) ) ) {
+					_unwind_bindings(bsp);
+				} else {
+					muse_message( env, L"define", 
+						L"Declared argument pattern\n\t%m\ndoesn't match with definition pattern\n\t%m", 
+						_head(gen), 
+						_head(fn) 
+					);
+				}
+			});
+
+			_define( sym, gen );
+			_setht( gen, _head(fn), _tail(fn) );
+			return gen;
+		} else {
+			_define( sym, fn );
+			return fn;
+		}
 	}
 
 	/* We're working with a generic function, so
@@ -140,6 +173,29 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
  * \ref syntax_generic_lambda "generic function", \c define behaves like
  * \ref fn_define_extension "define-extension" - i.e. it extends the
  * definition of the generic function with the new function's case.
+ *
+ * \par Declarations
+ * If you're defining a function and you leave its body empty - for example -
+ * @code (define (f x y)) @endcode or @code (define f (fn (x y))) @endcode,
+ * it is taken to mean a declaration of the function's argument pattern.
+ * The purpose of a declaration facility is to permit mutually recursive 
+ * functions in local scopes. The body of the declared function may be 
+ * provided later on by redefinition using a similar argument
+ * pattern. For example, after the declaration shown in example above, you can
+ * provide a definition like -
+ * @code (define (f x y) (+ (* x x) (* y y))) @endcode or
+ * @code (define f (fn (x y) (+ (* x x) (* y y)))) @endcode
+ * At the definition point, you can use any argument pattern that will match
+ * against the declared pattern. So you could have done -
+ * @code (define (f a b) (+ (* a a) (* b b))) @endcode 
+ * which will be accepted. However, if you provide an incompatible
+ * argument pattern such as @code (define (f x) (* x x)) @endcode,
+ * an error message will be shown. If you ignore the error message, the
+ * new argument pattern is the one that will take effect.
+ * Pattern matching is therefore useful to declare that something is a 
+ * function without dscribing any of its arguments like this -
+ * @code (define f (fn _)) @endcode. All argument patterns will 
+ * match against the \c _ pattern (or any symbol in its place).
  */
 muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 {
@@ -152,7 +208,10 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	if ( _cellt(sym) == MUSE_CONS_CELL ) 
 	{
 		/* Syntax used is (define (sym args..) body). Transform the arguments
-		into the canonical form before further processing. */
+		into the canonical form (define sym (fn (args..) body)) before further 
+		processing. Note that this is recursive, so you can write 
+		(define ((sym a) b c) ..) to make sym a function that returns another
+		function as its result. */
 		return fn_define( env, context, 
 				_cons( _head(sym), 
 						(_cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC))
@@ -263,6 +322,34 @@ muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args )
 muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
 {
 	return fn_define( env, (void*)DEFINE_OVERRIDE, args );
+}
+
+/**
+ * (undefine symbol1 symbol2 -etc-)
+ *
+ * Discards any previous value attached to the symbols so that they can
+ * be reused in either a global or local context.
+ */
+muse_cell fn_undefine( muse_env *env, void *context, muse_cell args )
+{
+	int global_context = (_bspos() == 0);
+
+	while ( args ) {
+		muse_cell sym = _next(&args);
+
+		MUSE_DIAGNOSTICS({
+			if ( _cellt(sym) != MUSE_SYMBOL_CELL )
+				muse_message( env, L"(undefine >>sym<<)", L"You gave [%m] instead of a symbol!", sym );
+		});
+
+		if ( global_context ) {
+			_define(sym, sym);
+		} else {
+			_pushdef(sym, sym);
+		}
+	}
+
+	return MUSE_NIL;
 }
 
 /*@}*/
