@@ -413,8 +413,8 @@ static void local_write( muse_env *env, void *obj, void *port )
 
 static muse_functional_object_type_t g_local_declaration_type = {
 	'muSE',
-	'locl',
-	sizeof(muse_functional_object_type_t),
+	'(loc',
+	sizeof(muse_functional_object_t),
 	syntax_local,
 	local_view,
 	NULL,
