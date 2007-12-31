@@ -57,7 +57,6 @@ static const struct _builtins
 {		L"define",		fn_define			},
 {		L"define-extension",	fn_define_extension		},
 {		L"define-override",		fn_define_override		},
-{		L"undefine",	fn_undefine			},
 {		L"set!",		fn_set_M			},
 {		L"setf!",		fn_setf_M			},
 {		L"setr!",		fn_setr_M			},
@@ -201,6 +200,7 @@ void muse_load_builtin_fns(muse_env *env)
 		++b;
 	}
 	
+	muse_define_builtin_local(env);
 	muse_math_load_common_unary_functions(env);
 	muse_define_builtin_type_vector(env);
 	muse_define_builtin_type_hashtable(env);

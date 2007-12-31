@@ -62,7 +62,6 @@ muse_cell fn_gensym( muse_env *env, void *context, muse_cell args );
 muse_cell fn_define( muse_env *env, void *context, muse_cell args );
 muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args );
 muse_cell fn_define_override( muse_env *env, void *context, muse_cell args );
-muse_cell fn_undefine( muse_env *env, void *context, muse_cell args );
 muse_cell fn_set_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args );
 muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args );
@@ -250,5 +249,6 @@ void muse_define_builtin_type_box(muse_env *env);
 /*@}*/
 
 void muse_define_builtin_networking(muse_env *env);
+void muse_define_builtin_local(muse_env *env);
 
 #endif /* __MUSE_BUILTINS_H__ */

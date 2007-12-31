@@ -11,6 +11,7 @@
 
 
 #include "muse_builtins.h"
+#include "muse_port.h"
 
 enum
 {
@@ -325,12 +326,32 @@ muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (undefine symbol1 symbol2 -etc-)
+ * (local symbol1 symbol2 -etc-)
  *
- * Discards any previous value attached to the symbols so that they can
- * be reused in either a global or local context.
+ * The local declaration is used to introduce symbols that are, well,
+ * local to a particular context. What it says is that "from this point
+ * onwards and till the end of the surrounding scope, you have to discard 
+ * any previous definitions of these symbols". This is useful mostly
+ * in module definitions to prevent the definitions of some symbols
+ * from influencing the definition of the module. For example -
+ * @code
+ * ; A function to determine if the sequence [a,b,c] progresses evenly.
+ * (define (even? a b c) (= (- b a) (- c b)))
+ *
+ * (module Num (classify)
+ *   (local even? odd?)  ; Ignore previous definitions/declarations of even? and odd?.
+ *                       ; Without this, the following declaration will give a 
+ *                       ; redeclaration error.
+ *
+ *   (define (even? n))  ; Forward declare even? so that odd? can use it.
+ *   (define (odd? n) (case n (0 ()) (_ (even? (- n 1)))))
+ *   (define (even? n) (case n (0 T) (_ (odd? (- n 1))))))
+ *   (define (classify n) (cond ((even? n) 'even) ((odd? n) 'odd)))
+ * )
+ * ; At this point, the original 3-argument definition of even? is available.
+ * @endcode
  */
-muse_cell fn_undefine( muse_env *env, void *context, muse_cell args )
+muse_cell syntax_local( muse_env *env, void *context, muse_cell args )
 {
 	int global_context = (_bspos() == 0);
 
@@ -350,6 +371,62 @@ muse_cell fn_undefine( muse_env *env, void *context, muse_cell args )
 	}
 
 	return MUSE_NIL;
+}
+
+static muse_cell local_scope_begin( muse_env *env, void *self, muse_cell expr )
+{
+	muse_cell syms = _tail(expr);
+
+	/* Undefine all the symbols. */
+	while ( syms ) {
+		muse_cell sym = _next(&syms);
+		_pushdef( sym, sym );
+	}
+
+	/* The local expression should not be bind copied. It is ok for the 
+	head term to be bind copied though. So we return expr as is. */
+	return expr;
+}
+
+static void local_scope_end( muse_env *env, void *self, int bsp )
+{
+	/* Nothing to do. The introdced bindings stay for the scope of
+	the local expression. */
+}
+
+static muse_scope_view_t g_local_scope_view = { local_scope_begin, local_scope_end };
+
+static void *local_view( muse_env *env, int id )
+{
+	if ( id == 'scop' ) {
+		return &g_local_scope_view;
+	} else {
+		return NULL;
+	}
+}
+
+static void local_write( muse_env *env, void *obj, void *port )
+{
+	muse_port_t p = (muse_port_t)port;
+	port_write( "local", 5, p );
+}
+
+static muse_functional_object_type_t g_local_declaration_type = {
+	'muSE',
+	'locl',
+	sizeof(muse_functional_object_type_t),
+	syntax_local,
+	local_view,
+	NULL,
+	NULL,
+	NULL,
+	local_write
+};
+
+void muse_define_builtin_local(muse_env *env)
+{
+	int sp = _spos();
+	_define( _csymbol(L"local"), muse_mk_functional_object( env, &g_local_declaration_type, MUSE_NIL ) );
 }
 
 /*@}*/
