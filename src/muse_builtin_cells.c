@@ -54,20 +54,6 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined.", sym );
 		});
 
-		/*	First mark the symbol as a fresh symbol by defining it to be itself.
-			This way, if the symbol is referred to in the body of the value,
-			it will remain unchanged so that recursive functions can be written. 
-			Note that the value is evaluated after this assignment is made in order
-			to make the self-substitution happen.
-			
-			NOTE: There is no implementation of tail-recursion. So beware of
-			stack blowup. It usually safe to use recursion for small bound
-			routines such as syntax transformers. */
-		if ( env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom )
-			_pushdef( sym, sym ); /* Make the definition local in scope. */
-		else
-			_define( sym, sym );
-
 		fn = _eval(fn);
 
 		if ( dummy_function && _cellt(fn) == MUSE_LAMBDA_CELL ) {
