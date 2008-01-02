@@ -549,6 +549,15 @@ static ez_result_t _read_number( muse_port_t f, int col )
 	if ( c == EOF )
 		return ez_result( MUSE_NIL, col, col );
 
+	/* Check for e and E. We don't allow numbers purely using
+	the exponent notation. If we do, we cannot have variables
+	named e1, e2, etc. which is kind of stupid. */
+	if ( c == 'e' || c == 'E' ) 
+	{
+		port_ungetc( c, f );
+		return ez_result( MUSE_NIL, col, col );
+	}
+
 	/* Optional leading minus sign. */
 	if ( c == '-' || c == '+' )
 	{
