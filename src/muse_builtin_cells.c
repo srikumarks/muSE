@@ -28,6 +28,22 @@ static muse_boolean is_generic( muse_env *env, muse_cell gen )
 }
 
 /**
+ * If called in a global context, it defines he symbol without
+ * touching the bindings stack. If called in a local context
+ * such as let or fn, it saves the old definition on the
+ * bindings stack and defines the symbol to the new value,
+ * so that the old definition can be restored at the end
+ * of the local context.
+ */
+static void define_in_context( muse_env *env, muse_cell sym, muse_cell val )
+{
+	if ( _bspos() == 0 )
+		_define( sym, val );
+	else
+		_pushdef( sym, val );
+}
+
+/**
  * Does normal definition as well as extensions and overrides.
  */
 static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell gen, muse_cell fn )
@@ -70,11 +86,11 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 				}
 			});
 
-			_define( sym, gen );
+			define_in_context( env, sym, gen );
 			_setht( gen, _head(fn), _tail(fn) );
 			return gen;
 		} else {
-			_define( sym, fn );
+			define_in_context( env, sym, fn );
 			return fn;
 		}
 	}
@@ -112,10 +128,26 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 			break;
 		}
 
-		_define( sym, gen );
+		define_in_context( env, sym, gen );
 	}
 
 	return fn;
+}
+
+static void forward_declare( muse_env *env, muse_cell sym ) 
+{
+	if ( _cellt(sym) == MUSE_SYMBOL_CELL ) {
+		muse_cell val = _symval(sym);
+		if ( sym == val ) {
+			/* Define to be a dummy function. Use the 'self symbol to specify 
+			an argument pattern that matches all argument patterns. */
+			define_in_context( env, sym, syntax_lambda( env, NULL, _cons(_builtin_symbol(MUSE_SELF),MUSE_NIL) ) );
+		} else {
+			/* This serves to save the old value on the bindings stack in
+			local contexts. In the global context, this does nothing. */
+			define_in_context( env, sym, val );
+		}
+	}
 }
 
 /**
@@ -194,6 +226,11 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	
 	if ( _cellt(sym) == MUSE_CONS_CELL ) 
 	{
+		/* Automatically add a "forward declaration" for new function definitions
+		so that they can recurse ... only if they are undefined. This is done only
+		for definitions of the form (define (f arg1 arg2 ..) ...). */
+		forward_declare( env, _head(sym) );
+
 		/* Syntax used is (define (sym args..) body). Transform the arguments
 		into the canonical form (define sym (fn (args..) body)) before further 
 		processing. Note that this is recursive, so you can write 
@@ -239,7 +276,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 			_put_prop( sym, _builtin_symbol(MUSE_CODE), _head(args) );
 		}
 	}
-	
+
 	/* Define the value of the symbol. */
 	{
 		muse_cell value = _defgen( env, (int)(size_t)context, sym, oldval, _head(args) );
@@ -339,8 +376,6 @@ muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_local( muse_env *env, void *context, muse_cell args )
 {
-	int global_context = (_bspos() == 0);
-
 	while ( args ) {
 		muse_cell sym = _next(&args);
 
@@ -349,11 +384,7 @@ muse_cell syntax_local( muse_env *env, void *context, muse_cell args )
 				muse_message( env, L"(undefine >>sym<<)", L"You gave [%m] instead of a symbol!", sym );
 		});
 
-		if ( global_context ) {
-			_define(sym, sym);
-		} else {
-			_pushdef(sym, sym);
-		}
+		_pushdef(sym, sym);
 	}
 
 	return MUSE_NIL;
