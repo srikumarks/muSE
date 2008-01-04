@@ -55,6 +55,7 @@ static const struct _builtins
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},
+{		L":=",			fn_define			},
 {		L"define-extension",	fn_define_extension		},
 {		L"define-override",		fn_define_override		},
 {		L"set!",		fn_set_M			},
