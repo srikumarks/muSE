@@ -1,0 +1,21 @@
+
+== TODO ==
+
+* Render to texture support.
+* Text support
+** Outline fonts in 3D
+** Laid out text using Gdiplus.
+* Masking using stencil buffer
+* Lighting
+* Need api to specify opengl requirements.
+* Provide proper process-aware (load ...) implementation
+
+== DONE ==
+
+* Display shader compilation eror log.
+* Display shader link error log.
+* Move rendering to its own thread.
+* Add event to be triggered when a movie completes loading
+* Keyboard input.
+* Add event to be triggered when a picture completes loading
+
