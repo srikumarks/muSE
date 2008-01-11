@@ -358,7 +358,7 @@ static muse_cell import_scope_begin( muse_env *env, void *self, muse_cell expr )
 	return fn_import( env, self, _tail(expr) );
 }
 
-static muse_cell import_scope_end( muse_env *env, void *self, int bsp )
+static void import_scope_end( muse_env *env, void *self, int bsp )
 {
 }
 
