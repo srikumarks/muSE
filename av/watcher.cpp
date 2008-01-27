@@ -103,14 +103,23 @@ public:
 		if ( _cellt(val) == MUSE_NATIVEFN_CELL ) {
 			try {
 				wi->prev.cons.head = stat(val); ///< Save the previous stat.
-			} catch ( muse_cell s ) {
+			} catch ( muse_cell ) {
 				// Not a stat-able object.
 				wi->val = MUSE_NIL;
 				wi->fn = MUSE_NIL;
 				wi->threshold = 0.0;
 			}
-		} else {
+		} else if ( _isnumber(val) ) {
 			wi->prev = *(_ptr(wi->val)); ///< Save the current value.
+		}  else {
+			// Not a stat-able object.
+			wi->val = MUSE_NIL;
+			wi->fn = MUSE_NIL;
+			wi->threshold = 0.0;
+		}
+		
+		if ( wi->val == MUSE_NIL ) {
+			muse_message( env, L"(watch >>obj<< ..)", L"Can only watch numbers and 'stat'able objects. Given %t [%m].", val, val );
 		}
 	}
 
