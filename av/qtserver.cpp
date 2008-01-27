@@ -11,6 +11,16 @@ using namespace std;
 
 typedef basic_string<unsigned short> unicode_string;
 
+static void msgbox( const wchar_t *msg ) {
+	return;
+	int choice = MessageBoxW( NULL, msg, L"movie", MB_ABORTRETRYIGNORE );
+	switch ( choice ) {
+		case IDABORT: exit(0);
+		case IDRETRY: DebugBreak(); break;
+		case IDIGNORE:;
+	}
+}
+
 unicode_string narrow( const wstring &ws ) {
 	unicode_string s;
 	s.reserve( ws.length() + 1 );
@@ -160,7 +170,9 @@ public:
 		dataRefType = 0;
 	}
 
-	~QTImageFileLoader() {}
+	~QTImageFileLoader() {
+		msgbox(L"Image loader destructor");
+	}
 
 	void getDataRef() {
 		CFStringRef pathStr = NULL;
@@ -248,7 +260,11 @@ private:
 
 	void ensure( OSErr e ) {
 		if ( e != noErr ) {
-			delete this;
+
+//			delete this;
+// Shouldn't delete this object 'cos a reference to it is held by the 
+// QTImageFileData object.
+
 			throw e;
 		}
 	}
@@ -562,7 +578,11 @@ private:
 	void ensure( const char *operation, OSErr e ) {
 		if ( e != noErr ) {
 			fprintf( stderr, "%s failed with error %d\n", operation, e );
-			delete this;
+
+//			delete this;
+// Shouldn't delete this object 'cos a reference to it is held by the 
+// QTMovieData object.
+
 			throw e;
 		}
 	}
@@ -588,6 +608,8 @@ public:
 	QTMovieUnloader( QTMovieDataLoader *_loader ) 
 		: loader(_loader) 
 	{}
+
+	~QTMovieUnloader() {}
 
 	void runOnce( Tasker *tasker ) {
 		loader->unload(tasker);
