@@ -140,10 +140,26 @@ public:
 private:
 	typedef std::deque<Task*> TaskList;
 
+	class QueueMutex {
+	public:
+		QueueMutex( TaskerImpl *t ) : tasker(t) { tasker->enter(); }
+		~QueueMutex() { tasker->leave(); }
+	private:
+		TaskerImpl *tasker;
+	};
+
+	class QueueUnMutex {
+	public:
+		QueueUnMutex( TaskerImpl *t ) : tasker(t) { tasker->leave(); }
+		~QueueUnMutex() { tasker->enter(); }
+	private:
+		TaskerImpl *tasker;
+	};
+
 	void submit( Task *task ) 
 	{
 		if ( task ) {
-			enter();
+			QueueMutex _(this);
 			tasks.push_back(task);
 			task->queued();
 			if ( !idler ) 
@@ -154,14 +170,13 @@ private:
 				pthread_cond_signal( &waiter );
 			#endif
 			}
-			leave();
 		}
 	}
 
 	void submitUrgent( Task *task ) 
 	{
 		if ( task ) {
-			enter();
+			QueueMutex _(this);
 			tasks.push_front(task);
 			task->queued();
 			if ( !idler ) 
@@ -172,7 +187,6 @@ private:
 				pthread_cond_signal( &waiter );
 			#endif
 			}
-			leave();
 		}
 	}
 
@@ -188,13 +202,12 @@ private:
 
 	void cancel() 
 	{
-		enter();
+		QueueMutex _(this);
 		for ( size_t i = 0; i < tasks.size(); ++i ) {
 			Task *t = tasks[i];
 			t->cancelled();
 		}
 		tasks.clear();
-		leave();
 	}
 
 	class stop_notification : public TaskOnce
@@ -212,12 +225,14 @@ private:
 
 	void stop()
 	{
-		enter();
-		cancel();
+		Box *b = NULL;
+		{
+			QueueMutex _(this);
+			cancel();
 
-		Box *b = Box::emptyBox();
-		submitUrgent( new stop_notification(b) );
-		leave();
+			b = Box::emptyBox();
+			submitUrgent( new stop_notification(b) );
+		}
 		b->get();
 		delete b;
 	}
@@ -248,20 +263,18 @@ private:
 					idler = NULL;
 				}
 			} else {
-				enter();
+				QueueMutex _(this);
 				bool notasks = tasks.empty();
 
 				if ( notasks ) {
-					leave();
+					QueueUnMutex __(this);
 				#ifdef _WIN32
 					WaitForSingleObject( waiter, INFINITE );
 					ResetEvent( waiter );
 				#else
 					pthread_cond_wait( &waiter, &mutex );
 				#endif
-					enter();
 				}
-				leave();
 			}
 
 			bool notasks = false;
@@ -269,13 +282,14 @@ private:
 
 				// Take one task.
 				Task *task = NULL;
-				enter();
-				notasks = tasks.empty();
-				if ( !notasks ) {
-					task = tasks.front();
-					tasks.pop_front();
+				{
+					QueueMutex _(this);
+					notasks = tasks.empty();
+					if ( !notasks ) {
+						task = tasks.front();
+						tasks.pop_front();
+					}
 				}
-				leave();
 
 				// Check for exit condition.
 				if ( task == NULL ) {
