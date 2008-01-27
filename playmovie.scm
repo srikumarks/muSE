@@ -7,6 +7,7 @@
 ;(define m (movie "http://movies.apple.com/movies/sony/the_bands_visit/the_bands_visit_720p.mov"))
 (define m (movie "http://movies.apple.com/movies/us/apple/getamac/apple_getamac_holiday_480x272.mov"))
 
+; Define initial values of movie's display properties.
 (define s 1.0)
 (define rotx 0.0)
 (define roty 0.0)
@@ -34,29 +35,39 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Respond to some keyboard input.
 
+(define (seek m dt) (put m 'time (+ dt (get m 'time))))
+
 (define (key-down k)
   (case k
-    ("=" (anim z (+ z 0.5) 0.5))	; Press '=' to zoom in 
-    ("-" (anim z (- z 0.5) 0.5))	; Press '-' to zoom out
-    ('right (put m 'time (+ 6.0 (get m 'time))))
-    								; Press right arrow key to step forward by 6 seconds.
-    ('left (put m 'time (+ -6.0 (get m 'time)))))
-    								; Press left arrow key to step backward by 6 seconds.
-    )
+    ; Press '=' key to zoom in.
+    ("=" (anim z (+ z 0.5) 0.5))
+    
+    ; Press '-' key to zoom out
+    ("-" (anim z (- z 0.5) 0.5))
+
+    ; Press right arrow key to step forward by 6 seconds.
+    ('right (seek m 6.0))
+    
+    ; Press left arrow key to step backward by 6 seconds.
+    ('left (seek m -6.0)))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Rotate the video when the user drags the mouse.
 
 (define (mouse-drag)
   (anim roty (* 360 (- (/ MouseX Width) 1/2)) 0.1))
-  
 
-(define (rotate-y-forever)		; Function to rotate the 'roty' value for ever.
-  (anim roty (+ roty 36) 2)		; Increase the value of roty by 36 degrees over the next 2 seconds.
-  (schedule (fn () (rotate-y-forever)) 2)
-  								; After 2 seconds, continue to rotate a bit more.
-  								; Doing it this way gives is the chance to animate roty based
-  								; on the mouse position as well as in an automatic loop.
+
+(define (rotate-y-forever) ; Function to rotate the 'roty' value for ever.
+  
+  ; Increase the value of roty by 36 degrees over the next 2 seconds.
+  (anim roty (+ roty 36) 2)		
+
+  ; After 2 seconds, continue to rotate a bit more.
+  ; Doing it this way gives us the chance to animate roty based
+  ; on the mouse position as well as in an automatic loop.
+  (schedule rotate-y-forever 2)
   )
 
 
@@ -64,8 +75,9 @@
 ; Introduce the video once it has been loaded.
 
 (watch m (fn (stat)	
-             (put m 'rate 1.0)
-             (anim z (+ z 2.0) 5)
-             (anim rotx (+ rotx 360) 5)
-             (schedule rotate-y-forever 5)
-             ))
+           (put m 'rate 1.0)
+           (anim z (+ z 2.0) 5)
+           (anim rotx (+ rotx 360) 5)
+           (schedule rotate-y-forever 5)
+           (unwatch m)
+           ))
