@@ -352,44 +352,6 @@ muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
-static muse_cell import_scope_begin( muse_env *env, void *self, muse_cell expr )
-{
-	/* Introduce the modules and then vanish from the function body. */
-	return fn_import( env, self, _tail(expr) );
-}
-
-static void import_scope_end( muse_env *env, void *self, int bsp )
-{
-}
-
-static muse_scope_view_t g_import_scope_view = { import_scope_begin, import_scope_end };
-
-static void *import_view( muse_env *env, int id )
-{
-	if ( id == 'scop' )
-		return &g_import_scope_view;
-	else
-		return NULL;
-}
-
-/* When import is used within the body of a closure creation expression
-using (fn ..), it has the effect of importing the module symbols for
-the body and vanishing from the resultant closure so that there is no
-runtime overhead when invoking the closure. We do this using the scope
-view and by turning the import function into an object. */
-static muse_functional_object_type_t g_import_type = {
-	'muSE',
-	'(imp',
-	sizeof(muse_functional_object_t),
-	fn_import,
-	import_view,
-	NULL,
-	NULL,
-	NULL,
-	NULL
-};
-
-
 /*@}*/
 /*@}*/
 
@@ -397,6 +359,6 @@ void muse_define_builtin_type_module( muse_env *env )
 {
 	int sp = _spos();
 	_define( _csymbol(L"module"), _mk_nativefn( fn_module, NULL ) );
-	_define( _csymbol(L"import"), _mk_functional_object( &g_import_type, MUSE_NIL ) );
+	_define( _csymbol(L"import"), _mk_nativefn( fn_import, NULL ) );
 	_unwind(sp);
 }

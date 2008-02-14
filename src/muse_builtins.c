@@ -55,7 +55,6 @@ static const struct _builtins
 	
 /************** Cell and symbol manipulation ***************/
 {		L"define",		fn_define			},
-{		L":=",			fn_define			},
 {		L"define-extension",	fn_define_extension		},
 {		L"define-override",		fn_define_override		},
 {		L"set!",		fn_set_M			},
@@ -148,7 +147,6 @@ static const struct _builtins
 {		L"send-super",	fn_send_super		},
 {		L"<-",			fn_send				},
 {		L"<<-",			fn_send_super		},
-{		L"isa?",		fn_isa_p			},
 	
 /************** Ports ***************/
 {		L"port?",		fn_port_p			},
@@ -201,7 +199,6 @@ void muse_load_builtin_fns(muse_env *env)
 		++b;
 	}
 	
-	muse_define_builtin_local(env);
 	muse_math_load_common_unary_functions(env);
 	muse_define_builtin_type_vector(env);
 	muse_define_builtin_type_hashtable(env);
