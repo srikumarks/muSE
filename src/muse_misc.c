@@ -273,6 +273,82 @@ size_t	muse_unicode_size( const char *utf8, size_t nbytes )
 	return (nbytes+1) * sizeof(muse_char);
 }
 
+
+/**
+ * Converts the given 16-bit unicode character c to
+ * utf8 and stores the result in the given utf8 buffer.
+ * If more than nbytes are needed, the character is not
+ * converted and 0 is returned. Otherwise the number of
+ * bytes used in the buffer is returned. If the unicode
+ * character is not 16-bit, an error value -1 is returned.
+ */
+int uc16_to_utf8( int c, unsigned char *utf8, int nbytes )
+{
+	if ( nbytes <= 0 )
+		return 0;
+
+	if ( c >= 0 && c <= 0x7F )
+	{
+		utf8[0] = (unsigned char)c;
+		return 1;
+	}
+	else if ( c >= 0x80 && c <= 0x7FF )
+	{
+		if ( nbytes < 2 )
+			return 0;
+
+		utf8[0] = (unsigned char)(c >> 6) | 0xC0;
+		utf8[1] = (unsigned char)(c & 0x3F) | 0x80;
+		return 2;
+	}
+	else if ( c >= 0x800 && c <= 0xFFFF )
+	{
+		if ( nbytes < 3 )
+			return 0;
+
+		utf8[0] = (unsigned char)(c >> 12) | 0xE0;
+		utf8[1] = (unsigned char)((c >> 6) & 0x3F) | 0x80;
+		utf8[2] = (unsigned char)(c & 0x3F) | 0x80;
+		return 3;
+	}
+	else
+		return -1;
+}
+
+/**
+ * Sets uc16[0] to a unicode character if
+ * one utf8 character could be parsed. The return
+ * value is the number of bytes consumed.
+ */
+int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 )
+{
+	int c = utf8[0];
+	int result = 0;
+
+	if ( (c & 0xF0) == 0xE0 )
+	{
+		/* 3-byte sequence. */
+		result |= (c & 0x0F) << 12;
+		result |= (utf8[1] & 0x3F) << 6;
+		result |= (utf8[2] & 0x3F);
+		uc16[0] = (muse_char)result;
+		return 3;
+	}
+	else if ( (c & 0xE0) == 0xC0 )
+	{
+		/* 2-byte sequence. */
+		result |= (c & 0x1F) << 6;
+		result |= (utf8[1] & 0x3F);
+		uc16[0] = (muse_char)result;
+		return 2;
+	}
+	else
+	{
+		uc16[0] = (c & 0x7F);
+		return 1;
+	}
+}
+
 #ifdef MUSE_DEBUG_BUILD
 /**
  * Prints out an muse_assertion failure message in debug builds.
@@ -323,14 +399,6 @@ MUSEAPI const muse_char *muse_typename( muse_cell thing )
 	};
 
 	return k_type_names[_cellt(thing)];
-}
-
-static void muse_exception(muse_env *env, muse_cell args)
-{
-	muse_cell ehsym = _csymbol(L"{exception-handler}");
-	muse_cell eh = _symval(ehsym);
-	if ( eh != ehsym )
-		_apply( eh, args, MUSE_TRUE );
 }
 
 #define _sprintf_object(buffer,maxlen,thing) muse_sprintf_object(env,buffer,maxlen,thing)
@@ -643,7 +711,7 @@ MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_c
 			#if defined(_DEBUG)
 				DebugBreak();
 			#endif
-			muse_exception(env,MUSE_NIL); 
+			muse_raise_error(env, MUSE_NIL, MUSE_NIL); 
 		default:;
 		}
 	#else

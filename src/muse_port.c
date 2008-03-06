@@ -549,6 +549,15 @@ static ez_result_t _read_number( muse_port_t f, int col )
 	if ( c == EOF )
 		return ez_result( MUSE_NIL, col, col );
 
+	/* Numbers don't begin with alphabets. If we don't
+	make this check here, the following code will accept
+	atoms such as e1 and e2 as floating point numbers.*/
+	if ( isalpha(c) ) 
+	{
+		port_ungetc( c, f );
+		return ez_result( MUSE_NIL, col, col );
+	}
+
 	/* Optional leading minus sign. */
 	if ( c == '-' || c == '+' )
 	{

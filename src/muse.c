@@ -198,9 +198,8 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_NIL,					NULL		},
 	{ MUSE_T,					L"T"		},
 	{ MUSE_QUOTE,				L"quote"	},
-	{ MUSE_RETURN,				L"return"	},
-	{ MUSE_BREAK,				L"break"	},
 	{ MUSE_CLASS,				L"class"	},
+	{ MUSE_SELF,				L"self"		},
 	{ MUSE_SUPER,				L"super"	},
 	{ MUSE_DOC,					L"doc"		},
 	{ MUSE_CODE,				L"code"		},
@@ -525,6 +524,29 @@ MUSEAPI muse_cell muse_stack_push( muse_env *env, muse_cell obj )
 {
 	_spush(obj);
 	return obj;
+}
+
+/**
+ * Gets the current depth of the bindings stack.
+ * You can use this to locally introduce new bindings
+ * using muse_pushdef() and when you're done with the
+ * local definitions, use muse_bindings_stack_unwind()
+ * to return the state of the bindings to where they were
+ * when you got the bindings stack position.
+ *
+ * @see muse_bindings_stack_unwind()
+ */
+MUSEAPI int muse_bindings_stack_pos( muse_env *env )
+{
+	return _bspos();
+}
+
+/**
+ * @see muse_bindings_stack_pos()
+ */
+MUSEAPI void muse_bindings_stack_unwind( muse_env *env, int pos )
+{
+	_unwind_bindings(pos);
 }
 
 static void add_special( muse_env *env, muse_cell special )

@@ -304,9 +304,32 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 
 muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args );
 
-static muse_cell fn_repl( muse_env *env, void *context, muse_cell args ) 
+typedef struct {
+	int argc;
+	char **argv;
+} args_t;
+
+static muse_cell fn_repl( muse_env *env, args_t *context, muse_cell args ) 
 { 
-	muse_repl(env); 
+	/* Load all files given in the argument. If the "--run" flag is encountered,
+	don't start the repl. Just load the files. */
+	int enable_repl = 1;
+	if ( context && context->argc > 0 ) {
+		int sp = _spos();
+		int i = 0;
+		muse_cell loader = _symval(_csymbol(L"load"));
+		for ( i = 0; i < context->argc; ++i ) {
+			if ( strcmp( context->argv[i], "--run" ) == 0 ) { 
+				enable_repl = 0; 
+			} else {
+				try_apply( env, loader, _cons( muse_mk_ctext_utf8( env, context->argv[i] ), MUSE_NIL ) );
+				_unwind(sp);
+			}
+		}
+	}
+
+	if ( enable_repl )
+		muse_repl(env); 
 	return MUSE_NIL; 
 }
 
@@ -371,13 +394,19 @@ int main( int argc, char **argv )
 			/* Drop into the REPL if there is no main function defined.
 			This way, we can load some library functions that we
 			always need and are defined at the scheme level. */
-			try_apply( env, _mk_nativefn(fn_repl,NULL), MUSE_NIL );
+			args_t args;
+			args.argc = argc-1;
+			args.argv = argv+1;
+			try_apply( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
 		}
 	}
 	else
 	{
 		/* Its not an executable. Start the REPL. */
-		try_apply( env, _mk_nativefn(fn_repl,NULL), MUSE_NIL );
+		args_t args;
+		args.argc = argc-1;
+		args.argv = argv+1;
+		try_apply( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
 	}
 
 	muse_destroy_env(env);

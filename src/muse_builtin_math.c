@@ -228,15 +228,21 @@ muse_cell fn_idiv( muse_env *env, void *context, muse_cell args )
  * (% numerator denominator).
  * Takes 2 arguments and returns the floating point or
  * integer remainder on dividing first by the second.
+ * It does a proper modulo operation unlike C/C++
+ * - the sign of the denominator is discarded
+ * and the result is always in the range [0,denom)
+ * irrespective of the sign of the numerator.
  */
 muse_cell fn_mod( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell a1 = _evalnext(&args);
-	muse_cell a2 = _evalnext(&args);
-	
-	muse_int q = _ptr(a1)->i % _ptr(a2)->i;
-	
-	return _mk_int(q);;
+	muse_int n = _intvalue(_evalnext(&args));
+	muse_int m = _intvalue(_evalnext(&args));
+
+	muse_assert( m != 0 );
+	m = (m > 0) ? m : -m;
+	n = (n % m);
+
+	return _mk_int( (n < 0) ? (n + m) : n );
 }
 
 /**

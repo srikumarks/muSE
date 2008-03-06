@@ -127,6 +127,16 @@ MUSEAPI const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int 
 }
 
 /**
+ * Returns the context pointer of a nativefn cell.
+ */
+MUSEAPI void *muse_nativefn_context( muse_env *env, muse_cell cell, muse_nativefn_t *fn )
+{
+	muse_nativefn_cell c = _ptr(cell)->fn;
+	if ( fn ) (*fn) = c.fn;
+	return c.context;
+}
+
+/**
  * Returns the string name of the given symbol.
  * Can be used only with a named symbol. 
  * Invalid with an anonymous symbolm you'll get
@@ -464,9 +474,10 @@ MUSEAPI muse_cell muse_list_last( muse_env *env, muse_cell list )
  */
 MUSEAPI muse_cell muse_list_append( muse_env *env, muse_cell head, muse_cell tail )
 {
-	if ( head )
-	{
-		_sett( muse_list_last(env,head), tail );
+	if ( head ) {
+		if ( tail ) {
+			_sett( muse_list_last(env,head), tail );
+		}
 		return head;
 	}
 	else

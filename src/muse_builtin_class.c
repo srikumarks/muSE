@@ -18,7 +18,7 @@
  * @code
  * (class class-name-symbol
  *        list-of-super-classes
- *        class-property-list)
+ *        class-property-list...)
  * @endcode
  * 
  * Returns a new class object - a symbol that has a certain
@@ -28,11 +28,20 @@
  * traces which objects it is prototyped from. Almost the only
  * difference between \ref fn_class "class" and \ref fn_new "new" 
  * is the syntax.
+ *
+ * The \p list-of-super-classes parameter is a list each of
+ * whose elements are evaluated and the result taken to be a
+ * super class. This list therefore does not need to have the
+ * \c list function call at the head.
+ *
+ * The \p class-property-list is not part consists of two-element
+ * lists where the head specifies the property symbol (in unquoted form)
+ * and the second element specifies the value of the property or method.
  * 
  * For example, here is a \c &lt;size&gt; class that has a width
  * and height and can compute its area.
  * @code
- * (class '<size>			; The symbol <size> is itself the class.
+ * (class <size>			; The symbol <size> will have the class object as its value.
  *        ()            		; Empty super tree
  *        (width 320)		; Default width of 320
  *        (height 240)		; Default height of 240
@@ -44,27 +53,68 @@
  * The notion of a class in muSE is very dynamic. You can add 
  * properties and methods to classes after defining them, you can
  * change the inheritance hierarchy of an object at run time, etc.
+ *
+ * Classes are also values and for all practical purposes are 
+ * indistinguishable from objects. So definitions can be within
+ * modules, exported from modules, etc. just like other values.
+ * Also, you can have private class definitions within modules,
+ * just like normal values.
+ *
+ * If you want to refer to a class by value before its
+ * definition, you can "forward declare" it like this -
+ * @code (class ClassName) @endcode 
+ * What this does is to define a class with an empty body
+ * and an empty supers list so that a following definition
+ * can add to the properties and supers.
  * 
  * @see fn_new   
  */
 muse_cell fn_class( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell className = _evalnext(&args);
+	muse_cell className = _next(&args);
+	muse_cell currentClassDef = _symval(className);
+	muse_cell classDef = MUSE_NIL;
+	int sp = 0;
 
-	_sett( _tail(className), MUSE_NIL );
-	
-	_put_prop( className, _builtin_symbol(MUSE_SUPER), _evalnext(&args) );
+	/* We do the define right at the beginning so that
+	methods can create instances of this class without
+	referring to it by name alone. */
+	if ( currentClassDef == className ) {
+		classDef = muse_mk_anon_symbol(env);
+		_define( className, classDef );
+	} else {
+		/* Extend the current class definition. 
+		This way, all objects that inherit from this
+		class automatically get the extended features. */
+		classDef = currentClassDef;
+	}
+
+	sp = _spos();
+
+	/* Specify the super list. If the class is already defined,
+	this new definition serves to extend the previous one. The
+	new super list gets priority over the earlier defined ones. */
+	{
+		muse_cell newsupers = muse_eval_list( env, _next(&args) );
+		muse_cell supers = _get_prop( classDef, _builtin_symbol(MUSE_SUPER) );
+		if ( supers )
+			_sett( supers, muse_list_append( env, newsupers, _tail(supers) ) );
+		else
+			_put_prop( classDef, _builtin_symbol(MUSE_SUPER), newsupers );
+	}
 
 	while ( args )
 	{
 		muse_cell pty = _head(args);
 		
-		_put_prop( className, _head(pty), _eval(_head(_tail(pty))) );
+		_put_prop( classDef, _head(pty), _eval(_head(_tail(pty))) );
 		
+		_unwind(sp);
+
 		args = _tail(args);
 	}
 
-	return className;
+	return classDef;
 }
 
 /**
@@ -283,5 +333,45 @@ muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
 	{
 		/* Argument not given. We should get the member value. */
 		return _tail(muse_search_object( env, obj, memberName ));
+	}
+}
+
+
+/**
+ * Either x == type or x inherits from type directly or indirectly.
+ * The return value is retval if the inheritance condition is satisfied.
+ * Oherwise it is MUSE_NIL.
+ */
+static muse_cell is_parent_of( muse_env *env, muse_cell type, muse_cell x, muse_cell retval )
+{
+	if ( type == x )
+		return retval;
+	else {
+		muse_cell supers = _get_prop( x, _builtin_symbol(MUSE_SUPER) );
+		while ( supers ) {
+			muse_cell a = is_parent_of( env, type, _next(&supers), retval );
+			if ( a ) return retval;
+		}
+		return MUSE_NIL;              
+	}
+}
+
+/**
+ * (isa? type x)
+ *
+ * Compares types. If type and x are of the same non object type,
+ * it returns x. If type and x are objects and they both have one
+ * common super class, it returns the x. If none of these conditions 
+ * are satisfied, it returns ().
+ */
+muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell type = _evalnext(&args);
+	muse_cell x = _evalnext(&args);
+
+	if ( _cellt(type) == MUSE_SYMBOL_CELL && _cellt(x) == MUSE_SYMBOL_CELL ) {
+		return is_parent_of( env, type, x, x );		
+	} else {
+		return _cellt(x) == _cellt(type) ? type : MUSE_NIL;
 	}
 }

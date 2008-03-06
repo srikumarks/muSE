@@ -148,39 +148,21 @@ static size_t uc16_fileport_read( void *buffer, size_t nbytes, void *port )
 			int c = (fgetc(f) & 0xFF);
 			c |= (fgetc(f) & 0xFF) << 8;
 
-			if ( c >= 0 && c <= 0x7F )
 			{
-				b[n++] = (unsigned char)c;
-			}
-			else if ( c >= 0x80 && c <= 0x7FF )
-			{
-				if ( n+2 > nbytes )
+				int nc = uc16_to_utf8( c, b+n, nbytes-n );
+				if ( nc == 0 )
 				{
 					ungetc( c >> 8, f );
 					ungetc( c & 0xFF, f );
 					return n;
 				}
-
-				b[n++] = (unsigned char)(c >> 6) | 0xC0;
-				b[n++] = (unsigned char)(c & 0x3F) | 0x80;
-			}
-			else if ( c >= 0x800 && c <= 0xFFFF )
-			{
-				if ( n+3 > nbytes )
+				else if ( nc < 0 )
 				{
-					ungetc( c >> 8, f );
-					ungetc( c & 0xFF, f );
-					return n;
+					p->base.error = -1;
+					return 0;
 				}
-
-				b[n++] = (unsigned char)(c >> 12) | 0xE0;
-				b[n++] = (unsigned char)((c >> 6) & 0x3F) | 0x80;
-				b[n++] = (unsigned char)(c & 0x3F) | 0x80;
-			}
-			else
-			{
-				p->base.error = -1;
-				return 0;
+				else
+					n += nc;
 			}
 		}
 

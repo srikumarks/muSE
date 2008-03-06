@@ -11,6 +11,7 @@
 
 
 #include "muse_builtins.h"
+#include "muse_port.h"
 
 enum
 {
@@ -19,15 +20,45 @@ enum
 	DEFINE_OVERRIDE
 };
 
+static muse_boolean is_generic( muse_env *env, muse_cell gen )
+{
+	return ((_cellt(gen) == MUSE_LAMBDA_CELL) && (_quq(_head(gen)) == _csymbol(L"{{generic-args}}")))
+		? MUSE_TRUE 
+		: MUSE_FALSE;
+}
+
+/**
+ * If called in a global context, it defines he symbol without
+ * touching the bindings stack. If called in a local context
+ * such as let or fn, it saves the old definition on the
+ * bindings stack and defines the symbol to the new value,
+ * so that the old definition can be restored at the end
+ * of the local context.
+ */
+static void define_in_context( muse_env *env, muse_cell sym, muse_cell val )
+{
+	if ( _bspos() == 0 )
+		_define( sym, val );
+	else
+		_pushdef( sym, val );
+}
+
 /**
  * Does normal definition as well as extensions and overrides.
  */
 static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell gen, muse_cell fn )
 {
 	if ( (env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom)
-		|| (_cellt(gen) != MUSE_LAMBDA_CELL) 
-		|| (_quq(_head(gen)) != _csymbol(L"{{generic-args}}")) )
+		|| !is_generic(env,gen) )
 	{
+		/* Check if it is a dummy function declaration - like (define (f x y)) */
+		muse_boolean dummy_function = MUSE_FALSE;
+		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(gen) == MUSE_NIL ) {
+			/* It is a dummy function. We should replace the body of the
+			dummy function with the given body. */
+			dummy_function = MUSE_TRUE;
+		}
+
 		MUSE_DIAGNOSTICS({
 			if ( option > DEFINE_NORMAL && _cellt(gen) == MUSE_LAMBDA_CELL )
 				muse_message( env, option == DEFINE_EXTENSION 
@@ -35,28 +66,33 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 										: L"(define-override >>genfn<< ...)",
 									L"Expecting a generic function, but got a normal function instead!" );
 
-			if ( env->current_process->bindings_stack.top == env->current_process->bindings_stack.bottom && sym != gen )
+			if ( env->current_process->bindings_stack.top == env->current_process->bindings_stack.bottom && sym != gen && !dummy_function )
 				muse_message( env, L"define", L"Symbol '%m' is expected to be undefined.", sym );
 		});
 
-		/*	First mark the symbol as a fresh symbol by defining it to be itself.
-			This way, if the symbol is referred to in the body of the value,
-			it will remain unchanged so that recursive functions can be written. 
-			Note that the value is evaluated after this assignment is made in order
-			to make the self-substitution happen.
-			
-			NOTE: There is no implementation of tail-recursion. So beware of
-			stack blowup. It usually safe to use recursion for small bound
-			routines such as syntax transformers. */
-		if ( env->current_process->bindings_stack.top > env->current_process->bindings_stack.bottom )
-			_pushdef( sym, sym ); /* Make the definition local in scope. */
-		else
-			_define( sym, sym );
-
 		fn = _eval(fn);
 
-		_define( sym, fn );
-		return fn;
+		if ( dummy_function && _cellt(fn) == MUSE_LAMBDA_CELL ) {
+			MUSE_DIAGNOSTICS({
+				int bsp = _bspos();
+				if ( muse_bind_formals( env, _head(gen), _head(fn) ) ) {
+					_unwind_bindings(bsp);
+				} else {
+					muse_message( env, L"define", 
+						L"Declared argument pattern\n\t%m\ndoesn't match with definition pattern\n\t%m", 
+						_head(gen), 
+						_head(fn) 
+					);
+				}
+			});
+
+			define_in_context( env, sym, gen );
+			_setht( gen, _head(fn), _tail(fn) );
+			return gen;
+		} else {
+			define_in_context( env, sym, fn );
+			return fn;
+		}
 	}
 
 	/* We're working with a generic function, so
@@ -92,10 +128,26 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 			break;
 		}
 
-		_define( sym, gen );
+		define_in_context( env, sym, gen );
 	}
 
 	return fn;
+}
+
+static void forward_declare( muse_env *env, muse_cell sym ) 
+{
+	if ( _cellt(sym) == MUSE_SYMBOL_CELL ) {
+		muse_cell val = _symval(sym);
+		if ( sym == val ) {
+			/* Define to be a dummy function. Use the 'self symbol to specify 
+			an argument pattern that matches all argument patterns. */
+			define_in_context( env, sym, syntax_lambda( env, NULL, _cons(_builtin_symbol(MUSE_SELF),MUSE_NIL) ) );
+		} else {
+			/* This serves to save the old value on the bindings stack in
+			local contexts. In the global context, this does nothing. */
+			define_in_context( env, sym, val );
+		}
+	}
 }
 
 /**
@@ -140,6 +192,29 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
  * \ref syntax_generic_lambda "generic function", \c define behaves like
  * \ref fn_define_extension "define-extension" - i.e. it extends the
  * definition of the generic function with the new function's case.
+ *
+ * \par Declarations
+ * If you're defining a function and you leave its body empty - for example -
+ * @code (define (f x y)) @endcode or @code (define f (fn (x y))) @endcode,
+ * it is taken to mean a declaration of the function's argument pattern.
+ * The purpose of a declaration facility is to permit mutually recursive 
+ * functions in local scopes. The body of the declared function may be 
+ * provided later on by redefinition using a similar argument
+ * pattern. For example, after the declaration shown in example above, you can
+ * provide a definition like -
+ * @code (define (f x y) (+ (* x x) (* y y))) @endcode or
+ * @code (define f (fn (x y) (+ (* x x) (* y y)))) @endcode
+ * At the definition point, you can use any argument pattern that will match
+ * against the declared pattern. So you could have done -
+ * @code (define (f a b) (+ (* a a) (* b b))) @endcode 
+ * which will be accepted. However, if you provide an incompatible
+ * argument pattern such as @code (define (f x) (* x x)) @endcode,
+ * an error message will be shown. If you ignore the error message, the
+ * new argument pattern is the one that will take effect.
+ * Pattern matching is therefore useful to declare that something is a 
+ * function without dscribing any of its arguments like this -
+ * @code (define f (fn _)) @endcode. All argument patterns will 
+ * match against the \c _ pattern (or any symbol in its place).
  */
 muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 {
@@ -151,8 +226,16 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 	
 	if ( _cellt(sym) == MUSE_CONS_CELL ) 
 	{
+		/* Automatically add a "forward declaration" for new function definitions
+		so that they can recurse ... only if they are undefined. This is done only
+		for definitions of the form (define (f arg1 arg2 ..) ...). */
+		forward_declare( env, _head(sym) );
+
 		/* Syntax used is (define (sym args..) body). Transform the arguments
-		into the canonical form before further processing. */
+		into the canonical form (define sym (fn (args..) body)) before further 
+		processing. Note that this is recursive, so you can write 
+		(define ((sym a) b c) ..) to make sym a function that returns another
+		function as its result. */
 		return fn_define( env, context, 
 				_cons( _head(sym), 
 						(_cellt(_head(args)) == MUSE_CONS_CELL && _head(_head(args)) == _builtin_symbol(MUSE_DOC))
@@ -193,7 +276,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 			_put_prop( sym, _builtin_symbol(MUSE_CODE), _head(args) );
 		}
 	}
-	
+
 	/* Define the value of the symbol. */
 	{
 		muse_cell value = _defgen( env, (int)(size_t)context, sym, oldval, _head(args) );
@@ -263,6 +346,104 @@ muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args )
 muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
 {
 	return fn_define( env, (void*)DEFINE_OVERRIDE, args );
+}
+
+/**
+ * (local symbol1 symbol2 -etc-)
+ *
+ * The local declaration is used to introduce symbols that are, well,
+ * local to a particular context. What it says is that "from this point
+ * onwards and till the end of the surrounding scope, you have to discard 
+ * any previous definitions of these symbols". This is useful mostly
+ * in module definitions to prevent the definitions of some symbols
+ * from influencing the definition of the module. For example -
+ * @code
+ * ; A function to determine if the sequence [a,b,c] progresses evenly.
+ * (define (even? a b c) (= (- b a) (- c b)))
+ *
+ * (module Num (classify)
+ *   (local even? odd?)  ; Ignore previous definitions/declarations of even? and odd?.
+ *                       ; Without this, the following declaration will give a 
+ *                       ; redeclaration error.
+ *
+ *   (define (even? n))  ; Forward declare even? so that odd? can use it.
+ *   (define (odd? n) (case n (0 ()) (_ (even? (- n 1)))))
+ *   (define (even? n) (case n (0 T) (_ (odd? (- n 1))))))
+ *   (define (classify n) (cond ((even? n) 'even) ((odd? n) 'odd)))
+ * )
+ * ; At this point, the original 3-argument definition of even? is available.
+ * @endcode
+ */
+muse_cell syntax_local( muse_env *env, void *context, muse_cell args )
+{
+	while ( args ) {
+		muse_cell sym = _next(&args);
+
+		MUSE_DIAGNOSTICS({
+			if ( _cellt(sym) != MUSE_SYMBOL_CELL )
+				muse_message( env, L"(undefine >>sym<<)", L"You gave [%m] instead of a symbol!", sym );
+		});
+
+		_pushdef(sym, sym);
+	}
+
+	return MUSE_NIL;
+}
+
+static muse_cell local_scope_begin( muse_env *env, void *self, muse_cell expr )
+{
+	muse_cell syms = _tail(expr);
+
+	/* Undefine all the symbols. */
+	while ( syms ) {
+		muse_cell sym = _next(&syms);
+		_pushdef( sym, sym );
+	}
+
+	/* The local expression should not be bind copied. It is ok for the 
+	head term to be bind copied though. So we return expr as is. */
+	return expr;
+}
+
+static void local_scope_end( muse_env *env, void *self, int bsp )
+{
+	/* Nothing to do. The introdced bindings stay for the scope of
+	the local expression. */
+}
+
+static muse_scope_view_t g_local_scope_view = { local_scope_begin, local_scope_end };
+
+static void *local_view( muse_env *env, int id )
+{
+	if ( id == 'scop' ) {
+		return &g_local_scope_view;
+	} else {
+		return NULL;
+	}
+}
+
+static void local_write( muse_env *env, void *obj, void *port )
+{
+	muse_port_t p = (muse_port_t)port;
+	port_write( "local", 5, p );
+}
+
+static muse_functional_object_type_t g_local_declaration_type = {
+	'muSE',
+	'(loc',
+	sizeof(muse_functional_object_t),
+	syntax_local,
+	local_view,
+	NULL,
+	NULL,
+	NULL,
+	local_write
+};
+
+void muse_define_builtin_local(muse_env *env)
+{
+	int sp = _spos();
+	_define( _csymbol(L"local"), muse_mk_functional_object( env, &g_local_declaration_type, MUSE_NIL ) );
 }
 
 /*@}*/

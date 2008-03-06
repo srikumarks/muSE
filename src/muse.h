@@ -253,9 +253,8 @@ typedef enum
 	MUSE_NIL,
 	MUSE_T,
 	MUSE_QUOTE,
-	MUSE_RETURN,
-	MUSE_BREAK,
 	MUSE_CLASS,
+	MUSE_SELF,
 	MUSE_SUPER,
 	MUSE_DOC,
 	MUSE_CODE,
@@ -338,6 +337,7 @@ MUSEAPI muse_cell	muse_tail_n( muse_env *env, muse_cell cell, int n );
 MUSEAPI muse_int	muse_int_value( muse_env *env, muse_cell cell );
 MUSEAPI muse_float	muse_float_value( muse_env *env, muse_cell cell );
 MUSEAPI const muse_char *muse_text_contents( muse_env *env, muse_cell cell, int *length );
+MUSEAPI void *		muse_nativefn_context( muse_env *env, muse_cell cell, muse_nativefn_t *fn );
 MUSEAPI const muse_char *muse_symbol_name( muse_env *env, muse_cell sym );
 MUSEAPI muse_cell	muse_symbol_value( muse_env *env, muse_cell sym );
 MUSEAPI int			muse_list_length( muse_env *env, muse_cell list );
@@ -378,6 +378,8 @@ MUSEAPI muse_cell	muse_set_ctext( muse_env *env, muse_cell text, const muse_char
 MUSEAPI muse_cell	muse_define( muse_env *env, muse_cell symbol, muse_cell value );
 MUSEAPI muse_cell	muse_pushdef( muse_env *env, muse_cell symbol, muse_cell value );
 MUSEAPI muse_cell	muse_popdef( muse_env *env, muse_cell symbol );
+MUSEAPI int			muse_bindings_stack_pos( muse_env *env );
+MUSEAPI void		muse_bindings_stack_unwind( muse_env *env, int pos );
 MUSEAPI muse_cell	muse_dup( muse_env *env, muse_cell obj );
 MUSEAPI muse_cell	*muse_find_list_element( muse_env *env, muse_cell *listptr, muse_cell element );
 /*@}*/
