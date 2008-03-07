@@ -316,6 +316,8 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 
 		anonymize_formals( env, formals );
 		
+		_pushdef( _builtin_symbol(MUSE_IT), _builtin_symbol(MUSE_IT) );
+		
 		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
@@ -329,6 +331,8 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 	{
 		int bsp = _bspos();
 		anonymize_formals( env, formals );
+
+		_pushdef( _builtin_symbol(MUSE_IT), _builtin_symbol(MUSE_IT) );
 		
 		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
 		
@@ -886,6 +890,8 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 		muse_expect( env, L"case expression", L"v?!=", cases, MUSE_CONS_CELL, MUSE_NIL );
 	});
 
+	_pushdef( _builtin_symbol(MUSE_IT), object );
+
 	while ( cases )
 	{
 		muse_cell thiscase = _next(&cases);
@@ -914,6 +920,7 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 						);
 	});
 
+	_unwind_bindings(bsp);
 	return MUSE_NIL;
 }
 

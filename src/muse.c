@@ -210,6 +210,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_TIMEOUT,				L"timeout"	},
 	{ MUSE_DEFINE,				L"define"	},
 	{ MUSE_TRAP_POINT,			L"{{trap}}" },
+	{ MUSE_IT,					L"it"		},
 	{ -1,						NULL		},
 };
 

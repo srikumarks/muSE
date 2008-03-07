@@ -278,9 +278,14 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 	});
 
 	{
+		int bsp = _bspos();
 		muse_cell expr = _evalnext(&args);
-
-		return muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+		_pushdef( _builtin_symbol(MUSE_IT), expr );
+		{
+			muse_cell result = muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+			_unwind_bindings(bsp);
+			return result;
+		}
 	}
 }
 
@@ -294,9 +299,15 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
-	if ( expr )
-		return _do(args);
-	else
+	if ( expr ) {
+		int bsp = _bspos();
+		_pushdef( _builtin_symbol(MUSE_IT), expr );
+		{
+			muse_cell result = _do(args);
+			_unwind_bindings(bsp);
+			return result;
+		}
+	} else
 		return MUSE_NIL;
 }
 
@@ -310,9 +321,15 @@ muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
 muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
-	if ( !expr )
-		return _do(args);
-	else
+	if ( !expr ) {
+		int bsp = _bspos();
+		_pushdef( _builtin_symbol(MUSE_IT), expr );
+		{
+			muse_cell result = _do(args);
+			_unwind_bindings(bsp);
+			return result;
+		}
+	} else
 		return MUSE_NIL;
 }
 
@@ -338,22 +355,28 @@ muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
 {
+	int bsp = _bspos();
 	int sp = _spos();
 	
 	while ( args )
 	{
 		muse_cell clause = _head(args);
+		muse_cell it = MUSE_NIL;
 		
-		if ( _eval( _head(clause) ) )
+		if ( it = _eval( _head(clause) ) )
 		{
+			_pushdef( _builtin_symbol(MUSE_IT), it );
 			_unwind(sp);
-			return _do( _tail(clause) );
+			it = _do( _tail(clause) );
+			_unwind_bindings(bsp);
+			return it;
 		}
 		
 		args = _tail(args);
 	}
 	
 	_unwind(sp);
+	_unwind_bindings(bsp);
 	return MUSE_NIL;
 }
 
