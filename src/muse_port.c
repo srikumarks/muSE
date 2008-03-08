@@ -1435,6 +1435,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 	muse_env *env = f->env;
 	if ( l )
 	{
+		int sp = _spos();
 		muse_boolean need_line_break = MUSE_FALSE;
 
 		if ( _isquote( _head(l) ) )
@@ -1452,6 +1453,8 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 		while ( l )
 		{
 			muse_cell h = _next(&l);
+			_unwind(sp); /* We need this here in case the list that's
+							being printed out is being lazily generated. */
 
 			if ( need_line_break ) pretty_printer_indent(f);
 			muse_print_q( f, h, quote );

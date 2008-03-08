@@ -250,6 +250,8 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  *	- attr='value' and attr="value" notations are the only ones supported.
  *	- read-xml followed by write-xml should essentially be an identity operation,
  *	- if you don't give a port argument, it reads a node from the standard input.
+ *
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 {
@@ -266,7 +268,7 @@ muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 		port = muse_stdport( env, MUSE_STDIN_PORT );
 	}
 
-	return xml_read_tag( env, port );
+	return muse_add_recent_item( env, (muse_int)fn_read_xml, xml_read_tag( env, port ) );
 }
 
 static void xml_skip_ignorables( muse_port_t p )

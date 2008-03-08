@@ -129,6 +129,24 @@ typedef enum
 	MUSE_PROCESS_HAS_TIMEOUT	= 0x10
 } muse_process_state_bits_t;
 
+enum { MUSE_MAX_RECENT_ITEMS = 8 };
+
+typedef struct {
+	muse_int	key;
+	muse_cell	value;
+} recent_entry_t;
+
+typedef struct {
+	int next;
+	recent_entry_t recent[MUSE_MAX_RECENT_ITEMS];
+} recent_scope_t;
+
+typedef struct {
+	int top;
+	int capacity;
+	recent_scope_t *scopes;
+} recent_t;
+
 /**
  * A frame is the local environment of a process.
  */
@@ -167,6 +185,13 @@ typedef struct _muse_process_frame_t
 	muse_cell	mailbox_end;
 	muse_cell	waiting_for_pid;
 
+	/** Each process has a "recent" list - a vector of 8
+	most recent calculations performed. The recent list is
+	accessed using the "the" primitive. The 0, 2, 4, etc.
+	indiced contain what recent item to access and the 
+	1, 3, 5, etc. indices contain the recent item. */
+	recent_t recent;
+
 } muse_process_frame_t;
 
 /**
@@ -191,6 +216,14 @@ struct _muse_env
 	struct _muse_net_t	*net;
 	muse_port_t			stdports[3];
 	void				*objc_pool;
+
+	/* Slots are for storing custom information about anything
+	a native function might need. Functions with assigned slots
+	get passed the muse_int * as their "context" parameters. 
+	Using muse_int lets you store pointers as well as integers
+	in your "slot".*/
+	int					num_slots, slot_capacity;
+	muse_int			*slots;
 };
 
 extern const char *g_muse_typenames[];
@@ -200,6 +233,78 @@ extern const char *g_muse_typenames[];
  * if no other object is available to represent it.
  */
 #define _t() env->builtin_symbols[MUSE_T]
+
+/**
+ * Allocates a custom "slot" for use by native functions.
+ * The native function is responsible for releasing
+ * whatever it stores into this slot. The slots are themselves
+ * released when the environment is destroyed.
+ * Once allocated, a slot cannot be deallocated until
+ * end of the environment.
+ */
+muse_int *muse_alloc_slot( muse_env *env );
+
+/**
+ * Modifies the context pointer of the given nativefn to
+ * the given slot pointer and returns the modified nativefn.
+ */
+muse_cell muse_set_slot( muse_env *env, muse_cell nativefn, muse_int *slot );
+
+/**
+ * Initializes the scoped recent calculations data structure.
+ */
+void muse_init_recent( recent_t *r, int capacity );
+
+/**
+ * Frees the scoped recent calculations data structure.
+ */
+void muse_clear_recent( recent_t *r );
+
+/**
+ * Makes a copy of all the recent info upto
+ * the present execution point.
+ */
+recent_t muse_copy_recent( recent_t *r );
+
+/**
+ * Takes a saved "recent" data structure and restores
+ * it into the given destination.
+ */
+void muse_restore_recent( recent_t *r, recent_t *dest );
+
+/**
+ * Marks all objects in the recent data structure.
+ */
+void muse_mark_recent( muse_env *env, recent_t *r );
+
+/**
+ * 8 recent items are stored indexed by a 64-bit key.
+ * You can look up a recent item by giving your key.
+ */
+muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *value );
+
+/**
+ * You can add a new "recent" item using this function.
+ * Only the 8 most recent items are kept. The return value
+ * is \p value itself.
+ */
+muse_cell muse_add_recent_item( muse_env *env, muse_int key, muse_cell value );
+
+/**
+ * Removes the most recent item added to the recents list.
+ */
+void muse_withdraw_recent_item( muse_env *env );
+
+/**
+ * Enter a scope so that previous recent values are temporarily forgotten.
+ */
+void muse_push_recent_scope( muse_env *env );
+
+/**
+ * Exit from the scope with a result so that the innards of a computation
+ * are forgotten.
+ */
+muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value );
 
 /**
  * The cell index is stored in the upper 29 bits

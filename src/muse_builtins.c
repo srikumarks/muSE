@@ -36,6 +36,7 @@ static const struct _builtins
 {		L"apply",		fn_apply			},
 {		L"apply/keywords",	fn_apply_w_keywords	},
 {		L"call/keywords",	fn_call_w_keywords	},
+{		L"the",			fn_the				},
 
 /************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
@@ -278,14 +279,8 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 	});
 
 	{
-		int bsp = _bspos();
 		muse_cell expr = _evalnext(&args);
-		_pushdef( _builtin_symbol(MUSE_IT), expr );
-		{
-			muse_cell result = muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
-			_unwind_bindings(bsp);
-			return result;
-		}
+		return muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
 	}
 }
 
@@ -300,13 +295,7 @@ muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
 	if ( expr ) {
-		int bsp = _bspos();
-		_pushdef( _builtin_symbol(MUSE_IT), expr );
-		{
-			muse_cell result = _do(args);
-			_unwind_bindings(bsp);
-			return result;
-		}
+		return _do(args);
 	} else
 		return MUSE_NIL;
 }
@@ -322,13 +311,7 @@ muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
 	if ( !expr ) {
-		int bsp = _bspos();
-		_pushdef( _builtin_symbol(MUSE_IT), expr );
-		{
-			muse_cell result = _do(args);
-			_unwind_bindings(bsp);
-			return result;
-		}
+		return _do(args);
 	} else
 		return MUSE_NIL;
 }
@@ -355,28 +338,22 @@ muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
 {
-	int bsp = _bspos();
 	int sp = _spos();
 	
 	while ( args )
 	{
 		muse_cell clause = _head(args);
-		muse_cell it = MUSE_NIL;
 		
-		if ( it = _eval( _head(clause) ) )
+		if ( _eval( _head(clause) ) )
 		{
-			_pushdef( _builtin_symbol(MUSE_IT), it );
 			_unwind(sp);
-			it = _do( _tail(clause) );
-			_unwind_bindings(bsp);
-			return it;
+			return _do( _tail(clause) );
 		}
 		
 		args = _tail(args);
 	}
 	
 	_unwind(sp);
-	_unwind_bindings(bsp);
 	return MUSE_NIL;
 }
 
@@ -1173,4 +1150,104 @@ muse_cell fn_post( muse_env *env, void *context, muse_cell args )
 muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
 {
 	return _is_pid( _evalnext(&args) );
+}
+
+/**
+ * (the recent-key)
+ *
+ * Looks up the given recent-key to access the result of a recently
+ * done computation. Some builtin functions add their results to the
+ * recent list as do all user-defined functions. The recent list length
+ * is 8. This roughly matches the level at which readability begin to
+ * suffer instead of improving.
+ *
+ * Here is a trivial example for illustration - a function that 
+ * computes (a+b)/(a-b).
+ * @code
+ * > (define (add a b) (+ a b))
+ * > (define (sub a b) (- a b))
+ * > (define (h a b)
+ *    (add a b)
+ *    (sub a b)
+ *    (/ (the add) (the sub)))
+ * > (h 5 2)
+ * 2.333333
+ * > (the h)
+ * 2.333333
+ * @endcode
+ *
+ * @note The \c add and \c sub recent results are not accessible to the
+ * caller of \c h. Evaluating @code (the add) @endcode after evaluating
+ * @code (h 5 2) @encode will result in a "recent item not found" message
+ * box. This is a very important property of \c the - its ability to
+ * restrict the scope of the recent computations to the scope of user
+ * defined functions so that callers can access the results of <em>their</em>
+ * function evaluations rather than those made by the functions they 
+ * evaluate.
+ * 
+ * Here is another contrived one -
+ * @code
+ * (if (find x some-list)
+ *    (length (the find))
+ *    (raise 'FindFailed x))
+ * @endcode
+ * The above example is clearer using \c the and without it, you might
+ * have to write -
+ * @code
+ * (let ((result (find x some-list)))
+ *    (if result 
+ *       (length result)
+ *       (raise 'FindFailed x)))
+ * @endcode
+ * which introduces a new name \c result into the code, besides
+ * adding a level of nesting for the purpose. The \c the primitive
+ * therefore reduces the need to introduce new temporary names into
+ * the code by allowing you to refer to recent computation results
+ * using the function that computed it as the key. As in the trivial
+ * @code (h a b) @endcode example above, it allows you to reduce
+ * the level of nesting as well.
+ *
+ * @par \c the and \c it
+ * Within a given scope, the reserved symbol "it" can be used to
+ * refer to the most recently evaluated "the" expression. "it"
+ * will refer to the most recent "the" expression even if that
+ * result has been forgotten in the recent list and can no longer
+ * be obtained by re-evaluating the "the" expression. Here's an example -
+ * @code
+ * (if (find x some-list)
+ *    (if (>= (length (the find)) 3)
+ *       (print it)
+ *       (print (the length) "is too short because" it "is less than 3."))
+ *    (raise 'FindFailed x))
+ * @endcode
+ *
+ * @par Builtins that support \c the -
+ *	- length, map, join, collect, reduce,
+ *	- find, andmap, ormap
+ *	- transpose
+ *	- vector, hashtable, list
+ *	- read, read-bytes, read-xml
+ *	- open-file
+ */
+muse_cell fn_the( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell key = _evalnext(&args);
+	muse_int ikey = key;
+
+	if ( _cellt(key) == MUSE_NATIVEFN_CELL ) {
+		ikey = (muse_int)(_ptr(key)->fn.fn);
+	}
+
+	{
+		muse_cell val = MUSE_NIL;
+		if ( muse_find_recent_item( env, ikey, &val ) ) {
+			_define( _builtin_symbol(MUSE_IT), val );
+			return val;
+		} else {
+			MUSE_DIAGNOSTICS({
+				muse_message( env, L"(the >>fn<<)", L"No such recent computation by function %m.", key );
+			});
+			return key;
+		}
+	}
 }

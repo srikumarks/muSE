@@ -645,6 +645,8 @@ muse_cell fn_hashtable_size( muse_env *env, void *context, muse_cell args )
 /**
  * (hashtable alist).
  * Returns a hash table with the same contents as the given alist.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 {
@@ -663,7 +665,7 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 		hashtable_rehash( env, h, count );
 	}
 	
-	return ht;
+	return muse_add_recent_item( env, (muse_int)fn_alist_to_hashtable, ht );
 }
 
 /**

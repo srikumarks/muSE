@@ -67,6 +67,8 @@ static muse_monad_view_t *get_monad_view( muse_env *env, muse_cell obj, muse_fun
  *
  * Returns the size of the given list (i.e. its length) or vector
  * (same as vector-length) or hashtable (same as hashtable-size).
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 {
@@ -75,7 +77,7 @@ muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		/* Its a list. */
-		return _mk_int( _list_length(obj) );
+		return muse_add_recent_item( env, (muse_int)fn_length, _mk_int( _list_length(obj) ) );
 	}
 	else
 	{
@@ -83,7 +85,7 @@ muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->size( env, objptr );
+			return muse_add_recent_item( env, (muse_int)fn_length, monad->size( env, objptr ) );
 	}
 	
 	return MUSE_NIL;
@@ -144,6 +146,8 @@ static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cel
  * map also works with vectors and hashtables. In those cases, it transforms
  * the "values" of those data structures and creates an isomorphic structure 
  * with the transformed values.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 {
@@ -153,7 +157,7 @@ muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		/* Map being done on a list. */
-		return list_map( env, obj, fn, MUSE_NIL, MUSE_NIL );
+		return muse_add_recent_item( env, (muse_int)fn_map, list_map( env, obj, fn, MUSE_NIL, MUSE_NIL ) );
 	}
 	else
 	{
@@ -161,7 +165,7 @@ muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->map( env, objptr, fn );		
+			return muse_add_recent_item( env, (muse_int)fn_map, monad->map( env, objptr, fn ) );
 	}
 	
 	return MUSE_NIL;
@@ -223,6 +227,8 @@ static muse_cell list_join( muse_env *env, muse_cell lists )
  * hashtables. If for a given key K the hashtables has values 
  * V1, V2, ... VN, then the result hashtable will have the value
  * R(..R(R(V1, V2), V3)...,VN) where R is the reduction function.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 {
@@ -243,7 +249,7 @@ muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 	
 	if ( _cellt( _head(evaled_args) ) == MUSE_CONS_CELL )
 	{
-		return list_join( env, evaled_args );
+		return muse_add_recent_item( env, (muse_int)fn_join, list_join( env, evaled_args ) );
 	}
 	else
 	{
@@ -252,7 +258,7 @@ muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->join( env, objptr, _tail(evaled_args), fn );
+			return muse_add_recent_item( env, (muse_int)fn_join, monad->join( env, objptr, _tail(evaled_args), fn ) );
 	}
 	
 	return MUSE_NIL;
@@ -323,6 +329,8 @@ static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicat
  * or key in the cases of vectors and hashtable respectively. If the
  * reduction function is not specified, f(v1 v2) = v2 is used as the
  * function - i.e. replacement.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 {
@@ -332,7 +340,7 @@ muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
-		return list_collect( env, obj, predicate, mapper, MUSE_NIL, MUSE_NIL );
+		return muse_add_recent_item( env, (muse_int)fn_collect, list_collect( env, obj, predicate, mapper, MUSE_NIL, MUSE_NIL ) );
 	}
 	else
 	{
@@ -340,7 +348,7 @@ muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->collect( env, objptr, predicate, mapper, _evalnext(&args) );
+			return muse_add_recent_item( env, (muse_int)fn_collect, monad->collect( env, objptr, predicate, mapper, _evalnext(&args) ) );
 	}
 
 	return MUSE_NIL;
@@ -381,6 +389,8 @@ static muse_cell list_reduce( muse_env *env, muse_cell obj, muse_cell reduction_
  * i.e. @code (reduce f init (list 1 2 3 4 5)) @endcode
  * will give you -
  * @code (f (f (f (f (f init 1) 2) 3) 4) 5) @endcode
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 {
@@ -389,14 +399,14 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 	muse_cell obj		= _evalnext(&args);
 	
 	if ( _cellt(obj) == MUSE_CONS_CELL )
-		return list_reduce( env, obj, fn, initial );
+		return muse_add_recent_item( env, (muse_int)fn_reduce, list_reduce( env, obj, fn, initial ) );
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return monad->reduce( env, objptr, fn, initial );
+			return muse_add_recent_item( env, (muse_int)fn_reduce, monad->reduce( env, objptr, fn, initial ) );
 	}
 	
 	return MUSE_NIL;
@@ -436,6 +446,8 @@ static muse_boolean finder( muse_env *env, void *self, void *what, muse_cell thi
  * Sub list = (5 6 7 8)
  * Vector pos = 4
  * @endcode
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 {
@@ -448,7 +460,7 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 	
 	if ( iter )
 	{
-		result = iter( env, collObj, finder, (void*)(size_t)object );
+		result = muse_add_recent_item( env, (muse_int)fn_find, iter( env, collObj, finder, (void*)(size_t)object ) );
 	}
 	
 	return result;
@@ -491,6 +503,8 @@ static muse_boolean ormapper( muse_env *env, void *self, mapinfo_t *info, muse_c
  *
  * The predicate is a \c fn(x) and is given the value objects in 
  * lists, vectors or hashtables.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 {
@@ -502,7 +516,7 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
 	if ( iter )
 	{
-		return iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t();
+		return muse_add_recent_item( env, (muse_int)fn_andmap, iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t() );
 	}
 	
 	return MUSE_NIL;
@@ -519,6 +533,8 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
  *
  * The predicate is a \c fn(x) and is given the value objects in 
  * lists, vectors or hashtables.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 {
@@ -530,7 +546,7 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
 	if ( iter )
 	{
-		return iter( env, collObj, (muse_iterator_callback_t)ormapper, &info );
+		return muse_add_recent_item( env, (muse_int)fn_ormap, iter( env, collObj, (muse_iterator_callback_t)ormapper, &info ) );
 	}
 	
 	return MUSE_NIL;
@@ -596,6 +612,8 @@ muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
  * @code
  * (11 22 33 44)
  * @endcode
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 {
@@ -605,7 +623,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 	if ( !matrix )
 	{
 		_unwind(sp);
-		return MUSE_NIL;
+		return muse_add_recent_item( env, (muse_int)fn_transpose, MUSE_NIL );
 	}
 	else
 	{
@@ -637,7 +655,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 
 			_unwind(sp);
 			free(array);
-			return _spush(h);
+			return muse_add_recent_item( env, (muse_int)fn_transpose, _spush(h) );
 		}
 	}
 }

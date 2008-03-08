@@ -314,10 +314,12 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
  *     (write f '(hello world))
  *     (close f))
  * @endcode
+ *
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
 {
-	return _mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args );
+	return muse_add_recent_item( env, (muse_int)fn_open_file, _mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args ) );
 }
 
 /**

@@ -98,6 +98,8 @@ muse_cell fn_write( muse_env *env, void *context, muse_cell args )
  * (read [port]) 
  *
  * Reads a single sexpr from the standard input stream.
+ * 
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_read( muse_env *env, void *context, muse_cell args )
 {
@@ -113,7 +115,7 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args )
 	
 	{
 		muse_cell result = muse_pread( port );
-		return result < 0 ? MUSE_NIL : result;
+		return muse_add_recent_item( env, (muse_int)fn_read, result < 0 ? MUSE_NIL : result );
 	}
 }
 

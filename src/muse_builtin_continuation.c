@@ -33,6 +33,7 @@ typedef struct _continuation_t
 	muse_cell	*bindings_stack_copy;
 	int			bindings_size;
 	muse_cell	*bindings_copy;
+	recent_t	recent;
 	muse_cell	this_cont;
 	muse_cell	invoke_result;
 } continuation_t;
@@ -58,6 +59,8 @@ static void continuation_mark( muse_env *env, void *p )
 	mark_array( env, c->muse_stack_copy, c->muse_stack_copy + c->muse_stack_size );
 	mark_array( env, c->bindings_stack_copy, c->bindings_stack_copy + c->bindings_stack_size );
 	mark_array( env, c->bindings_copy, c->bindings_copy + c->bindings_size );
+
+	muse_mark_recent( env, &(c->recent) );
 }
 
 static void continuation_destroy( muse_env *env, void *p )
@@ -68,6 +71,7 @@ static void continuation_destroy( muse_env *env, void *p )
 	free( c->muse_stack_copy );
 	free( c->bindings_stack_copy );
 	free( c->bindings_copy );
+	muse_clear_recent( &(c->recent) );
 	
 	{
 		muse_functional_object_t base = c->base;
@@ -172,6 +176,9 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		/* Save all bindings. */
 		c->bindings_copy = copy_current_bindings( env, &c->bindings_size );
 
+		/* Save recent items. */
+		c->recent = muse_copy_recent( &(env->current_process->recent) );
+
 		/* Save a pointer to the current process. */
 		c->process = env->current_process;
 		c->process_atomicity = env->current_process->atomicity;
@@ -212,6 +219,9 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 
 		/* Restore the saved symbol values. */
 		restore_bindings( env, c->bindings_copy, c->bindings_size );
+
+		/* Restore the recent values. */
+		muse_restore_recent( &(c->recent), &(c->process->recent) );
 
 		muse_assert( c->invoke_result >= 0 );
 		muse_assert( (c->process->state_bits & MUSE_PROCESS_DEAD) == 0 );

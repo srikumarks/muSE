@@ -482,6 +482,8 @@ muse_cell fn_mk_vector( muse_env *env, void *context, muse_cell args )
  * (vector a1 a2 a3 --- aN).
  * Makes an N-length vector from the arguments with the arguments
  * as the initial values. Useful and compact for small vectors.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args )
 {
@@ -495,7 +497,7 @@ muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args )
 		v->slots[i] = _evalnext(&args);
 	}
 
-	return vec;
+	return muse_add_recent_item( env, (muse_int)fn_vector_from_args, vec );
 }
 
 /**

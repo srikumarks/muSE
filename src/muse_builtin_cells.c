@@ -605,10 +605,12 @@ muse_cell fn_dup( muse_env *env, void *context, muse_cell args )
  * (list a1 a2 ... )
  * Returns a list of the given items - the list of items is a
  * copy, though the items refer to the same objects.
+ *
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_list( muse_env *env, void *context, muse_cell args )
 {
-	return muse_eval_list( env, args );
+	return muse_add_recent_item( env, (muse_int)fn_list, muse_eval_list( env, args ) );
 }
 
 /**

@@ -211,6 +211,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_DEFINE,				L"define"	},
 	{ MUSE_TRAP_POINT,			L"{{trap}}" },
 	{ MUSE_IT,					L"it"		},
+	{ MUSE_THE,					L"the"		},
 	{ -1,						NULL		},
 };
 
@@ -368,8 +369,41 @@ MUSEAPI void muse_destroy_env( muse_env *env )
 	destroy_stack( &env->symbol_stack );
 	destroy_heap( &env->heap );
 	free( env->parameters );
-	
+	free( env->slots );
 	free( env );
+}
+
+muse_int *muse_alloc_slot( muse_env *env )
+{
+	/* If no slots have been allocated, do that. */
+	if ( env->slot_capacity == 0 ) {
+		env->slot_capacity = 4;
+		env->slots = (muse_int*)calloc( env->slot_capacity, sizeof(muse_int) );
+		env->num_slots = 0;
+	}
+
+	/* If we've run out of slots, grow the slot array. */
+	if ( env->num_slots == env->slot_capacity ) {
+		int new_capacity = env->slot_capacity * 2;
+		env->slots = (muse_int*)realloc( env->slots, new_capacity * sizeof(muse_int) );
+		env->slot_capacity = new_capacity;
+	}
+
+	/* Allocate the next slot. */
+	return (env->slots + (env->num_slots++));
+}
+
+/**
+ * Modifies the context pointer of the given nativefn to
+ * the given slot pointer and returns the modified nativefn.
+ */
+muse_cell muse_set_slot( muse_env *env, muse_cell nativefn, muse_int *slot )
+{
+	muse_assert( _cellt(nativefn) == MUSE_NATIVEFN_CELL );
+	muse_assert( _ptr(nativefn)->fn.context == NULL );
+
+	_ptr(nativefn)->fn.context = (void*)slot;
+	return nativefn;
 }
 
 
@@ -1328,6 +1362,9 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 	/* Initialize the queue pointers. */
 	p->next = p->prev = p;
 
+	/* Initialize the recent items. */
+	muse_init_recent( &(p->recent), 2 );
+
 	/* Copy all the currently defined symbols over to the new process. */
 	if ( env->current_process )
 		memcpy( p->locals.bottom, env->current_process->locals.bottom, sizeof(muse_cell) * env->num_symbols );
@@ -1661,6 +1698,7 @@ void mark_process( muse_process_frame_t *p )
 	mark_stack( env, &p->locals );
 	muse_mark( env, p->thunk );
 	muse_mark( env, p->mailbox );
+	muse_mark_recent( env, &(p->recent) );
 }
 
 /**
@@ -1668,6 +1706,7 @@ void mark_process( muse_process_frame_t *p )
  */
 void free_process( muse_process_frame_t *p )
 {
+	muse_clear_recent( &(p->recent) );
 	destroy_stack( &p->locals );
 	destroy_stack( &p->bindings_stack );
 	destroy_stack( &p->stack );
@@ -1719,5 +1758,153 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 			p->state_bits = MUSE_PROCESS_RUNNING;
 	}
 }
+
+/**
+ * Initializes the scoped recent calculations data structure.
+ */
+void muse_init_recent( recent_t *r, int capacity )
+{
+	r->capacity = (capacity < 1 ? 1 : capacity);
+	r->top = 0;
+	r->scopes = (recent_scope_t*)calloc( capacity, sizeof(recent_scope_t) );
+}
+
+/**
+ * Frees the scoped recent calculations data structure.
+ */
+void muse_clear_recent( recent_t *r )
+{
+	r->capacity = 0;
+	r->top = -1;
+	free( r->scopes );
+}
+
+/**
+ * Makes a copy of all the recent info upto
+ * the present execution point.
+ */
+recent_t muse_copy_recent( recent_t *r )
+{
+	recent_t cpy;
+	int n = r->top + 1;
+	muse_init_recent( &cpy, n );
+	memcpy( cpy.scopes, r->scopes, sizeof(recent_scope_t) * n );
+	cpy.top = r->top;
+	return cpy;
+}
+
+/**
+ * Takes a saved "recent" data structure and restores
+ * it into the given destination.
+ */
+void muse_restore_recent( recent_t *r, recent_t *dest )
+{
+	muse_clear_recent(dest);
+	(*dest) = muse_copy_recent(r);
+}
+
+/**
+ * Marks all objects in the recent data structure.
+ */
+void muse_mark_recent( muse_env *env, recent_t *r )
+{
+	int i, j;
+	for ( i = 0; i <= r->top; ++i ) {
+		recent_scope_t *s = r->scopes + i;
+		for ( j = 0; j < MUSE_MAX_RECENT_ITEMS; ++j ) {
+			muse_mark( env, s->recent[j].value );
+		}
+	}
+}
+
+/**
+ * 8 recent items are stored indexed by a 64-bit key.
+ * You can look up a recent item by giving your key.
+ */
+muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *value )
+{
+	muse_process_frame_t *p = env->current_process;
+	recent_scope_t *s = p->recent.scopes + p->recent.top;
+	int i = s->next, j;
+
+	/* Search backwards in time from the most recent item
+	to the oldest. */
+	for ( j = i-1; j != i; --j ) {
+		if ( j < 0 ) j += MUSE_MAX_RECENT_ITEMS;
+		if ( s->recent[j].key == key ) {
+			(*value) = s->recent[j].value;
+			return MUSE_TRUE;
+		}
+	}
+	return MUSE_FALSE;
+}
+
+/**
+ * You can add a new "recent" item using this function.
+ * Only the 8 most recent items are kept. The return value
+ * is \p value itself. 
+ */
+muse_cell muse_add_recent_item( muse_env *env, muse_int key, muse_cell value )
+{
+	if ( key ) {
+		muse_process_frame_t *p = env->current_process;
+		recent_scope_t *s = p->recent.scopes + p->recent.top;
+		recent_entry_t *n = s->recent + (s->next++);
+		n->key = key;
+		n->value = value;
+		if ( s->next >= MUSE_MAX_RECENT_ITEMS )
+			s->next -= MUSE_MAX_RECENT_ITEMS;
+	}
+	return value;
+}
+
+/**
+ * Moves the most recent item added to the recents list
+ * to the end of the list.
+ */
+void muse_withdraw_recent_item( muse_env *env )
+{
+	muse_process_frame_t *p = env->current_process;
+	recent_scope_t *s = p->recent.scopes + p->recent.top;
+
+	s->next--;
+
+	if ( s->next < 0 )
+		s->next += MUSE_MAX_RECENT_ITEMS;
+}
+
+/**
+ * Enter a scope so that previous recent values are temporarily forgotten.
+ */
+void muse_push_recent_scope( muse_env *env )
+{
+	muse_process_frame_t *p = env->current_process;
+
+	if ( p->recent.top + 1 >= p->recent.capacity ) {
+		// Need to grow capacity.
+		int newcaps = p->recent.capacity * 2;
+		p->recent.scopes = (recent_scope_t*)realloc( p->recent.scopes, sizeof(recent_scope_t)*newcaps );
+		p->recent.capacity = newcaps;
+	}
+
+	p->recent.top++;
+	memset( p->recent.scopes + p->recent.top, 0, sizeof(recent_scope_t) );
+}
+
+/**
+ * Exit from the scope with a result so that the innards of a computation
+ * are forgotten.
+ */
+muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value )
+{
+	muse_process_frame_t *p = env->current_process;
+
+	p->recent.top--;
+
+	muse_assert( p->recent.top >= 0 );
+
+	return muse_add_recent_item( env, key, value );
+}
+
 /*@}*/
 /*@}*/

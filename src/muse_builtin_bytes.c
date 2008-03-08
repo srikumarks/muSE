@@ -572,6 +572,8 @@ static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size
  * object is given, it attempts to fill it. If no bytes object
  * is given, it reads from the port until eof and returns a
  * new bytes object containing the data.
+ *
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 {
@@ -603,7 +605,7 @@ muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 		max_bytes = result->size;
 
 	if ( port_eof(p) || max_bytes == 0 )
-		return MUSE_NIL;
+		return muse_add_recent_item( env, (muse_int)fn_read_bytes, MUSE_NIL );
 
 	{
 		int chunkSize = 4096;
@@ -658,7 +660,7 @@ muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 		}
 
 		free(chunks);
-		return result;
+		return muse_add_recent_item( env, (muse_int)fn_read_bytes, result );
 	}
 }
 

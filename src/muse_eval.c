@@ -269,6 +269,8 @@ MUSEAPI muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_c
 	}
 }
 
+muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args );
+
 /**
  * Applies the given function specification to the
  * given argument list and returns whatever the function
@@ -297,14 +299,25 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 	/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
 	if ( muse_bind_formals( env, formals, args ) )
 	{
-		/*	Evaluate the body. 
-			Only "result" will remain on the stack. */
-		muse_cell result = _do( _tail(fn) );
-	
-		/* Unbind the latest bindings. */
-		_unwind_bindings(bsp);
+		/* Create a new scope for the "recent items" list so that
+		the \ref fn_the "the" references created within th function
+		don't affect the caller's context. */
+		muse_push_recent_scope(env);
+
+		/* Undefine the "it" symbol so that \ref fn_the "the"
+		expressions within the function can affect "it" locally. */
+		_pushdef( _builtin_symbol(MUSE_IT), _builtin_symbol(MUSE_IT) );
+
+		{
+			/*	Evaluate the body. 
+				Only "result" will remain on the stack. */
+			muse_cell result = _do( _tail(fn) );
 		
-		return result;
+			/* Restore the save bindings. */
+			_unwind_bindings(bsp);
+			
+			return muse_pop_recent_scope( env, fn, result );
+		}
 	}
 	else
 	{
@@ -495,24 +508,36 @@ MUSEAPI muse_cell muse_do( muse_env *env, muse_cell block )
 MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 {
 	int sp = _spos();
+	int N = 0;
 
 	/* The cell > 0 condition means quick-quoted cells
 	and MUSE_NIL are forced to themselves. */
-	while ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL )
-	{
-		_unwind(sp);
+	if ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL ) {
 
-		{
-			muse_cell h = _head(cell);
-			if ( h )
-				/* When the head of a lazy cell is not MUSE_NIL, it should
-				be a function that is applied to the tail of the cell. */
-				cell = muse_apply( env, h, _tail(cell), MUSE_TRUE, MUSE_FALSE );
-			else
-				/* When the head of a lazy cell is MUSE_NIL, then
-				the forced value of the cell is the value of the tail. */
-				cell = muse_eval( env, _tail(cell), MUSE_FALSE );
-		}
+		muse_push_recent_scope(env);
+
+		do {
+			_unwind(sp);
+
+			{
+				muse_cell h = _head(cell);
+				
+				if ( h )
+					/* When the head of a lazy cell is not MUSE_NIL, it should
+					be a function that is applied to the tail of the cell. */
+					cell = muse_apply( env, h, _tail(cell), MUSE_TRUE, MUSE_FALSE );
+				else
+					/* When the head of a lazy cell is MUSE_NIL, then
+					the forced value of the cell is the value of the tail. */
+					cell = muse_eval( env, _tail(cell), MUSE_FALSE );
+
+			}
+
+			++N;
+
+		} while ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL );
+
+		muse_pop_recent_scope( env, MUSE_NIL, MUSE_NIL );
 	}
 
 	return cell;
