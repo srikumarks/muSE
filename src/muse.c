@@ -1903,7 +1903,17 @@ muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value )
 
 	muse_assert( p->recent.top >= 0 );
 
-	return muse_add_recent_item( env, key, value );
+	if ( key ) {
+		return muse_add_recent_item( env, key, value );
+	} else {
+		/* Force the most recent lazy cell. */
+		recent_scope_t *s = p->recent.scopes + p->recent.top;
+		int i = s->next-1;
+		if ( i < 0 ) i += MUSE_MAX_RECENT_ITEMS;
+		muse_assert( _cellt(s->recent[i].value) == MUSE_LAZY_CELL );
+		s->recent[i].value = value;
+		return value;
+	}
 }
 
 /*@}*/

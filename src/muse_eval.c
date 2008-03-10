@@ -537,7 +537,7 @@ MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 
 		} while ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL );
 
-		muse_pop_recent_scope( env, MUSE_NIL, MUSE_NIL );
+		muse_pop_recent_scope( env, MUSE_NIL, cell );
 	}
 
 	return cell;
