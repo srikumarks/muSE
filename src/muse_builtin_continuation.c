@@ -405,6 +405,7 @@ typedef struct _resume_point_t
 	muse_cell trapval;	/**< Captures the state of the trap stack that we should restore to. */
 	muse_cell resumingtrap; /**< The trap one of whose handlers resumed the exception. */
 	muse_cell result;	/**< Holds the result of the resume invocation. */
+	int recent_top;		/**< The top index of the recent list at capture time. */
 } resume_point_t;
 
 /**
@@ -426,6 +427,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		rp->trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
 		rp->resumingtrap = MUSE_NIL;
 		rp->result = 0;
+		rp->recent_top = env->current_process->recent.top;
 	}
 	else
 	{
@@ -434,6 +436,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		_unwind_bindings( rp->bspos );
 		_define( _builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
 		rp->result = (setjmp_result >= 0) ? (setjmp_result-1) : setjmp_result;
+		env->current_process->recent.top = rp->recent_top;
 	}
 
 	return setjmp_result;

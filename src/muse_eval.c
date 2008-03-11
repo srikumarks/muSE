@@ -514,6 +514,8 @@ MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 	and MUSE_NIL are forced to themselves. */
 	if ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL ) {
 
+		muse_cell value = cell;
+
 		muse_push_recent_scope(env);
 
 		do {
@@ -537,7 +539,18 @@ MUSEAPI muse_cell muse_force( muse_env *env, muse_cell cell )
 
 		} while ( cell > 0 && _cellt(cell) == MUSE_LAZY_CELL );
 
-		muse_pop_recent_scope( env, MUSE_NIL, cell );
+		muse_pop_recent_scope( env, MUSE_NIL, MUSE_NIL );
+
+		{
+			recent_entry_t *e = muse_find_recent_lazy_item(env);
+			if ( e ) {
+				muse_assert( e->value == value );
+				e->value = cell;
+			} else {
+				muse_add_recent_item( env, _head(value), cell );
+			}
+		}
+
 	}
 
 	return cell;

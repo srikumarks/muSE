@@ -1840,6 +1840,26 @@ muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *valu
 }
 
 /**
+ * Locates the most recent lazy item in the recents list.
+ */
+recent_entry_t *muse_find_recent_lazy_item( muse_env *env )
+{
+	muse_process_frame_t *p = env->current_process;
+	recent_scope_t *s = p->recent.scopes + p->recent.top;
+	int i = s->next, j;
+
+	/* Search backwards in time from the most recent item
+	to the oldest. */
+	for ( j = i-1; j != i; --j ) {
+		if ( j < 0 ) j += MUSE_MAX_RECENT_ITEMS;
+		if ( _cellt(s->recent[j].value) == MUSE_LAZY_CELL ) {
+			return s->recent + j;
+		}
+	}
+	return NULL;
+}
+
+/**
  * You can add a new "recent" item using this function.
  * Only the 8 most recent items are kept. The return value
  * is \p value itself. 
@@ -1903,17 +1923,18 @@ muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value )
 
 	muse_assert( p->recent.top >= 0 );
 
-	if ( key ) {
-		return muse_add_recent_item( env, key, value );
-	} else {
-		/* Force the most recent lazy cell. */
-		recent_scope_t *s = p->recent.scopes + p->recent.top;
-		int i = s->next-1;
-		if ( i < 0 ) i += MUSE_MAX_RECENT_ITEMS;
-		muse_assert( _cellt(s->recent[i].value) == MUSE_LAZY_CELL );
-		s->recent[i].value = value;
-		return value;
-	}
+	return muse_add_recent_item( env, key, value );
+}
+
+/**
+ * Saves the current value of it and reset it to "it".
+ * Returns the bindings stack pos before saving it.
+ */
+int muse_forget_it_temporarily( muse_env *env )
+{
+	int bp = _bspos();
+	_pushdef( _builtin_symbol(MUSE_IT), _builtin_symbol(MUSE_IT) );
+	return bp;
 }
 
 /*@}*/

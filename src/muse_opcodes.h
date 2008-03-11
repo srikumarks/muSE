@@ -284,6 +284,11 @@ void muse_mark_recent( muse_env *env, recent_t *r );
 muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *value );
 
 /**
+ * Locates the most recent lazy item in the recents list.
+ */
+recent_entry_t *muse_find_recent_lazy_item( muse_env *env );
+
+/**
  * You can add a new "recent" item using this function.
  * Only the 8 most recent items are kept. The return value
  * is \p value itself.
@@ -305,6 +310,12 @@ void muse_push_recent_scope( muse_env *env );
  * are forgotten.
  */
 muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value );
+
+/**
+ * Saves the current value of it and reset it to "it".
+ * Returns the bindings stack pos before saving it.
+ */
+int muse_forget_it_temporarily( muse_env *env );
 
 /**
  * The cell index is stored in the upper 29 bits
