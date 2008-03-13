@@ -1893,10 +1893,7 @@ void muse_withdraw_recent_item( muse_env *env )
 		s->next += MUSE_MAX_RECENT_ITEMS;
 }
 
-/**
- * Enter a scope so that previous recent values are temporarily forgotten.
- */
-void muse_push_recent_scope( muse_env *env )
+static muse_process_frame_t *muse_push_recent_scope_base( muse_env *env )
 {
 	muse_process_frame_t *p = env->current_process;
 
@@ -1908,7 +1905,24 @@ void muse_push_recent_scope( muse_env *env )
 	}
 
 	p->recent.top++;
+	return p;
+}
+
+/**
+ * Enter a scope so that previous recent values are temporarily forgotten.
+ */
+void muse_push_recent_scope( muse_env *env )
+{
+	muse_process_frame_t *p = muse_push_recent_scope_base(env);
+
 	memset( p->recent.scopes + p->recent.top, 0, sizeof(recent_scope_t) );
+}
+
+void muse_push_copy_recent_scope( muse_env *env )
+{
+	muse_process_frame_t *p = muse_push_recent_scope_base(env);
+
+	memcpy( p->recent.scopes + p->recent.top, p->recent.scopes + p->recent.top-1, sizeof(recent_scope_t) );
 }
 
 /**

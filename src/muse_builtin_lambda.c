@@ -832,6 +832,8 @@ muse_cell syntax_let( muse_env *env, void *context, muse_cell args )
 	return result;
 }
 
+muse_cell guarded_do( muse_env *env, muse_cell expr );
+
 /**
  * (case object &lt;match-cases&gt;).
  * Syntax -
@@ -902,10 +904,10 @@ muse_cell syntax_case( muse_env *env, void *context, muse_cell args )
 
 		if ( muse_bind_formals( env, _head(thiscase), object ) )
 		{
-			muse_cell result = _do( _tail(thiscase) );
+			muse_cell result = guarded_do( env, _tail(thiscase) );
 
 			_unwind_bindings(bsp);
-			return result;
+			return muse_add_recent_item( env, (muse_int)syntax_case, result );
 		}
 	}
 

@@ -304,6 +304,7 @@ void muse_withdraw_recent_item( muse_env *env );
  * Enter a scope so that previous recent values are temporarily forgotten.
  */
 void muse_push_recent_scope( muse_env *env );
+void muse_push_copy_recent_scope( muse_env *env );
 
 /**
  * Exit from the scope with a result so that the innards of a computation

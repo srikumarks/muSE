@@ -280,7 +280,32 @@ muse_cell syntax_if( muse_env *env, void *context, muse_cell args )
 
 	{
 		muse_cell expr = _evalnext(&args);
-		return muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+		muse_push_copy_recent_scope(env);
+		{
+			int bp = _bspos();
+			_push_binding(_builtin_symbol(MUSE_IT));
+			{
+				muse_cell result = muse_eval( env, _head( expr ? args : _tail(args) ), MUSE_TRUE );
+				_unwind_bindings(bp);
+				muse_pop_recent_scope( env, (muse_int)syntax_if, result );
+				return result;
+			}
+		}
+	}
+}
+
+muse_cell guarded_do( muse_env *env, muse_cell expr )
+{
+	muse_push_copy_recent_scope(env);
+	{
+		int bp = _bspos();
+		_push_binding(_builtin_symbol(MUSE_IT));
+		{
+			muse_cell result = _do(expr);
+			_unwind_bindings(bp);
+			muse_pop_recent_scope( env, 0, MUSE_NIL );
+			return result;
+		}
 	}
 }
 
@@ -295,7 +320,7 @@ muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
 	if ( expr ) {
-		return _do(args);
+		return guarded_do( env, args );
 	} else
 		return MUSE_NIL;
 }
@@ -311,7 +336,7 @@ muse_cell syntax_unless( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell expr = _evalnext(&args);
 	if ( !expr ) {
-		return _do(args);
+		return guarded_do( env, args );
 	} else
 		return MUSE_NIL;
 }
@@ -344,10 +369,25 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
 	{
 		muse_cell clause = _head(args);
 		
-		if ( _eval( _head(clause) ) )
+		muse_push_copy_recent_scope(env);
 		{
-			_unwind(sp);
-			return _do( _tail(clause) );
+			int bp = _bspos();
+			_push_binding(_builtin_symbol(MUSE_IT));
+
+			if ( _eval( _head(clause) ) )
+			{
+				muse_cell result;
+				_unwind(sp);
+				result = _do( _tail(clause) );
+				_unwind_bindings(bp);
+				muse_pop_recent_scope( env, (muse_int)syntax_cond, result );
+				return result;
+			}
+			else
+			{
+				_unwind_bindings(bp);
+				muse_pop_recent_scope( env, 0, MUSE_NIL );
+			}
 		}
 		
 		args = _tail(args);
@@ -365,7 +405,7 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
  */
 muse_cell syntax_do( muse_env *env, void *context, muse_cell args )
 {
-	return _do( args );
+	return guarded_do( env, args );
 }
 
 /**

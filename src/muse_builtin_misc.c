@@ -80,7 +80,7 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 	info.attrmask	= FILE_ATTRIBUTE_DIRECTORY;
 	info.attrcomp	= 0;
 
-	return muse_generate_list( env, (muse_list_generator_t)generate_files, &info );
+	return muse_add_recent_item( env, (muse_int)fn_list_files, muse_generate_list( env, (muse_list_generator_t)generate_files, &info ) );
 }
 
 /**
@@ -103,7 +103,7 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 	info.attrmask	= FILE_ATTRIBUTE_DIRECTORY;
 	info.attrcomp	= FILE_ATTRIBUTE_DIRECTORY;
 
-	return muse_generate_list( env, (muse_list_generator_t)generate_files, &info );
+	return muse_add_recent_item( env, (muse_int)fn_list_folders, muse_generate_list( env, (muse_list_generator_t)generate_files, &info ) );
 }
 
 #else // POSIX
@@ -193,7 +193,7 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 	
 	f = popen( cmd, "r" );
 	if ( f )
-		return muse_generate_list( env, (muse_list_generator_t)generate_files, f );
+		return muse_add_recent_item( env, (muse_int)fn_list_files, muse_generate_list( env, (muse_list_generator_t)generate_files, f ) );
 
 	return MUSE_NIL;
 }
@@ -224,7 +224,7 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 
 	f = popen( cmd, "r" );
 	if ( f )
-		return muse_generate_list( env, (muse_list_generator_t)generate_files, f );
+		return muse_add_recent_item( env, (muse_int)fn_list_folders, muse_generate_list( env, (muse_list_generator_t)generate_files, f ) );
 
 	return MUSE_NIL;
 }
@@ -303,5 +303,5 @@ muse_cell fn_split( muse_env *env, void *context, muse_cell args )
 	state.sep = _text_contents(sep,NULL);
 	state.currsep = state.sep;
 
-	return muse_generate_list( env, fieldgen, &state );
+	return muse_add_recent_item( env, (muse_int)fn_split, muse_generate_list( env, fieldgen, &state ) );
 }

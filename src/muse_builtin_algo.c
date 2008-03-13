@@ -169,7 +169,7 @@ muse_cell fn_sort_inplace( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell	list			= _evalnext(&args);
 	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
-	return sort_by_property_inplace( env, list, propertyFn );
+	return muse_add_recent_item( env, (muse_int)fn_sort_inplace, sort_by_property_inplace( env, list, propertyFn ) );
 }
 
 /**
@@ -181,7 +181,7 @@ muse_cell fn_sort( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell	list			= listdup( env, _evalnext(&args) );
 	muse_cell	propertyFn		= args ? _evalnext(&args) : MUSE_NIL;
-	return sort_by_property_inplace( env, list, propertyFn );
+	return muse_add_recent_item( env, (muse_int)fn_sort, sort_by_property_inplace( env, list, propertyFn ) );
 }
 
 
@@ -201,7 +201,7 @@ muse_cell fn_reverse( muse_env *env, void *context, muse_cell args )
 		result = _cons( _next(&list), result );
 	}
 
-	return result;
+	return muse_add_recent_item( env, (muse_int)fn_reverse, result );
 }
 
 /**
@@ -227,5 +227,5 @@ muse_cell fn_reverse_inplace( muse_env *env, void *context, muse_cell args )
 		list = next;
 	}
 
-	return result;
+	return muse_add_recent_item( env, (muse_int)fn_reverse_inplace, result );
 }
