@@ -1151,6 +1151,17 @@ static void mark_keep( muse_heap *heap )
 	heap->marks = temp;
 }
 
+/**
+ * Marks all cells in the heap as unmarked.
+ * Used only in muse_destroy_env when everything
+ * needs to go.
+ */
+static void unmark_all_cells( muse_heap *heap )
+{
+	memset( heap->marks, 0, heap->size_cells >> 3 );
+	memset( heap->keep, 0, heap->size_cells >> 3 );
+}
+
 void muse_gc_impl( muse_env *env, int free_cells_needed )
 {
 	muse_heap *heap = _heap();
@@ -1216,6 +1227,8 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 			everything that isn't referenced. We have to release
 			everythign when shutting down. free_cells_needed <= 0
 			indicates that we're shutting down. */
+
+			unmark_all_cells( heap );
 			_mark( process_id(env->current_process) );
 			free_unused_specials( env, &env->specials );
 		}
