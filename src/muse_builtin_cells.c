@@ -218,7 +218,7 @@ static void forward_declare( muse_env *env, muse_cell sym )
  */
 muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell sym = _next(&args);
+	muse_cell sym = _quq(_next(&args));
 
 	muse_cell oldval = MUSE_NIL;
 
