@@ -1583,7 +1583,6 @@ static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote )
 MUSEAPI void muse_pprint( muse_port_t port, muse_cell sexpr )
 {
 	/* Temporary implementation. */
-	pretty_printer_reset(port);
 	muse_print_q( port, sexpr, MUSE_FALSE );
 }
 
@@ -1600,7 +1599,6 @@ MUSEAPI void muse_pprint( muse_port_t port, muse_cell sexpr )
 MUSEAPI void muse_pwrite( muse_port_t f, muse_cell sexpr )
 {
 	/* Temporary implementation. */
-	pretty_printer_reset(f);
 	muse_print_q( f, sexpr, MUSE_TRUE );
 }
 
