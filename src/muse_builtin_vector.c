@@ -431,6 +431,35 @@ static muse_cell vector_datafn( muse_env *env, void *self, muse_cell datafn )
 	return olddatafn;
 }
 
+static muse_cell vector_get( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+	vector_t *v = (vector_t*)self;
+	if ( _cellt(key) == MUSE_INT_CELL ) {
+		int index = (int)muse_int_value(env, key);
+		return argv ? muse_get( env, v->slots[index], _head(argv), _tail(argv) ) : v->slots[index];
+	} else {
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell vector_put( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+	vector_t *v = (vector_t*)self;
+	if ( _cellt(key) == MUSE_INT_CELL ) {
+		muse_cell val = _next(&argv);
+		int index = (int)muse_int_value(env,key);
+		return argv ? muse_put( env, v->slots[index], val, argv ) : (v->slots[index] = val); 
+	} else {
+		return MUSE_NIL;
+	}
+}
+
+static muse_prop_view_t g_vector_prop_view =
+{
+	vector_get,
+	vector_put
+};
+
 static muse_monad_view_t g_vector_monad_view =
 {
 	vector_size,
@@ -447,6 +476,7 @@ static void *vector_view( muse_env *env, int id )
 		case 'mnad' : return &g_vector_monad_view;
 		case 'iter' : return vector_iterator;
 		case 'dtfn' : return vector_datafn;
+		case 'prop' : return &g_vector_prop_view;
 		default : return NULL;
 	}
 }

@@ -395,7 +395,9 @@ MUSEAPI muse_cell	muse_symbol_plist( muse_env *env, muse_cell sym );
 MUSEAPI muse_cell	muse_assoc( muse_env *env, muse_cell alist, muse_cell prop );
 MUSEAPI muse_cell	*muse_assoc_iter( muse_env *env, muse_cell *alist, muse_cell prop );
 MUSEAPI muse_cell	muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop );
+MUSEAPI	muse_cell	muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_cell argv );
 MUSEAPI muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value );
+MUSEAPI	muse_cell	muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_cell argv );
 MUSEAPI muse_cell	muse_search_object( muse_env *env, muse_cell obj, muse_cell member );
 muse_cell 	muse_set_object_property( muse_env *env, muse_cell object, muse_cell property, muse_cell value );
 /*@}*/
@@ -771,12 +773,12 @@ typedef muse_cell (*muse_datafn_t)( muse_env *env, void *self, muse_cell datafn 
  */
 typedef struct {
 
-	muse_cell (*get_prop)( muse_env *env, void *self, muse_cell key );
+	muse_cell (*get_prop)( muse_env *env, void *self, muse_cell key, muse_cell argv );
 	/**<
 	 * Gets the value of the property associated with the given key.
 	 */
 
-	muse_cell (*put_prop)( muse_env *env, void *self, muse_cell key, muse_cell value );
+	muse_cell (*put_prop)( muse_env *env, void *self, muse_cell key, muse_cell argv );
 	/**<
 	 * Modifies the value of the property identified by \p key to the
 	 * given \p value. The return value can be any value that the

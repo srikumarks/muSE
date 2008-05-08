@@ -12,6 +12,30 @@
 #include "muse_builtins.h"
 
 /**
+ * Recursive property getter. First gets the property \c key
+ * of the object \c obj. If argv is MUSE_NIL, that becomes the
+ * result. Otherwise, that result is used as the target for
+ * yet more property keys extracted from \c argv.
+ *
+ * @see muse_put()
+ */
+MUSEAPI muse_cell muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_cell argv )
+{
+	if ( _cellt(obj) == MUSE_SYMBOL_CELL ) {
+		muse_cell val = _tail(_get_prop( obj, key ));
+		return argv ? muse_get( env, val, _head(argv), _tail(argv) ) : val;
+	} else {
+		muse_functional_object_t *fobj = NULL;
+		muse_prop_view_t *prop_view = _fnobjview( obj, 'prop', fobj );
+		if ( prop_view ) {
+			return prop_view->get_prop( env, fobj, key, argv );
+		} else {
+			return MUSE_NIL;
+		}
+	}
+}
+
+/**
  * (get symbol property).
  * Looks up the given property for the given symbol.
  * If found, it yields the @code (property . value) @endcode pair,
@@ -20,15 +44,34 @@
  */
 muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 {
-	muse_cell sym	= _evalnext(&args);
-	muse_cell prop	= _evalnext(&args);
-	if ( _cellt(sym) == MUSE_SYMBOL_CELL )
-		return _get_prop( sym, prop );
-	else {
+	muse_cell sym = _evalnext(&args);
+	muse_cell argv = muse_eval_list( env, args );
+	return muse_get( env, sym, _head(argv), _tail(argv) );
+}
+
+/**
+ * Nested property put. \c argv has to have at least one element
+ * in it, giving the value to set the property \c prop of object \c obj.
+ * It takes much mroe English to describe this function than to
+ * just refer to the code, so read it and understand it. Clue - its
+ * the counterpart of \c muse_get.
+ *
+ * @see muse_get();
+ */
+MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_cell argv )
+{
+	if ( _cellt(obj) == MUSE_SYMBOL_CELL ) {
+		muse_cell val = _next(&argv);
+		if ( argv ) {
+			return muse_put( env, muse_get( env, obj, prop, MUSE_NIL ), val, argv );
+		} else {
+			return _tail(_put_prop( obj, prop, val ));
+		}
+	} else {
 		muse_functional_object_t *fobj = NULL;
-		muse_prop_view_t *prop_view = _fnobjview(sym,'prop',fobj);
+		muse_prop_view_t *prop_view = _fnobjview(obj,'prop',fobj);
 		if ( prop_view ) {
-			return prop_view->get_prop( env, fobj, prop );
+			return prop_view->put_prop( env, fobj, prop, argv );
 		} else {
 			return MUSE_NIL;
 		}
@@ -45,18 +88,7 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 {
 	muse_cell sym	= _evalnext(&args);
 	muse_cell prop	= _evalnext(&args);
-	muse_cell value = _evalnext(&args);
-	if ( _cellt(sym) == MUSE_SYMBOL_CELL ) 
-		return _put_prop( sym, prop, value );
-	else {
-		muse_functional_object_t *fobj = NULL;
-		muse_prop_view_t *prop_view = _fnobjview(sym,'prop',fobj);
-		if ( prop_view ) {
-			return prop_view->put_prop( env, fobj, prop, value );
-		} else {
-			return MUSE_NIL;
-		}
-	}
+	return muse_put( env, sym, prop, muse_eval_list( env, args ) );
 }
 
 /**

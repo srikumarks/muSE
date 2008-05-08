@@ -268,15 +268,15 @@ static muse_cell *hashtable_get( muse_env *env, hashtable_t *h, muse_cell key, m
 	return muse_assoc_iter( env, h->buckets + bucket, key );
 }
 
-static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key ) {
+static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key, muse_cell argv ) {
 	hashtable_t *h = (hashtable_t*)self;
 	muse_int hash = 0;
 	muse_cell *kvpair = hashtable_get( env, h, key, &hash );
 
-	if ( *kvpair )
-		return _tail( _head( *kvpair ) );
-	else
-	{
+	if ( *kvpair ) {
+		muse_cell val = _tail( _head( *kvpair ) );
+		return argv ? muse_get( env, val, _head(argv), _tail(argv) ) : val;
+	} else {
 		/* key doesn't exist. Try to compute using the func spec. */
 		muse_cell value = MUSE_NIL;
 
@@ -288,11 +288,12 @@ static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key ) 
 		if ( value )
 			hashtable_add( env, h, key, value, &hash );
 
-		return value;
+		return argv ? muse_get( env, value, _head(argv), _tail(argv) ) : value;
 	}
 }
 
-static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, muse_cell value ) {
+static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, muse_cell argv ) {
+	muse_cell value = _next(&argv);
 	hashtable_t *h = (hashtable_t*)self;
 
 	muse_cell *kvpair = hashtable_get( env, h, key, NULL );
@@ -300,8 +301,12 @@ static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, m
 		if ( value )
 		{
 			/* It already exists. Simply change the value to the new one. */
-			_sett( _head(*kvpair), value );
-			return value;
+			if ( argv ) {
+				return muse_put( env, _tail(_head(*kvpair)), value, argv );
+			} else {
+				_sett( _head(*kvpair), value );
+				return value;
+			}
 		} 
 		else
 		{
@@ -343,10 +348,10 @@ muse_cell fn_hashtable( muse_env *env, hashtable_t *h, muse_cell args )
 		muse_cell key = _evalnext(&args);
 		if ( args ) {
 			/* Two argument form. */
-			return hashtable_put_prop( env, h, key, _evalnext(&args) );
+			return hashtable_put_prop( env, h, key, muse_eval_list( env, args ) );
 		} else {
 			/* One argument form. */
-			return hashtable_get_prop( env, h, key );
+			return hashtable_get_prop( env, h, key, MUSE_NIL );
 		}
 	}
 }
