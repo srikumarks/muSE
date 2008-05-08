@@ -322,7 +322,7 @@ static muse_cell fn_repl( muse_env *env, args_t *context, muse_cell args )
 			if ( strcmp( context->argv[i], "--run" ) == 0 ) { 
 				enable_repl = 0; 
 			} else {
-				try_apply( env, loader, _cons( muse_mk_ctext_utf8( env, context->argv[i] ), MUSE_NIL ) );
+				muse_apply( env, loader, _cons( muse_mk_ctext_utf8( env, context->argv[i] ), MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
 				_unwind(sp);
 			}
 		}
