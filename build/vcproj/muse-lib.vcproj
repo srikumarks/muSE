@@ -406,6 +406,10 @@
 				RelativePath="..\..\src\muse_repl.c"
 				>
 			</File>
+			<File
+				RelativePath="..\..\src\muse_win32_com.c"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

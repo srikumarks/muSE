@@ -251,5 +251,7 @@ void muse_define_builtin_type_box(muse_env *env);
 
 void muse_define_builtin_networking(muse_env *env);
 void muse_define_builtin_local(muse_env *env);
+void muse_register_com_support( muse_env *env );
+
 
 #endif /* __MUSE_BUILTINS_H__ */
