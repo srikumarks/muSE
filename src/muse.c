@@ -1817,16 +1817,24 @@ void muse_restore_recent( recent_t *r, recent_t *dest )
 }
 
 /**
+ * Marks all objects remembered in the given recent-scope.
+ */
+void muse_mark_recent_scope( muse_env *env, recent_scope_t *s )
+{
+	int j = 0;
+	for ( j = 0; j < MUSE_MAX_RECENT_ITEMS; ++j ) {
+		muse_mark( env, s->recent[j].value );
+	}
+}
+
+/**
  * Marks all objects in the recent data structure.
  */
 void muse_mark_recent( muse_env *env, recent_t *r )
 {
 	int i, j;
 	for ( i = 0; i <= r->top; ++i ) {
-		recent_scope_t *s = r->scopes + i;
-		for ( j = 0; j < MUSE_MAX_RECENT_ITEMS; ++j ) {
-			muse_mark( env, s->recent[j].value );
-		}
+		muse_mark_recent_scope( env, r->scopes + i );
 	}
 }
 

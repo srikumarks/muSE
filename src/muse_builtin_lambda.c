@@ -218,7 +218,66 @@ muse_cell muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_
 	}
 }
 
+/**
+ * A "captured recent scope" object is for the purpose of
+ * allowing the use of (the ..) expressions and 'it' within
+ * closures, to refer to the environment in which the closure
+ * was created.
+ */
+typedef struct 
+{
+	muse_functional_object_t base;
+	recent_scope_t scope;
+	muse_cell it;
+} captured_recent_scope_t;
 
+static void crs_init( muse_env *env, void *ptr, muse_cell args )
+{
+	captured_recent_scope_t *crs = (captured_recent_scope_t*)ptr;
+	memcpy( &(crs->scope), env->current_process->recent.scopes + env->current_process->recent.top, sizeof(recent_scope_t) );
+	crs->it = _symval(_builtin_symbol(MUSE_IT));
+}
+
+static void crs_mark( muse_env *env, void *ptr )
+{
+	captured_recent_scope_t *crs = (captured_recent_scope_t*)ptr;
+	
+	muse_mark_recent_scope( env, &(crs->scope) );
+	muse_mark( env, crs->it );
+}
+
+/**
+ * Writes out the vector to the given port in such a
+ * way that the expression written out is converted
+ * to a vector by a trusted read operation.
+ */
+static void crs_write( muse_env *env, void *ptr, void *port )
+{
+	port_write( "<<internal>>", 12, (muse_port_t)port );
+}
+
+/**
+ * Simply copies the recent list into the current recent scope.
+ */
+static muse_cell fn_crs( muse_env *env, captured_recent_scope_t *crs, muse_cell args )
+{
+	memcpy( env->current_process->recent.scopes + env->current_process->recent.top, &(crs->scope), sizeof(recent_scope_t) );
+	_define(_builtin_symbol(MUSE_IT), crs->it);
+	return MUSE_NIL;
+}
+
+static muse_functional_object_type_t g_captured_recent_scope_type =
+{
+	'muSE',
+	'crsc',
+	sizeof(captured_recent_scope_t),
+	(muse_nativefn_t)fn_crs,
+	NULL,
+	crs_init,
+	crs_mark,
+	NULL,
+	crs_write
+};
 
 /**
  * (fn formal-args <body>).
@@ -295,6 +354,11 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 	muse_cell formals = _head(args);
 	muse_cell body = _tail(args);
 	muse_cell closure = _setcellt( _cons( formals, MUSE_NIL ), MUSE_LAMBDA_CELL );
+	
+	/* Capture the recently computed items so that the closure can
+	refer to them using (the ..) expressions and 'it'. The _cons
+	is to turn the captured function into a function call. */
+	muse_cell crs = _cons( muse_mk_functional_object( env, &g_captured_recent_scope_type, MUSE_NIL ), MUSE_NIL );
 
 	if ( _head(formals) == env->builtin_symbols[MUSE_QUOTE] )
 	{
@@ -317,7 +381,7 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		anonymize_formals( env, formals );
 		anonymize_formals( env, _builtin_symbol(MUSE_IT) );
 		
-		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
+		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
 		
 		_unwind_bindings(bsp);
 
@@ -332,7 +396,7 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		anonymize_formals( env, formals );
 		anonymize_formals( env, _builtin_symbol(MUSE_IT) );
 		
-		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
+		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
 		
 		_unwind_bindings(bsp);
 

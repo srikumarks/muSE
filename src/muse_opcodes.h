@@ -273,6 +273,11 @@ recent_t muse_copy_recent( recent_t *r );
 void muse_restore_recent( recent_t *r, recent_t *dest );
 
 /**
+ * Marks all objects in the recent scope.
+ */
+void muse_mark_recent_scope( muse_env *env, recent_scope_t *s );
+
+/**
  * Marks all objects in the recent data structure.
  */
 void muse_mark_recent( muse_env *env, recent_t *r );
