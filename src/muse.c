@@ -75,26 +75,6 @@ static muse_boolean realloc_stack( muse_stack *s, int new_size )
 		return MUSE_TRUE;
 }
 
-/**	
- * Makes sure that there is space enough on the stack
- * for "items" cells to be placed. If not, grows
- * the stack as much as necessary. 
- */
-static muse_boolean ensure_stack( muse_stack *s, int items )
-{
-	if ( s->top - s->bottom + items >= s->size )
-	{
-		/* Need to realloc */
-		int new_size = s->size + items;
-		if ( new_size < s->size * 2 )
-			new_size = s->size * 2;
-		
-		return realloc_stack( s, new_size );
-	}
-	else
-		return MUSE_FALSE;
-}
-
 static void init_heap( muse_env *env, muse_heap *heap, int heap_size )
 {
 	heap_size				= (heap_size + 7) & ~7;
@@ -750,6 +730,13 @@ MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix
 
 		do
 		{
+			if ( local_ix >= p->locals.size )
+			{
+				muse_assert( local_ix < 2 * p->locals.size );
+				if ( realloc_stack( &(p->locals), 2 * p->locals.size ) == MUSE_FALSE )
+					muse_raise_error( env, MUSE_NIL, MUSE_NIL );
+			}
+			
 			p->locals.bottom[local_ix] = sym;
 			p->locals.top = p->locals.bottom + env->num_symbols;
 			p = p->next;
