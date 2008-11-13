@@ -1,44 +1,41 @@
 Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. Ltd.
 
-   Licensed under the Apache License, Version 2.0 (the "License") with
-   the additional grants and restrictions as described in the section 
-   ADDITIONAL GRANTS AND RESTRICTIONS below; you may not use this file 
-   except in compliance with the License including the said additional 
-   grants and restrictions.
-   
-   You may obtain a copy of the License at
+Licensed under the "New BSD License" with the requirement that
+contributions from others be made on the same terms. Contributors
+retain the copyright over their own works, however.
 
-       http://www.apache.org/licenses/LICENSE-2.0
+The "New BSD License" template is available from 
 
-   This license file is available from 
+   http://www.opensource.org/licenses/bsd-license.php
 
-       http://muvee-symbolic-expressions.googlecode.com/svn/trunk/LICENSE.txt
+and is reproduced below in this context -
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that the following conditions 
+are met:
 
+    * Redistributions of source code must retain the above copyright 
+      notice, this list of conditions and the following disclaimer.
 
-   ADDITIONAL GRANTS AND RESTRICTIONS
+    * Redistributions in binary form must reproduce the above copyright 
+      notice, this list of conditions and the following disclaimer in 
+      the documentation and/or other materials provided with the 
+      distribution.
 
-   10. Clause (5) of the Apache License 2.0 is to be interpreted to 
-      include the terms in this section - i.e. if You submit modifications,
-      bug fixes, enhancements, additional features, port to other platforms
-      back to the public either by contributing your work back to original
-      project site (such as http://muvee-symbolic-expressions.googlecode.com) or by 
-      publishing it through alternate media (such as other internet
-      site, CDROM, memory card, USB memory stick), You are required to
-      publish your work under the same terms and conditions as offered to
-      you by this license, including the clauses in this section. However,
-      you shall retain the copyright for your portion of the work.
+    * None of "muvee Technologies Pte Ltd", "muvee", "muSE" or 
+      the names of its contributors may be used to endorse or promote 
+      products derived from this software without specific prior 
+      written permission. 
 
-   11. Additional use and distribution rights.
-    
-      Permission is granted to use, copy, modify and integrate this software 
-      or portions of it into derivative works which may be distributed under
-      terms determined by You for commercial, non-commercial, educational or 
-      any purpose except those prohibited by applicable law, provided said 
-      derivative work is distributed in compiled binary code.
-
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN 
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+POSSIBILITY OF SUCH DAMAGE.
