@@ -40,7 +40,8 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 	
 	if ( lhs_t != rhs_t )
 	{
-		if ( !(_isnumbert(lhs_t) || _isnumbert(rhs_t)) )
+		/* If one of them is not a number, then return a comparison of their types. */
+		if ( !_isnumbert(lhs_t) || !_isnumbert(rhs_t) )
 			return lhs_t - rhs_t;
 	}
 
