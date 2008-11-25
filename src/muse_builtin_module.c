@@ -43,6 +43,7 @@ typedef struct _module_t
 	muse_functional_object_t base;
 	int length;
 	module_binding_t *bindings;
+	muse_cell main;
 } module_t;
 
 static muse_cell qualified_name( muse_env *env, int prefix_length, const muse_char *prefix, muse_cell sym )
@@ -67,6 +68,7 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 	int bsp = _bspos();
 	module_t *m = (module_t*)ptr;
 	muse_cell mname, exports;
+	muse_cell sym_main = _csymbol(L"main");
 	mname = _next(&args);
 	exports = _next(&args);
 	
@@ -81,6 +83,7 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 
 	m->length = muse_list_length( env, exports );
 	m->bindings = (module_binding_t*)calloc( m->length, sizeof(module_binding_t) );
+	m->main = _mk_nativefn( syntax_do, NULL );
 	
 	/* Reset the definitions of exported values. */
 	{
@@ -109,8 +112,22 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 		prefix[prefix_length] = '\0';
 	}
 
+	/* Make the "main" symbol local. */
+	_pushdef( sym_main, sym_main );
+
 	/* Evaluate the body of the module. */
 	_force( muse_do( env, args ) );
+	
+	/* Keep around the definition of the "main" symbol. */
+	{
+		muse_cell mainval = _symval(sym_main);
+		if ( mainval != sym_main )
+			m->main = mainval;
+		else
+		{
+			/* It is the same as "do". */
+		}
+	}
 	
 	/* Capture new definitions of the exported symbols. */
 	{
@@ -145,6 +162,7 @@ static void module_mark( muse_env *env, void *ptr )
 		// The symbols are automatically marked.
 		muse_mark( env, m->bindings[i].value );
 	}
+	muse_mark( env, m->main );
 }
 
 static void module_destroy( muse_env *env, void *ptr )
@@ -153,6 +171,7 @@ static void module_destroy( muse_env *env, void *ptr )
 	free( m->bindings );
 	m->length = 0;
 	m->bindings = NULL;
+	m->main = MUSE_NIL;
 }
 
 /**
@@ -200,7 +219,7 @@ static muse_cell module_scope_begin( muse_env *env, void *self, muse_cell expr )
 	introduce_module_local( env, (module_t*)self );
 	{
 		muse_cell tailpart = muse_bind_copy_expr( env, _tail(expr), MUSE_FALSE );
-		_setht( expr, _mk_nativefn( syntax_do, NULL ), tailpart ); 
+		_setht( expr, ((module_t*)self)->main, tailpart ); 
 		return expr;
 	}
 }
@@ -247,7 +266,7 @@ muse_cell module_syntax( muse_env *env, module_t *m, muse_cell args )
 	int bsp = _bspos();
 	introduce_module_local( env, m );
 	{
-		muse_cell result = muse_do( env, args );
+		muse_cell result = muse_apply( env, m->main, args, MUSE_FALSE, MUSE_FALSE );
 		_unwind_bindings(bsp);
 		return result;
 	}
