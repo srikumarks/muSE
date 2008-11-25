@@ -412,3 +412,25 @@ static void mickey_mode( muse_port_t in, muse_port_t out )
 		}
 	}
 }
+
+/**
+ * {tab-syntax}
+ * Changes the syntax of the currently reading port
+ * to the EZSCHEME syntax.
+ */
+muse_cell fn_tab_syntax( muse_env *env, void *context, muse_cell args )
+{
+	muse_current_port( env, MUSE_STDIN_PORT, NULL )->mode |= MUSE_PORT_EZSCHEME;
+	return MUSE_NIL;
+}
+
+/**
+ * {scheme-syntax}
+ * Changes the syntax of the currently reading port
+ * to the normal syntax.
+ */
+muse_cell fn_scheme_syntax( muse_env *env, void *context, muse_cell args )
+{
+	muse_current_port( env, MUSE_STDIN_PORT, NULL )->mode &= ~MUSE_PORT_EZSCHEME;
+	return MUSE_NIL;
+}

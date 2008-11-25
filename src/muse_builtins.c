@@ -37,6 +37,7 @@ static const struct _builtins
 {		L"apply/keywords",	fn_apply_w_keywords	},
 {		L"call/keywords",	fn_call_w_keywords	},
 {		L"the",			fn_the				},
+{		L"meta",		fn_meta				},
 
 /************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
@@ -164,6 +165,8 @@ static const struct _builtins
 {		L"write-xml",	fn_write_xml		},
 {		L"read-xml",	fn_read_xml			},
 {		L"exit",		fn_exit				},
+{		L"tab-syntax",		fn_tab_syntax		},
+{		L"scheme-syntax",	fn_scheme_syntax	},
 
 /************** Ports ***************/
 {		L"spawn",		fn_spawn			},

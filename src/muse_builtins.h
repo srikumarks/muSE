@@ -37,6 +37,7 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args );
 muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args );
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
 muse_cell fn_the( muse_env *env, void *context, muse_cell args );
+muse_cell fn_meta( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Exceptions Raising and handling exceptions */
@@ -167,6 +168,8 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args );
 muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args );
 muse_cell fn_exit( muse_env *env, void *context, muse_cell args );
+muse_cell fn_tab_syntax( muse_env *env, void *context, muse_cell args );
+muse_cell fn_scheme_syntax( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** 

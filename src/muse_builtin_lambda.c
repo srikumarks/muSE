@@ -404,6 +404,34 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		_seth( closure, formals );
 	}
 
+	// As a short cut, if the first entry in a function's body is
+	// a constant and there are other items afterwards, 
+	// use it as the name of the function. This is useful 
+	// for (fn (..) ..) kind of expressions used anonymously.
+	{
+		muse_cell clbody = _tail(closure);
+		if ( clbody )
+		{
+			muse_cell rest = _tail(clbody);
+			if ( rest )
+			{
+				// Check head to see if it is a constant.
+				muse_cell h = _head(clbody);
+				switch ( _cellt(h) )
+				{
+				case MUSE_TEXT_CELL:
+				case MUSE_INT_CELL:
+				case MUSE_FLOAT_CELL:
+					_sett(closure,rest);
+					meta_putname( env, closure, h );
+				default:;
+				}
+			}
+
+			muse_put_prop( env, muse_get_meta( env, closure ), _builtin_symbol(MUSE_CODE), body );
+		}
+	}
+
 	return closure;
 }
 

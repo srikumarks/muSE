@@ -119,6 +119,29 @@ typedef struct
 										 the cell *outside* a call to muse_gc(). */
 } muse_heap;
 
+/**
+ * A way to trace evaluations down the stack.
+ * Only a finite number (=size) of trace points are
+ * available for simplicity. The \p depth
+ * value gives the depth of the stack trace at any
+ * given time. The index of the latest trace
+ * point (when it exists) is therefore given by
+ *		i = (depth-1)%size.
+ */
+typedef struct
+{
+	int sp;
+	const muse_char *label;
+	muse_cell fn;
+	muse_cell argv;
+} muse_trace_t;
+
+typedef struct
+{
+	int size, depth;
+	muse_trace_t *data;
+} muse_traceinfo_t;
+
 typedef enum
 {
 	MUSE_PROCESS_DEAD			= 0x0,
@@ -184,6 +207,10 @@ typedef struct _muse_process_frame_t
 	muse_cell	mailbox;
 	muse_cell	mailbox_end;
 	muse_cell	waiting_for_pid;
+
+	muse_traceinfo_t traceinfo; ///< Holds a finite depth of stack trace information.
+
+	muse_port_t current_port[3]; ///< Per-process current input/output/error ports.
 
 	/** Each process has a "recent" list - a vector of 8
 	most recent calculations performed. The recent list is
@@ -455,13 +482,14 @@ static inline muse_stack *op_stack(muse_env *env)
 	muse_stack *s = &env->current_process->stack;
 	return s;
 }
+static inline muse_cell _quq( muse_cell c );
 #define _spush(cell) op_spush(env,cell)
 static inline muse_cell op_spush( muse_env *env, muse_cell cell )
 {
 	if ( cell )
 	{
 		muse_assert( _stack()->top - _stack()->bottom < _stack()->size );
-		muse_assert( _celli(cell) >= 0 && _celli(cell) < env->heap.size_cells );
+		muse_assert( _celli(_quq(cell)) >= 0 && _celli(_quq(cell)) < env->heap.size_cells );
 		return *(_stack()->top++) = cell;
 	}
 	else
@@ -700,6 +728,10 @@ int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 );
 /* Objective-C functions. */
 void init_objc_bridge( muse_env *env );
 void destroy_objc_bridge( muse_env *env );
+
+muse_cell meta_getname( muse_env *env, muse_cell fn );
+muse_cell meta_putname( muse_env *env, muse_cell fn, muse_cell name );
+
 
 END_MUSE_C_FUNCTIONS
 

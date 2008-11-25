@@ -688,8 +688,22 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 	}
 
 	/* No handler succeeded in handling the exception. */
-	muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
-	remove_process( env->current_process );
+	{
+		muse_cell sym_deh = muse_builtin_symbol( env, MUSE_DEFAULT_EXCEPTION_HANDLER );
+		muse_cell deh = _symval(sym_deh);
+		if ( sym_deh == deh || _isfn(deh) == MUSE_FALSE )
+		{
+			/* No default exception handler defined. */
+			muse_message( env,L"Unhandled exception!", L"%m\n\nin process %m", _tail(handler_args), process_id(env->current_process) );
+		}
+		else
+		{
+			/* Invoke the default exception handler. */
+			muse_apply( env, deh, handler_args, MUSE_TRUE, MUSE_FALSE );
+		}
+	
+		remove_process( env->current_process );
+	}
 
 	/* Issue#30 - Build warning about not all control paths returning value.
 	   This function doesn't return after the above remove_process() call. */

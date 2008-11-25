@@ -13,6 +13,74 @@
 #include "muse_builtins.h"
 #include "muse_port.h"
 
+MUSEAPI muse_cell muse_get_meta( muse_env *env, muse_cell fn )
+{
+	if ( _cellt(fn) == MUSE_LAMBDA_CELL )
+	{
+		muse_cell body = _tail(fn);
+		if ( body )
+		{
+			// Might have meta already.
+			muse_cell meta = _head(body);
+			if ( meta < 0 )	// Using a quick quoted object ensures that
+							// its evaluation will be discarded in its "do" block.
+			{
+				// Has meta.
+				return -meta;
+			}
+			else
+			{
+				// No meta. Need to insert.
+			}
+		}
+		else
+		{
+			// No meta. Need to insert.
+		}
+
+		// No meta. Insert new meta object.
+		{
+			int sp = _spos();
+			muse_cell meta = muse_mk_anon_symbol(env);
+			_sett( fn, _cons(-meta,body) );
+			_unwind(sp);
+			return meta;
+		}
+	}
+	else
+	{
+		return MUSE_NIL;
+	}
+}
+
+muse_cell meta_getname( muse_env *env, muse_cell fn )
+{
+	muse_cell meta = muse_get_meta( env, fn );
+	if ( meta )
+		return _tail(muse_search_object( env, meta, _builtin_symbol(MUSE_NAME) ));
+	else
+		return MUSE_NIL;
+}
+
+muse_cell meta_putname( muse_env *env, muse_cell fn, muse_cell name )
+{
+	muse_cell meta = muse_get_meta( env, fn );
+	if ( meta )
+		muse_put_prop( env, meta, _builtin_symbol(MUSE_NAME), name );
+	return meta;
+}
+
+/**
+ * Returns an object containing meta information about the
+ * given function. Even closures have meta information.
+ */
+muse_cell fn_meta( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell fn = _evalnext(&args);
+
+	return muse_get_meta( env, fn );
+}
+
 enum
 {
 	DEFINE_NORMAL,
@@ -41,6 +109,9 @@ static void define_in_context( muse_env *env, muse_cell sym, muse_cell val )
 		_define( sym, val );
 	else
 		_pushdef( sym, val );
+
+	if ( _cellt(val) == MUSE_LAMBDA_CELL )
+		meta_putname( env, val, sym );
 }
 
 /**
@@ -56,7 +127,7 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 				/* Note that we need to do _tail(_tail(gen)) in order to skip the "recent list"
 				that's added to the beginning of every function. If that's not there,
 				we need to check _tail(gen) instead. */
-		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(_tail(gen)) == MUSE_NIL ) {
+		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(_tail(_tail(gen))) == MUSE_NIL ) {
 			/* It is a dummy function. We should replace the body of the
 			dummy function with the given body. */
 			dummy_function = MUSE_TRUE;
@@ -91,6 +162,7 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 
 			define_in_context( env, sym, gen );
 			_setht( gen, _head(fn), _tail(fn) );
+			meta_putname( env, gen, sym );
 			return gen;
 		} else {
 			define_in_context( env, sym, fn );

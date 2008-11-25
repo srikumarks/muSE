@@ -190,6 +190,9 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_TIMEOUT,				L"timeout"	},
 	{ MUSE_DEFINE,				L"define"	},
 	{ MUSE_TRAP_POINT,			L"{{trap}}" },
+	{ MUSE_DEFAULT_EXCEPTION_HANDLER, L"{{*default-exception-handler*}}" },
+	{ MUSE_CLOSURE,				L"closure"	},
+	{ MUSE_NAME,				L"name"		},
 	{ MUSE_IT,					L"it"		},
 	{ MUSE_THE,					L"the"		},
 	{ MUSE_TIMEOUTVAR,			L"{{timeout}}"	},
@@ -565,6 +568,104 @@ MUSEAPI void muse_bindings_stack_unwind( muse_env *env, int pos )
 	_unwind_bindings(pos);
 }
 
+/**
+ * A mechanism for gathering call trace information.
+ * "Push" the trace information at the start of your call context
+ * pop it at the end.
+ */
+MUSEAPI void muse_trace_push( muse_env *env, const muse_char *label, muse_cell fn, muse_cell arglist )
+{
+	muse_traceinfo_t *ti = &(env->current_process->traceinfo);
+	int i = ti->depth % ti->size;
+	muse_trace_t *t = ti->data + i;
+	t->sp = _spos();
+	t->label = label;
+	t->fn = fn;
+	t->argv = arglist;
+	++(ti->depth);
+}
+
+/**
+ * @see muse_trace_push().
+ */
+MUSEAPI void muse_trace_pop( muse_env *env )
+{
+	muse_traceinfo_t *ti = &(env->current_process->traceinfo);
+	muse_assert( ti->depth > 0 );
+	--(ti->depth);
+}
+
+/**
+ * Generates a report of the stuff on the trace stack at the
+ * point of call.
+ */
+MUSEAPI size_t muse_trace_report( muse_env *env, size_t numchars, muse_char *buffer )
+{
+	muse_traceinfo_t *ti = &(env->current_process->traceinfo);
+	int top = ti->depth - 1;
+	int bottom = ti->depth - ti->size;
+	int depthindex = 0;
+	size_t chars = 0;
+	if ( bottom < 0 ) bottom = 0;
+
+	if ( top >= bottom && chars < numchars )
+		chars += muse_sprintf( env, buffer+chars, numchars-chars, L"\n\n--- deep context ---\n" );
+
+	for (  ; bottom <= top && chars < numchars; ++bottom, ++depthindex )
+	{
+		int i = bottom % ti->size;
+		muse_trace_t *t = ti->data + i;
+		size_t startpos = chars;
+		
+		if ( t->label == NULL && t->fn == MUSE_NIL )
+		{
+			--depthindex;
+			continue; // Not much info in the stack trace.
+		}
+
+		if ( depthindex > 0 )
+		{
+			int j;
+			for ( j = 0; j < depthindex && chars+2 < numchars; ++j )
+			{
+				buffer[chars++] = ' ';
+				buffer[chars++] = ' ';
+			}
+
+			buffer[chars] = '\0';
+		}
+
+
+		if ( t->label && numchars > chars )
+		{
+			chars += muse_sprintf( env, buffer+chars, numchars-chars, L"%s ", t->label );
+		}
+
+		if ( t->fn && numchars > chars )
+		{
+			muse_cell name = meta_getname(env,t->fn);
+			if ( name )
+				chars += muse_sprintf( env, buffer+chars, numchars-chars, L"%m ", name );
+			else if ( t->label == NULL )
+			{
+				// No label or name. Skip this one since it
+				// is not going to be of much info.
+				chars = startpos;
+				buffer[chars] = '\0';
+				--depthindex;
+				continue;
+			}
+		}
+
+		if ( numchars > chars )
+		{
+			chars += muse_sprintf( env, buffer+chars, numchars-chars, L"%m\n", t->argv );
+		}
+	}
+
+	return chars;
+}
+
 static void add_special( muse_env *env, muse_cell special )
 {
 	_lpush( _cons( special, 0 ), &env->specials );
@@ -731,6 +832,8 @@ MUSEAPI muse_cell muse_intern_symbol( muse_env *env, muse_cell sym, int local_ix
 
 		do
 		{
+			/* Make sure we have enough storage for defined symbols 
+			in each process. */
 			if ( local_ix >= p->locals.size )
 			{
 				muse_assert( local_ix < 2 * p->locals.size );
@@ -895,6 +998,7 @@ MUSEAPI muse_cell muse_mk_anon_symbol(muse_env *env)
  */
 MUSEAPI void muse_mark( muse_env *env, muse_cell c )
 {
+CONTINUE_MUSE_MARK:
 	if ( c > 0 && !_ismarked(c) )
 	{
 		_mark(c);
@@ -912,7 +1016,24 @@ MUSEAPI void muse_mark( muse_env *env, muse_cell c )
 			TODO: Find out if there's a more optimal way to handle this. */
 
 			muse_mark( env, _quq(_head(c)) );
-			muse_mark( env, _quq(_tail(c)) );
+
+			/* Explicit tail call elimination to support debug builds. 
+
+			Compiler optimizations are turned off in debug builds and 
+			so it is easy to run into stack overflow conditions when
+			debugging with real data. Release build code should do
+			exactly what's done below to eliminate tail calls, but
+			I'm doing it by hand so that it takes effect in debug
+			builds as well. 
+			
+			TODO: I'm not sure whether the explicit tail call 
+			elimination done here will cause the compiler to
+			generate less optimal code in the release build. That
+			remains to be measured. */
+			{
+				c = _quq(_tail(c));
+				goto CONTINUE_MUSE_MARK;
+			}
 		}
 		else
 		{
@@ -1344,6 +1465,11 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 		 */
 	init_stack( &p->locals,			env->parameters[MUSE_MAX_SYMBOLS]		);
 
+	/* Create the trace info. */
+	p->traceinfo.size = 32;
+	p->traceinfo.depth = 0;
+	p->traceinfo.data = (muse_trace_t*)calloc( p->traceinfo.size, sizeof(muse_trace_t) );
+
 	if ( sp == NULL )
 	{
 		/* This is not the main process. Create a stack frame. 
@@ -1368,7 +1494,14 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 
 	/* Copy all the currently defined symbols over to the new process. */
 	if ( env->current_process )
+	{
 		memcpy( p->locals.bottom, env->current_process->locals.bottom, sizeof(muse_cell) * env->num_symbols );
+
+		/* Also set the current_port settings to stdin/out/err. */
+		p->current_port[0] = muse_stdport( env, MUSE_STDIN_PORT );
+		p->current_port[1] = muse_stdport( env, MUSE_STDOUT_PORT );
+		p->current_port[3] = muse_stdport( env, MUSE_STDERR_PORT );
+	}
 
 	return p;
 }
@@ -1492,10 +1625,7 @@ SWITCH_TO_PROCESS:
 		/* The process is running. Save current process state
 		and switch to the given process. */
 
-		if ( env->current_process->state_bits == MUSE_PROCESS_DEAD )
-			env->current_process = process;
-
-		if ( setjmp( env->current_process->jmp ) == 0 )
+		if ( env->current_process->state_bits == MUSE_PROCESS_DEAD || setjmp( env->current_process->jmp ) == 0 )
 		{
 			env->current_process = process;
 
@@ -1712,6 +1842,9 @@ void free_process( muse_process_frame_t *p )
 	destroy_stack( &p->locals );
 	destroy_stack( &p->bindings_stack );
 	destroy_stack( &p->stack );
+	free(p->traceinfo.data);
+	p->traceinfo.data = NULL;
+	p->traceinfo.size = p->traceinfo.depth = 0;
 	free(p);
 }
 

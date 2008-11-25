@@ -17,6 +17,7 @@
 
 #ifdef MUSE_PLATFORM_WINDOWS
 #include <windows.h>
+#include <time.h>
 #else
 #include <sys/time.h>
 #endif
@@ -620,6 +621,16 @@ static size_t muse_vsprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
 					len += muse_utf8_to_unicode( buffer + len, maxlen - len, number, strlen(number) );
 				}
 				break;
+			case '@' :
+				{
+					//	Get the current date/time in ISO-8601 format (2006-11-15 14:25:20)
+					time_t t;
+					struct tm _tm;
+					time( &t );
+					localtime_s( &_tm, &t );
+					len += wcsftime( buffer+len, maxlen-len, L"%Y-%m-%d %H:%M:%S", &_tm );
+				}
+				break;
 			default:
 				{
 					/* Some other character. Use it literally. */
@@ -652,6 +663,7 @@ static size_t muse_vsprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
  *		has to be included literally in the message.
  *	- \%f means the next argument is a muse_float.
  *	- \%d means the next argument is a muse_int.
+ *  - \%@ prints the data and time in a standard format.
  *	- \%\% prints the \% character itself.
  *
  * @return The number of characters used in the buffer.
@@ -673,6 +685,23 @@ MUSEAPI size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
 	return len;
 }
 
+static void muse_log( muse_env *env, const muse_char *message )
+{
+	static const wchar_t *logfile = L"c:\\muveeDebug\\Log.txt";
+	if ( _waccess( logfile, 02 ) == 0 )
+	{
+		FILE *f = _wfopen( logfile, L"at" );
+		if ( f != NULL )
+		{
+			enum { MAXLEN = 128 };
+			muse_char text[MAXLEN];
+			muse_sprintf( env, text, MAXLEN, L"\n==== muSE message (%@) ====\n" );
+			fwprintf( f, L"%s%s\n=========================\n", text, message );
+			fclose(f);
+		}
+	}
+}
+
 /**
  * Displays a message string formatted according to the given
  * message string with format codes. The format codes are the
@@ -687,7 +716,7 @@ MUSEAPI size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
  */
 MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_char *message, ... )
 {
-	enum { MAXLEN = 512 };
+	enum { MAXLEN = 4096 };
 	muse_char text[MAXLEN];
 	va_list args;
 	size_t len = 0;
@@ -703,14 +732,13 @@ MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_c
 	len += muse_vsprintf( env, text + len, MAXLEN - len, message, &args );
 	va_end( args );
 
+	len += (size_t)muse_trace_report( env, MAXLEN-len, text+len );
+
 	#if MUSE_PLATFORM_WINDOWS
 		switch ( MessageBoxW( NULL, text, L"muSE", MB_ABORTRETRYIGNORE | MB_SETFOREGROUND | MB_TOPMOST | MB_ICONWARNING ) )
 		{
 		case IDABORT: exit(0);
 		case IDRETRY: 
-			#if defined(_DEBUG)
-				DebugBreak();
-			#endif
 			muse_raise_error(env, MUSE_NIL, MUSE_NIL); 
 		default:;
 		}

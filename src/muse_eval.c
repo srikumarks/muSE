@@ -296,6 +296,8 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 	sub expressions. */
 	int bsp = _bspos();
 
+	muse_trace_push( env, NULL, fn, args );
+
 	/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
 	if ( muse_bind_formals( env, formals, args ) )
 	{
@@ -316,6 +318,7 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 			/* Restore the save bindings. */
 			_unwind_bindings(bsp);
 			
+			muse_trace_pop(env);
 			return muse_pop_recent_scope( env, fn, result );
 		}
 	}
@@ -329,6 +332,7 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 							formals );
 		});
 
+		muse_trace_pop(env);
 		return MUSE_NIL;
 	}
 }
@@ -417,24 +421,6 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 				result = lazy ? _setcellt(_cons(fn,args), MUSE_LAZY_CELL)
 							  : muse_apply_lambda( env, fn, args );
 				break;
-			case MUSE_SYMBOL_CELL		:
-				/* The thing in the function position can be an "object" - i.e. a symbol to which
-				properties are attached. In this case, we interpret the remaining arguments in the
-				following way -
-					(obj 'property) -> gives the value of the specified property of the object.
-					(obj 'property value) -> sets the specified property of the object to the given value.
-				In both cases, the expression evaluates to the final value of the property.
-				*/
-				{
-					muse_cell pty = args_already_evaluated ? _next(&args) : _evalnext(&args);
-					if ( args ) {
-						muse_cell val = args_already_evaluated ? _next(&args) : _evalnext(&args);
-						result = _tail( muse_put_prop( env, fn, pty, val ) );
-					} else {
-						result =_tail( muse_search_object( env, fn, pty ) );
-					}
-				}
-				break;
 				
 			default						:
 				/*	If the first argument is not a function, simply return the sexpr. 
@@ -452,17 +438,22 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 						place a quote before the list. */
 						break;
 					case MUSE_SYMBOL_CELL :
-						muse_message( env, L"apply", L"You tried to use the symbol [%m] as a function.\n"
-												L"You haven't defined it to one though, so the expression\n\n"
-												L"%m\n\n"
-												L"will be considered as a list.\n"
-												L".. or did you mean to use [%m] instead?",
+						{
+							int dist = 0;
+							muse_cell sim = muse_similar_symbol( env, fn, &dist );
+							const muse_char *csim = muse_symbol_name( env, sim );
+							if ( dist >= 5 ) csim = L"...can't guess...";
+							muse_message( env, L"apply", 
+													L"You tried to use the undefined symbol [%m] as a function.\n"
+													L"in the expression - \n\n%m\n\n"
+													L"Maybe you meant [%s]?",
 												fn,
 												_cons( fn, args ),
-												muse_similar_symbol( env, fn, NULL ) );
+													csim );
+						}
 						break;
 					default:
-						muse_message( env, L"apply", L"You're trying to use [%m] as a function\n"
+						muse_message( env, L"apply", L"You tried to use the undefined symbol [%m] as a function\n"
 												L"in the expression -\n\n%m\n\n"
 												L"It will be considered as a list.",
 												fn, _cons( fn, args ) );

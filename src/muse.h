@@ -265,6 +265,9 @@ typedef enum
 	MUSE_TIMEOUT,
 	MUSE_DEFINE,
 	MUSE_TRAP_POINT,
+	MUSE_DEFAULT_EXCEPTION_HANDLER,
+	MUSE_CLOSURE,
+	MUSE_NAME,
 	MUSE_IT,
 	MUSE_THE,
 	MUSE_TIMEOUTVAR,
@@ -325,6 +328,9 @@ MUSEAPI muse_cell	muse_builtin_symbol( muse_env *env, muse_builtin_symbol_t s );
 MUSEAPI int			muse_stack_pos(muse_env *env);
 MUSEAPI void		muse_stack_unwind( muse_env *env, int stack_pos );
 MUSEAPI muse_cell	muse_stack_push( muse_env *env, muse_cell obj );
+MUSEAPI void		muse_trace_push( muse_env *env, const muse_char *label, muse_cell fn, muse_cell arglist );
+MUSEAPI void		muse_trace_pop( muse_env *env );
+MUSEAPI size_t		muse_trace_report( muse_env *env, size_t numchars, muse_char *buffer );
 MUSEAPI void		muse_gc( muse_env *env, int free_cells_needed );
 MUSEAPI void		muse_mark( muse_env *env, muse_cell cell );
 MUSEAPI muse_boolean muse_doing_gc( muse_env *env );
@@ -401,6 +407,7 @@ MUSEAPI muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, m
 MUSEAPI	muse_cell	muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_cell argv );
 MUSEAPI muse_cell	muse_search_object( muse_env *env, muse_cell obj, muse_cell member );
 muse_cell 	muse_set_object_property( muse_env *env, muse_cell object, muse_cell property, muse_cell value );
+MUSEAPI muse_cell	muse_get_meta( muse_env *env, muse_cell fn );
 /*@}*/
 
 /** @name I/O */
@@ -659,6 +666,7 @@ MUSEAPI void		muse_pprint( muse_port_t port, muse_cell sexpr );
 MUSEAPI void		muse_mickey( muse_port_t in, muse_port_t out );
 MUSEAPI muse_port_t muse_create_memport( muse_env *env );
 MUSEAPI muse_cell	muse_read_xml_node( muse_port_t in );
+MUSEAPI muse_port_t muse_current_port( muse_env *env, muse_stdport_t which, muse_port_t port );
 /*@}*/
 
 /**

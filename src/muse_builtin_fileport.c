@@ -34,12 +34,6 @@ typedef struct
 static void write_utf8_header( muse_env *env, fileport_t *p );
 static void discard_utf8_header( muse_env *env, fileport_t *p );
 
-static void check_for_ezscheme_file( fileport_t *p )
-{
-	if ( p->base.in.avail > 0 && p->base.in.bytes[0] == '#' )
-		p->base.mode |= MUSE_PORT_EZSCHEME;
-}
-
 static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 {
 	fileport_t *p = (fileport_t*)ptr;
@@ -87,7 +81,6 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 			if ( read_flag )
 			{
 				discard_utf8_header(env,p);
-				check_for_ezscheme_file(p);
 			}
 		}
 	}
@@ -358,6 +351,10 @@ void muse_define_builtin_fileport(muse_env *env)
 	env->stdports[1]->tab_size = 8;
 	env->stdports[2]->tab_size = 8;
 	
+	muse_current_port( env, MUSE_STDIN_PORT, env->stdports[0] );
+	muse_current_port( env, MUSE_STDOUT_PORT, env->stdports[1] );
+	muse_current_port( env, MUSE_STDERR_PORT, env->stdports[2] );
+
 	/* Define the "open-file" function. This is the only file specific function needed.
 	After this the generic port functions take over. */
 	_define( _csymbol(L"open-file"), _mk_nativefn( fn_open_file, NULL ) );
@@ -399,7 +396,6 @@ MUSEAPI muse_port_t muse_assign_port( muse_env *env, FILE *f, int mode )
 	{
 		port->base.in.fpos = ftell(port->file);
 		discard_utf8_header(env, port);
-		check_for_ezscheme_file(port);
 	}
 
 	/* The mode bits is a constrained number. If you set bits that don't exist,
@@ -444,6 +440,7 @@ MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 	muse_port_t in = muse_assign_port(env, f, MUSE_PORT_TRUSTED_INPUT );
 	int sp = _spos();
 	muse_cell result = MUSE_NIL;
+	muse_port_t prevIn = muse_current_port( env, MUSE_STDIN_PORT, in );
 	
 	while ( port_eof(in) == 0 )
 	{
@@ -463,6 +460,7 @@ MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 			break;
 	}
 	
+	muse_current_port( env, MUSE_STDIN_PORT, prevIn );
 	muse_unassign_port(in);
 	return result;
 }
