@@ -15,7 +15,7 @@
 
 #include "muse_builtins.h"
 
-#ifdef _WIN32
+#ifdef MUSE_PLATFORM_WINDOWS
 
 #include "muse_port.h"
 #include <stdlib.h>
