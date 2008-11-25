@@ -32,6 +32,8 @@ static void port_init_buffer( muse_port_buffer_t *buffer )
 	buffer->avail		= 0;
 	buffer->pos			= 0;
 	buffer->fpos		= 0;
+	buffer->line		= 0;
+	buffer->column		= 0;
 	buffer->bytes = (unsigned char *)calloc( buffer->size, 1 );
 }
 
@@ -106,6 +108,14 @@ int	port_getc( muse_port_base_t *p )
 		b->pos = (b->pos + 1) & PORT_BUFFER_MASK;
 		--(b->avail);
 		++(b->fpos);
+
+		switch ( result ) {
+			case '\n' : ++(b->line); // No break! \n resets column as well.
+			case '\r' : b->column = 0; break;
+			case '\t' : b->column += env->parameters[MUSE_TAB_SIZE]; break;
+			default : ++(b->column);
+		}
+
 		return result;
 	}
 	
@@ -151,6 +161,13 @@ int port_ungetc( int c, muse_port_base_t *p )
 		b->bytes[b->pos] = (unsigned char)c;
 		--(b->fpos);
 		p->eof = 0;
+
+		switch ( c ) {
+		case '\t' : b->column -= env->parameters[MUSE_TAB_SIZE]; break;
+		case '\n' : --(b->line); break;
+		case '\r' : break;
+		default : --(b->column);
+		}
 	}
 
 	return c;
@@ -414,13 +431,7 @@ static void pretty_printer_line_break( muse_port_t f )
 		port_putc('\n',f);
 		
 		{
-			int i = 0, N = f->pp_align_cols[f->pp_align_level] - f->tab_size;
-
-			for ( ; i < N; i += f->tab_size ) 
-				port_putc( '\t', f );
-
-			N += f->tab_size;
-
+			int i = 0, N = f->pp_align_cols[f->pp_align_level];
 			for ( ; i < N; ++i )
 				port_putc( ' ', f );
 		}
@@ -441,7 +452,7 @@ static void pretty_printer_move( muse_port_t p, int numc )
 typedef struct
 {
 	muse_cell expr;
-	int col_start, col_end;
+	int col_start, col_end, wslines;
 } ez_result_t;
 
 int ez_update_col( muse_port_t f, int ch, int col )
@@ -504,7 +515,7 @@ white_space_t ez_skip_whitespace( muse_port_t f, int line, int col )
 		c = port_getc(f);
 	}
 
-	if ( (f->mode & MUSE_PORT_EZSCHEME) ? c == '#' : c == ';' )
+	if ( c == ';' ) // ; is the commenting character for both scheme and ezscheme syntaxes.
 	{
 		/* Skip comment to end of line. */
 		while ( c != EOF && c != '\n' && c != '\r' )
@@ -775,6 +786,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 	{
 		int maxlen = 32;
 		int endpos = 0;
+		muse_boolean lit = MUSE_FALSE;  // Interpret escape characters literally if MUSE_TRUE
 		char *s = (char*)malloc( maxlen+1 );
 		s[endpos] = '\0';
 		
@@ -782,38 +794,25 @@ static ez_result_t _read_string( muse_port_t f, int col )
 		
 		while ( c != EOF )
 		{
-			if ( c == '"' )
+			if ( !lit && c == '\\' )
 			{
-				/* Two consecutive " characters ("") is the escape sequence
-				for a double quote character within a string. So if you want
-				the following text -
-						hello "world"
-				you have to type the expression
-						"hello ""world"""
-				All other characters are taken literally.
-				*/
-				if ( peekc(f) == '"' )
+				// Escape character.
+				// Known escape codes are \\ and \" only.
+				// Other escape codes are treated as literals.
+				int c2 = peekc(f);
+				switch ( c2 )
 				{
-					c = port_getc(f);
-					++col_end;
-
-					MUSE_DIAGNOSTICS({
-						muse_char *temp = alloca( sizeof(muse_char) * (endpos + 1) );
-						s[endpos] = c;
-						s[endpos+1] = '\0';
-						swprintf( temp, endpos + 1, L"%S", s );
-
-						muse_message( env,L"Parser", L"There are two consecutive double quote characters in\n"
-												 L"[%s]. Did you really mean to use a double-quote character\n"
-												 L"inside a literal string?",
-												 temp );
-					});
+				case '\\' : c = port_getc(f); col_end += 2; break;
+				case '\"' : c = port_getc(f); col_end += 2; break;
+				default:
+					lit = MUSE_TRUE;
+					continue;
 				}
-				else
-				{
-					/* End of string. */
-					break;
-				}
+			}
+			else if ( c == '"' )
+			{
+				/* End of string. */
+				break;
 			}
 
 			col_end = ez_update_col( f, c, col_end );
@@ -828,6 +827,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 			}
 			
 			c = port_getc(f);
+			lit = MUSE_FALSE;
 		}
 		
 		s[endpos] = '\0';
@@ -945,9 +945,11 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 			temp[0] = c;
 			temp[1] = '\0';
 
-			muse_message( env,L"Parser", L"Expecting a symbol, number or a string, but I get '%s' instead.\n"
+			muse_message( env,L"Parser", L"[line:%d col:%d] Expecting a symbol, number or a string, but I get '%s' instead.\n"
 									 L"Mismatched parentheses somewhere? Maybe you should use the\n"
-									 L"\"Check Syntax\" feature in DrScheme.", temp );
+									 L"\"Check Syntax\" feature in DrScheme.", 
+									 f->in.line, f->in.column,
+									 temp );
 		});
 
 		return ez_result( PARSE_ERROR_EXPECTED_SYMBOL, col, col + pos );
@@ -1043,8 +1045,9 @@ static muse_cell _read_list( muse_port_t f )
 		if ( next_element < 0 )
 		{
 			MUSE_DIAGNOSTICS({
-				muse_message( env,L"Parser", L"Error while trying to read elements of a list.\n"
+				muse_message( env,L"Parser", L"[line:%d col:%d] Error while trying to read elements of a list.\n"
 										 L"The last term is\n\t%m",
+										 f->in.line, f->in.column,
 										 _head(t) );
 			});
 			return next_element; /* Parse error. */
@@ -1088,7 +1091,7 @@ static muse_cell _read_list( muse_port_t f )
 					if ( !_token_end_list(c) )
 					{
 						MUSE_DIAGNOSTICS({
-							muse_message( env,L"Parser", L"The list should end after\n\t. %m", _tail(t) );
+							muse_message( env,L"Parser", L"[line:%d col:%d] The list should end after\n\t. %m", f->in.line, f->in.column, _tail(t) );
 						});
 						return PARSE_ERROR_BAD_CONS_SYNTAX;
 						/* Next token after second item of cons pair must be ')' */
@@ -1273,7 +1276,7 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 			if ( sexpr < 0 )
 			{
 				MUSE_DIAGNOSTICS({
-					muse_message( env,L"Parser", L"Expected a list. Got error %d.", (muse_int)sexpr );
+					muse_message( env,L"Parser", L"[line:%d col:%d] Expected a list. Got error %d.", f->in.line, f->in.column, (muse_int)sexpr );
 				});
 				return sexpr; /**< Some error happened. */
 			}
@@ -1331,9 +1334,10 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 			MUSE_DIAGNOSTICS({
 				if ( expr < 0 && expr != PARSE_EOF )
 				{
-						muse_message( env,L"Parser", L"Expected a symbol, number or a string.\n"
+					muse_message( env,L"Parser", L"[line:%d col:%d] Expected a symbol, number or a string.\n"
 												 L"Mismatched parentheses somewhere? Maybe you should\n"
-												 L"use the \"Check syntax\" feature of DrScheme.");
+												 L"use the \"Check syntax\" feature of DrScheme.",
+												 f->in.line, f->in.column);
 				}
 			});
 
@@ -1374,59 +1378,51 @@ static void muse_print_float( muse_port_t s, muse_cell f )
 static size_t muse_print_text( muse_port_t f, muse_cell t, muse_boolean quote )
 {
 	muse_env *env = f->env;
-	const char dquote		= '"';
 	muse_text_cell *tc		= &_ptr(t)->text;
-	size_t size				= muse_utf8_size(tc->start, (int)(tc->end - tc->start));
-	size_t count			= 0;
-	size_t total			= 0;
-	char *utf8				= alloca( size );
-
 	muse_char *c			= tc->start;
-	muse_char *q			= wcschr( c, dquote );
 
 	if ( quote )
 	{
-		port_putc( dquote, f );
-
+		// Print with escape characters.
+		size_t total = 0;
+		port_putc( '"', f ); ++total;
 		while ( c != tc->end )
 		{
-			if ( q )
+			muse_char uc16 = *c;
+			if ( uc16 == '\\' )
 			{
-				/* Convert upto the double quote character. */
-				(*q) = 0;
-				count = muse_unicode_to_utf8( utf8, (int)size, c, (int)(q-c) );
-				(*q) = dquote;
-				port_write( utf8, count, f );
-				total += count;
-
-				/* Write out an escaped double quote character. */
-				port_write( "\"\"", 2, f );
-				total += 2;
-
-				/* Move to the next portion of the string. */
-				c = q + 1;
-				q = wcschr( c, dquote );
+				// Double the backslash character.
+				port_putc( '\\', f ); ++total;
+				port_putc( '\\', f ); ++total;
+			}
+			else if ( uc16 == '\"' )
+			{
+				// Escape the quote character.
+				port_putc( '\\', f ); ++total;
+				port_putc( '\"', f ); ++total;
 			}
 			else
 			{
-				/* The last stretch of the string without any double quote characters. */
-				count = muse_unicode_to_utf8( utf8, (int)size, c, (int)(tc->end - c) );
-				port_write( utf8, count, f );
-				total += count;
-				break;
+				char utf8[4];
+				int n = uc16_to_utf8( *c, utf8, 4 );
+				port_write( utf8, n, f );
+				++total;
 			}
+			++c;
 		}
-
-		port_putc( dquote, f );
-
-		return total + 2;
+		port_putc( '"', f ); ++total;
+		pretty_printer_move(f,(int)total);
+		return total;
 	}
 	else
 	{
-		count = muse_unicode_to_utf8( utf8, (int)size, c, (int)(tc->end - c) );
+		// Print without escape characters.
+		size_t size				= muse_utf8_size(tc->start, (int)(tc->end - tc->start));
+		char *utf8				= alloca( size );
+		size_t count			= muse_unicode_to_utf8( utf8, (int)size, c, (int)(tc->end - c) );
 		port_write( utf8, count, f );
-		total = count;
-		return total;
+		pretty_printer_move(f,(int)count);
+		return count;
 	}
 }
 
@@ -1502,7 +1498,7 @@ static void muse_print_sym( muse_port_t f, muse_cell s )
 	muse_env *env = f->env;
 	muse_cell name = _symname(s);
 	if ( name )
-		pretty_printer_move( f, (int)muse_print_text( f, name, MUSE_FALSE ) );
+		muse_print_text( f, name, MUSE_FALSE );
 	else
 	{
 		char buffer[64];
@@ -1645,14 +1641,14 @@ let [	a		:: 53
 ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head );
 muse_cell ez_parse_expr( muse_port_t p );
 
-static ez_result_t ez_expr( muse_port_t p, muse_cell expr, int col_start, int col_end )
+static ez_result_t ez_expr( muse_port_t p, muse_cell expr, int col_start, int col_end, int wslines )
 {
 	muse_env *env = p->env;
 	if ( is_macro_sexpr(env,expr) )
 		expr = _eval(expr);
 
 	{
-		ez_result_t r = { expr, col_start, col_end };
+		ez_result_t r = { expr, col_start, col_end, wslines };
 		return r;
 	}
 }
@@ -1686,47 +1682,82 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 	muse_assert( c == '(' );
 	
 	{
-		ez_result_t r = ez_parse( p, col + 1, MUSE_TRUE );
-		if ( r.expr == PARSE_END_OF_GROUP )
-		{
-			port_getc(p);
-			r.expr = PARSE_EMPTY_GROUP;
-			r.col_start = col;
-			return r;
-		}
+		muse_cell h = MUSE_NIL;
+		muse_cell t = MUSE_NIL;
+		ez_result_t r;
+		muse_boolean is_head = MUSE_TRUE;
 		
-		if ( r.expr < 0 )
+		do
 		{
-			MUSE_DIAGNOSTICS({ 			
-				if ( !port_eof(p) )
-					fprintf( stderr, "Syntax error %d: Expected end of group character ')' or term.\n", r.expr );
-			});
-			return r;
-		}
-		
-		{
-			ez_result_t eog = ez_parse( p, r.col_end, MUSE_FALSE );
+			int sp = _spos();
+			white_space_t ws = ez_skip_whitespace( p, 0, col+1 );
+
+			if ( ws.lines > 0 )
+				is_head = MUSE_TRUE;
+
+			/* Parse terms and collect them into a list. */
+			r = ez_parse( p, ws.col, is_head );
 			
-			if ( eog.expr != PARSE_END_OF_GROUP )
+			if ( r.expr == PARSE_END_OF_GROUP )
+			{
+				port_getc(p);
+				if ( h )
+				{
+					if ( _tail(h) )
+						return ez_expr( p, h, col, r.col_end, 0 );
+					else
+						return ez_expr( p, _head(h), col, r.col_end, 0 );
+				}
+				else
+				{
+					// Empty group == empty list.
+					return ez_result( PARSE_EMPTY_GROUP, col, r.col_end );
+//					return ez_expr( p, MUSE_NIL, col, r.col_end, 0 );
+				}
+			}
+			
+			if ( r.expr < 0 )
 			{
 				MUSE_DIAGNOSTICS({ 			
 					if ( !port_eof(p) )
-						fprintf( stderr, "Syntax error %d: Expected end of group character ')'.\n", eog.expr );
+							fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
 				});
+						
+				return ez_expr( p, h, col, r.col_end, 0 );
 			}
-			else
-				port_getc(p); /* Get the pending ')' character. */
+			
+			/* Add term to group. */
+			{
+				muse_cell nt = _cons( r.expr, MUSE_NIL );
 				
-			r.col_end = eog.col_end;
-			return r;
-		}
+				if ( t )
+				{
+					_sett( t, nt );
+					_unwind(sp);
+				}
+				else
+				{
+					h = nt;
+					_unwind(sp);
+					_spush(h);
+				}
+				
+				t = nt;
+				col = r.col_end;
+			}
+		} while ( !port_eof(p) );
+		
+		/* EOF ends list. */
+		MUSE_DIAGNOSTICS({ 			
+			fprintf( stderr, "Syntax error: No ')' before end of file.\n" );
+		});
+		return ez_expr( p, h, col, r.col_end, 0 );
 	}
 }
 		
 /**
- * An ezscheme list is a bunch of stuff enclosed in
- * square brackets - []. For example,
- *		[a,b,c,d]
+ * An ezscheme list is a normal Scheme list, except
+ * that it allows for indent-defined expressions.
  */		
 ez_result_t ez_parse_list( muse_port_t p, int col )
 {
@@ -1740,45 +1771,57 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 		muse_cell t = MUSE_NIL;
 		ez_result_t r;
 		
-		white_space_t ws = ez_skip_whitespace( p, 0, col+1 );
-
 		do
 		{
+			int sp = _spos(); 
+			white_space_t ws = ez_skip_whitespace( p, 0, col+1 );
+
 			/* Parse terms and collect them into a list. */
 			r = ez_parse( p, ws.col, MUSE_TRUE );
 			
 			if ( r.expr == PARSE_END_OF_LIST )
 			{
 				port_getc(p);
-				return ez_expr( p, h, col, r.col_end );
+				return ez_expr( p, h, col, r.col_end, 0 );
 			}
 			
-			if ( r.expr == PARSE_LIST_ITEM_SEPARATOR )
-			{
-				port_getc(p);
-				r = ez_parse( p, r.col_end, MUSE_TRUE );
-			}
-
-			if ( r.expr < 0 )
+			if ( r.expr < 0 && r.expr != PARSE_LIST_ITEM_SEPARATOR )
 			{
 				MUSE_DIAGNOSTICS({ 			
 					if ( !port_eof(p) )
 						fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
 				});
 					
-				return ez_expr( p, h, col, r.col_end );
+				return ez_expr( p, h, col, r.col_end, 0 );
 			}
-			
+			else
 			{
-				muse_cell nt = _cons( r.expr, MUSE_NIL );
+				if ( r.expr == PARSE_LIST_ITEM_SEPARATOR )
+				{
+					port_getc(p);
+					ws = ez_skip_whitespace( p, 0, ws.col );
+					r = ez_parse( p, ws.col, MUSE_TRUE );
+				}
+			
+				/* Add item to list. */
+				{
+					muse_cell nt = _cons( r.expr, MUSE_NIL );
 				
-				if ( t )
-					_sett( t, nt );
-				else
-					h = nt;
+					if ( t )
+					{
+						_sett( t, nt );
+						_unwind(sp);
+					}
+					else
+					{
+						h = nt;
+						_unwind(sp);
+						_spush(h);
+					}
 
-				t = nt;
-				col = r.col_end;
+					t = nt;
+					col = r.col_end;
+				}
 			}
 		} while ( !port_eof(p) );
 		
@@ -1786,7 +1829,7 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 		MUSE_DIAGNOSTICS({ 			
 			fprintf( stderr, "Syntax error: No ']' before end of file.\n" );
 		});
-		return ez_expr( p, h, col, r.col_end );
+		return ez_expr( p, h, col, r.col_end, 0 );
 	}
 }
 
@@ -1825,7 +1868,7 @@ static muse_boolean is_data_cell( muse_cell c )
 }
 
 /**
- * Indentation dependent parsing of expressions - ezscheme.
+ * A scheme to eliminate unnecessary parentheses in code.
  */
 ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 {
@@ -1837,12 +1880,6 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 	if ( c == EOF )
 		return ez_result( PARSE_EOF, col, col );
 		
-	if ( c == ',' )
-	{
-		/* Comma is list item separator. */
-		return ez_result( PARSE_LIST_ITEM_SEPARATOR, col, col+1 );
-	}
-
 	if ( c == ')' )
 	{
 		/* Keep the group end character visible until we escape to the
@@ -1855,6 +1892,11 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 		return ez_result( PARSE_END_OF_LIST, col, ws.col+1 );
 	}
 		
+	if ( c == ',' )
+	{
+		return ez_result( PARSE_LIST_ITEM_SEPARATOR, col, ws.col+1 );
+	}
+
 	/* Parse a head expression. */
 	{
 		ez_result_t head;
@@ -1882,6 +1924,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 		/* This head could be the LHS of an infix expression
 		or a function head to apply to the rest of the arguments. */
 		
+CONTINUE_TAIL_TERMS:
 		{
 			white_space_t ws2 = ez_skip_whitespace( p, 0, head.col_end );
 			muse_boolean collect_args = MUSE_FALSE;
@@ -1896,20 +1939,23 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 					return head;
 				}
 				else
+				{
 					/* A line break occurred, but we're still within 
 					the head's group. We now need to treat the next term
 					as a head term. */
 					collect_args = MUSE_TRUE;
+				}
 			}
 
 			{
 				ez_result_t oparg = ez_parse( p, ws2.col, collect_args );
 				
-				// A head term suffixed with an empty group is parenthesized.
-				while ( !collect_args && oparg.expr == PARSE_EMPTY_GROUP )
+				/* First check if its the empty group (). If so, the 
+				expression will be PARSE_EMPTY_GROUP. */
+				if ( oparg.expr == PARSE_EMPTY_GROUP )
 				{
-					head = ez_expr( p, _cons( head.expr, MUSE_NIL ), col, oparg.col_end );
-					oparg = ez_parse( p, oparg.col_end, MUSE_FALSE );
+					head.expr = _cons(head.expr,MUSE_NIL);
+					goto CONTINUE_TAIL_TERMS;
 				}
 
 				/* An operator is a symbol which has no alphanumeric
@@ -1930,9 +1976,9 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 						{
 							/* A line break when interpreting an infix expression means
 							we have a postfix operator. */
-							return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col );
+							return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col, 0 );
 						}
-						
+						else						
 						{
 							/* Parse the remaining expression. */
 							ez_result_t arg = ez_parse( p, ws3.col, MUSE_TRUE );
@@ -1940,7 +1986,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 							if ( arg.expr < 0 )
 							{
 								/* Something happened! Treat it as though there is a line break. */
-								return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col );
+								return ez_expr( p, _cons( oparg.expr, _cons( head.expr, MUSE_NIL ) ), col, ws3.col, 0 );
 							}
 
 							/* Check for special operators ':' and '0x2261' */
@@ -1954,42 +2000,28 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 								/* :: creates a 2-element list. */
 								return ez_result( _cons( head.expr, _cons( arg.expr, MUSE_NIL ) ), col, arg.col_end );
 							}
-							else if ( wcscmp( name, L":=" ) == 0 )
-							{
-								/* Creates a define. */
-								return ez_result( _cons( _builtin_symbol(MUSE_DEFINE), 
-															 _cons(	head.expr, 
-																		_cons( arg.expr , MUSE_NIL ) ) ), 
-													col, 
-													arg.col_end );
-							}
 							else
 								/* Compose the infix operator with the lhs and rhs. */
 								return ez_expr( p, _cons( 	oparg.expr, 
 																_cons( 	head.expr, 
 																			_cons( arg.expr, MUSE_NIL ) ) ), 
 													col, 
-													arg.col_end );
+													arg.col_end,
+													0 );
 						}
 					}
 				}
 			
 				/* The oparg is not an infix symbol. It is an argument list item. */
 				{
-					/* First check if its the empty group (). If so, the 
-					expression will be PARSE_EMPTY_GROUP. */
-					if ( oparg.expr == PARSE_EMPTY_GROUP )
-					{
-						/* Its a function call with no arguments. */
-						return ez_expr( p, _cons( head.expr, MUSE_NIL ), col, oparg.col_end );
-					}
-					else if ( oparg.expr < 0 )
+					if ( oparg.expr < 0 )
 					{
 						head.col_end = oparg.col_end;
 						return head;
 					}
 					else
 					{
+						int sp = _spos();
 						int col_end = oparg.col_end;
 						muse_cell t = _cons( oparg.expr, MUSE_NIL );
 						muse_cell h = _cons( head.expr, t );
@@ -2008,50 +2040,52 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 								if ( ws3.col <= head.col_start )
 								{
 									/* Terminate arg list. */
-									return ez_expr( p, h, col, ws3.col );
+									return ez_expr( p, h, col, ws3.col, ws3.lines );
 								}
 
 								if ( ws3.col > head.col_start )
 									is_head = MUSE_TRUE;	
 							}
 							
+							/* Continue collecting arguments. */
 							{
-								/* Continue collecting arguments. */
 								ez_result_t nextarg = ez_parse( p, ws3.col, is_head );
-								is_head = MUSE_FALSE;
 
-								if ( nextarg.expr < 0 )
-								{
-									if ( nextarg.expr == PARSE_LIST_ITEM_SEPARATOR )
-									{
-										port_getc(p);
-										nextarg = ez_parse( p, nextarg.col_end, MUSE_TRUE );
-									}
+								/* The empty group always associates with the immediately
+								preceding term irrespective of whether it is a head term
+								or a tail term. */
+								if ( nextarg.expr == PARSE_EMPTY_GROUP )
+									_seth( t, _cons(_head(t),MUSE_NIL) );
+								else if ( nextarg.expr < 0 )
+									return ez_expr( p, h, col, nextarg.col_end, 0 );
 
-									if ( nextarg.expr < 0 )
-										return ez_expr( p, h, col, nextarg.col_end );
-								}
+								is_head = nextarg.wslines > 0 ? MUSE_TRUE : MUSE_FALSE;
 
-								// Process the next argument.
+								/* Collect the next argument. */
+								if ( nextarg.expr >= 0 )
 								{
 									muse_cell nt = _cons( nextarg.expr, MUSE_NIL );
 									_sett( t, nt );
 									t = nt;
+								}
+
+								/* Continue */
+								{
+									_unwind(sp);
 
 									/* Check if the next indent level is less than the current one. */
 									if ( nextarg.col_end > head.col_start )
 									{
 										col_end = nextarg.col_end;		
-										is_head = MUSE_TRUE; /* Treat the next one as "head". */
 									}
 									else
-										return ez_expr( p, h, col, nextarg.col_end );
+										return ez_expr( p, h, col, nextarg.col_end, 0 );
 								}
 							}
 						} while ( !port_eof(p) );
 						
 						/* We've reached end of file. End-of-file implicitly terminates argument list. */
-						return ez_expr( p, h, col, col_end );
+						return ez_expr( p, h, col, col_end, 0 );
 					}
 				}
 			}
@@ -2059,3 +2093,17 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 	}
 }
 
+/**
+ * If \p port is NULL, retrieves the current input port for the current process.
+ * If \p port is not NULL, changes the current input port to the given one and returns
+ * the previously current input port.
+ */
+MUSEAPI muse_port_t muse_current_port( muse_env *env, muse_stdport_t which, muse_port_t port )
+{
+	muse_port_t prev = env->current_process->current_port[which];
+
+	if ( port )
+		env->current_process->current_port[which] = port;
+
+	return prev;
+}

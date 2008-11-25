@@ -77,6 +77,7 @@ typedef struct
 	unsigned char *bytes;
 	int size, avail, pos;
 	size_t fpos;
+	muse_int line, column;
 } muse_port_buffer_t;
 
 enum { MAX_INDENT_COLS = 128 };
