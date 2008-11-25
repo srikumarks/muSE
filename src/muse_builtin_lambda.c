@@ -11,6 +11,7 @@
 
 
 #include "muse_builtins.h"
+#include "muse_port.h"
 
 static void anonymize_formals( muse_env *env, muse_cell syms )
 {
