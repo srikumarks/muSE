@@ -149,7 +149,7 @@ static size_t uc16_fileport_read( void *buffer, size_t nbytes, void *port )
 			c |= (fgetc(f) & 0xFF) << 8;
 
 			{
-				int nc = uc16_to_utf8( c, b+n, nbytes-n );
+				int nc = uc16_to_utf8( c, b+n, (int)(nbytes-n) );
 				if ( nc == 0 )
 				{
 					ungetc( c >> 8, f );
