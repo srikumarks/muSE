@@ -267,6 +267,7 @@ typedef enum
 	MUSE_TRAP_POINT,
 	MUSE_IT,
 	MUSE_THE,
+	MUSE_TIMEOUTVAR,
 	
 	MUSE_NUM_BUILTIN_SYMBOLS /**< Not a symbol. */
 } muse_builtin_symbol_t;

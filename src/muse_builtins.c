@@ -173,6 +173,7 @@ static const struct _builtins
 {		L"run",			fn_run				},
 {		L"post",		fn_post				},
 {		L"process?",	fn_process_p		},
+{		L"with-timeout-us",	fn_with_timeout_us	},
 
 /************** Miscellaneous **************/
 {		L"format",					fn_format					},
@@ -1191,6 +1192,33 @@ muse_cell fn_post( muse_env *env, void *context, muse_cell args )
 muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
 {
 	return _is_pid( _evalnext(&args) );
+}
+
+/**
+ * (with-timeout-us 'id us body...)
+ *
+ * Evaluates body like a \c do statement does, but imposes the
+ * given timeout for it. If the timeout expires during the
+ * evaluation of the body, it raises the ('timeout 'id given-us elapsed-us)
+ * exception.
+ */
+muse_cell fn_with_timeout_us( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell id = _evalnext(&args);
+	muse_int timeout_us = _intvalue(_evalnext(&args));
+	muse_cell result = MUSE_NIL;
+
+	muse_assert( _cellt(id) == MUSE_SYMBOL_CELL );
+
+	{
+		int bsp = _bspos();
+		push_timeout( env, id, timeout_us );
+		result = muse_force( env, muse_do( env, args ) );
+		_unwind_bindings(bsp);
+		env->current_process->num_eval_timeouts--;
+	}
+
+	return result;
 }
 
 /**

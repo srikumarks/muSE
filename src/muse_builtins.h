@@ -212,6 +212,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args );
 muse_cell fn_run( muse_env *env, void *context, muse_cell args );
 muse_cell fn_post( muse_env *env, void *context, muse_cell args );
 muse_cell fn_process_p( muse_env *env, void *context, muse_cell args );
+muse_cell fn_with_timeout_us( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @name Misc */

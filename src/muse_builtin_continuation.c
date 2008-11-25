@@ -36,6 +36,7 @@ typedef struct _continuation_t
 	recent_t	recent;
 	muse_cell	this_cont;
 	muse_cell	invoke_result;
+	int			num_eval_timeouts;
 } continuation_t;
 
 static void continuation_init( muse_env *env, void *p, muse_cell args )
@@ -182,6 +183,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		/* Save a pointer to the current process. */
 		c->process = env->current_process;
 		c->process_atomicity = env->current_process->atomicity;
+		c->num_eval_timeouts = env->current_process->num_eval_timeouts;
 
 		c->this_cont = cont;
 		
@@ -208,6 +210,7 @@ static muse_cell capture_continuation( muse_env *env, muse_cell cont )
 		was captured. */
 		muse_assert( env->current_process == c->process );
 		c->process->atomicity = c->process_atomicity;
+		c->process->num_eval_timeouts = c->num_eval_timeouts;
 
 		/* Restore the evaluation stack. */
 		memcpy( _stack()->bottom + c->muse_stack_from, c->muse_stack_copy, sizeof(muse_cell) * c->muse_stack_size );
@@ -406,6 +409,7 @@ typedef struct _resume_point_t
 	muse_cell resumingtrap; /**< The trap one of whose handlers resumed the exception. */
 	muse_cell result;	/**< Holds the result of the resume invocation. */
 	int recent_top;		/**< The top index of the recent list at capture time. */
+	int num_eval_timeouts;	/**< The depth of the timeout stack when the capture is made. */
 } resume_point_t;
 
 /**
@@ -428,9 +432,11 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		rp->resumingtrap = MUSE_NIL;
 		rp->result = 0;
 		rp->recent_top = env->current_process->recent.top;
+		rp->num_eval_timeouts = env->current_process->num_eval_timeouts;
 	}
 	else
 	{
+		env->current_process->num_eval_timeouts = rp->num_eval_timeouts;
 		env->current_process->atomicity = rp->atomicity;
 		_unwind( rp->spos );
 		_unwind_bindings( rp->bspos );
@@ -840,14 +846,14 @@ static muse_cell raise_error( muse_env *env, muse_cell args )
  * using the @ref fn_raise "raise" operator. 
  *
  * The handler pattern that will match the raised error is given
- * by - @code (ex error info) @endcode
+ * by - @code (ex error . info) @endcode
  *	- ex - The resume continuation.
  *	- error - A symbol identifying the error.
  *	- info - Arbitrary info to be passed on to handlers.
  */
 MUSEAPI muse_cell muse_raise_error( muse_env *env, muse_cell error, muse_cell info ) 
 {
-	return raise_error( env, _cons( error, _cons( info, MUSE_NIL ) ) );
+	return raise_error( env, _cons( error, info ) );
 }
 
 /**

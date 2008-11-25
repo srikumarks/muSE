@@ -192,6 +192,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_TRAP_POINT,			L"{{trap}}" },
 	{ MUSE_IT,					L"it"		},
 	{ MUSE_THE,					L"the"		},
+	{ MUSE_TIMEOUTVAR,			L"{{timeout}}"	},
 	{ -1,						NULL		},
 };
 
@@ -1565,6 +1566,7 @@ void yield_process( muse_env *env, int spent_attention )
 		if ( p->remaining_attention <= 0 )
 		{
 			/* Give time to the next process. */
+			if ( p->num_eval_timeouts > 0 ) check_timeout(env);
 			p->remaining_attention = p->attention;
 			switch_to_process( env, p->next );
 		}
@@ -1759,6 +1761,84 @@ void post_message( muse_process_frame_t *p, muse_cell msg )
 	}
 }
 
+typedef struct _timeout_info_t
+{
+	struct _timeout_info_t *prev;
+	muse_cell prevcell;
+	muse_cell id;
+	void *timer;
+	muse_int timeout_us;
+} timeout_info_t;
+
+static muse_cell fn_timeout_var( muse_env *env, timeout_info_t *ti, muse_cell args )
+{
+	if ( muse_doing_gc(env) )
+	{
+		muse_tock(ti->timer);
+		free(ti);
+	}
+
+	return MUSE_NIL;
+}
+
+/**
+ * Adds another level of timeout nesting.
+ */
+void push_timeout( muse_env *env, muse_cell id, muse_int timeout_us )
+{
+	int sp = _spos();
+	muse_cell sym = _builtin_symbol(MUSE_TIMEOUTVAR);
+	muse_cell curr_timeout = _symval(sym);
+	
+	timeout_info_t *next_timeout = (timeout_info_t*)calloc( 1, sizeof(timeout_info_t) );
+	if ( curr_timeout != sym )
+	{
+		next_timeout->prev = (timeout_info_t*)muse_nativefn_context( env, curr_timeout, NULL );
+	}
+
+	next_timeout->prevcell		= curr_timeout;
+	next_timeout->id			= id;
+	next_timeout->timer			= muse_tick();
+	next_timeout->timeout_us	= timeout_us;
+
+	_pushdef( _builtin_symbol(MUSE_TIMEOUTVAR), muse_mk_destructor( env, (muse_nativefn_t)fn_timeout_var, next_timeout ) );
+	_unwind(sp);
+
+	env->current_process->num_eval_timeouts++;
+}
+
+/**
+ * Checks whether any timeout has expired
+ * and if so raises an exception to the effect.
+ * The structure of the exception is -
+ *		('timeout 'id given-us elapsed-us)
+ */
+void check_timeout( muse_env *env )
+{
+	int sp = _spos();
+	muse_cell sym = _builtin_symbol(MUSE_TIMEOUTVAR);
+	muse_cell ticell = _symval(sym);
+	if ( ticell != sym ) {
+		timeout_info_t *ti = (timeout_info_t*)(timeout_info_t*)muse_nativefn_context( env, ticell, NULL );
+		while ( ti != NULL ) {
+			muse_int elapsed_us = muse_elapsed_us(ti->timer);
+			if ( elapsed_us >= ti->timeout_us ) {
+				// Timed out.
+				int bsp = _bspos();
+				_pushdef( sym, ti->prevcell );
+				muse_raise_error( env, _builtin_symbol(MUSE_TIMEOUT), muse_list( env, "cII", ti->id, ti->timeout_us, elapsed_us ) );
+				_unwind_bindings(bsp);
+
+				// Disable the current timeout on resume.
+				_define( sym, ti->prevcell );
+			}
+
+			ti = ti->prev;
+		}
+	}
+	_unwind(sp);
+}
+
 /**
  * Initializes the scoped recent calculations data structure.
  */
@@ -1819,7 +1899,7 @@ void muse_mark_recent_scope( muse_env *env, recent_scope_t *s )
  */
 void muse_mark_recent( muse_env *env, recent_t *r )
 {
-	int i, j;
+	int i;
 	for ( i = 0; i <= r->top; ++i ) {
 		muse_mark_recent_scope( env, r->scopes + i );
 	}

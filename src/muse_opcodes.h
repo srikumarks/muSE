@@ -192,6 +192,7 @@ typedef struct _muse_process_frame_t
 	1, 3, 5, etc. indices contain the recent item. */
 	recent_t recent;
 
+	int			num_eval_timeouts;
 } muse_process_frame_t;
 
 /**
@@ -688,6 +689,8 @@ muse_cell fn_pid( muse_env *env, muse_process_frame_t *process, muse_cell args )
 void post_message( muse_process_frame_t *process, muse_cell msg );
 void enter_atomic(muse_env *env);
 void leave_atomic(muse_env *env);
+void push_timeout( muse_env *env, muse_cell id, muse_int timeout_us );
+void check_timeout( muse_env *env );
 
 /* Converts the given 16-bit unicode char to utf8 and stores
 it into the given buffer. Returns the number of bytes used. */
