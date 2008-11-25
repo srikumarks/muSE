@@ -499,11 +499,14 @@ MUSEAPI muse_cell muse_array_to_list( muse_env *env, int count, const muse_cell 
 	else
 	{
 		muse_cell h, t;
+		int sp;
 		h = t = _cons( MUSE_NIL, MUSE_NIL );
 		
 		_seth( t, *array );
 		array += astep;
 
+		sp = _spos(); /*< Note stack space usage *after* the _cons() above
+						  so that the list is not reclaimed by GC. */
 		while ( --count > 0 )
 		{
 			muse_cell temp = _cons( *array, MUSE_NIL );
@@ -511,6 +514,7 @@ MUSEAPI muse_cell muse_array_to_list( muse_env *env, int count, const muse_cell 
 			t = temp;
 			
 			array += astep;
+			_unwind(sp); /*< Keep constant stack space usage during the conversion. */
 		}
 		
 		return h;
