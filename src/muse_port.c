@@ -1644,7 +1644,7 @@ muse_cell ez_parse_expr( muse_port_t p );
 static ez_result_t ez_expr( muse_port_t p, muse_cell expr, int col_start, int col_end, int wslines )
 {
 	muse_env *env = p->env;
-	if ( is_macro_sexpr(env,expr) )
+	if ( (p->mode & MUSE_PORT_READ_DETECT_MACROS) && is_macro_sexpr(env,expr) )
 		expr = _eval(expr);
 
 	{
@@ -1679,7 +1679,7 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 	muse_env *env = p->env;
 	int c = port_getc(p);
 	
-	muse_assert( c == '(' );
+	muse_assert( c == '(' || c == '{' );
 	
 	{
 		muse_cell h = MUSE_NIL;
@@ -1710,9 +1710,8 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 				}
 				else
 				{
-					// Empty group == empty list.
+					// "head()" in ezscheme == "(head)" in scheme
 					return ez_result( PARSE_EMPTY_GROUP, col, r.col_end );
-//					return ez_expr( p, MUSE_NIL, col, r.col_end, 0 );
 				}
 			}
 			
@@ -1880,7 +1879,7 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 	if ( c == EOF )
 		return ez_result( PARSE_EOF, col, col );
 		
-	if ( c == ')' )
+	if ( c == ')' || c == '}' )
 	{
 		/* Keep the group end character visible until we escape to the
 		matching group declaration. */
@@ -1901,8 +1900,15 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 	{
 		ez_result_t head;
 		
-		if ( c == '(' )
+		if ( c == '(' || c == '{' )
+		{
 			head = ez_parse_group( p, col );
+			if ( head.expr >= 0 && c == '{' )
+			{
+				/* Perform read-time evaluation. */
+				head.expr = _eval(head.expr);
+			}	
+		}
 		else if ( c == '[' )
 			/* Square brackets used for representing lists. */
 			head = ez_parse_list( p, col );
@@ -1910,8 +1916,14 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 		{
 			/* Quoted expression. */
 			c = port_getc(p);
-			
-			head = ez_parse( p, col + 1, MUSE_FALSE );
+
+			{
+				int saved_mode = p->mode;
+				p->mode &= ~MUSE_PORT_READ_DETECT_MACROS;
+				head = ez_parse( p, col + 1, MUSE_FALSE );
+				p->mode = saved_mode;
+			}
+
 			head.expr = muse_quote(env,head.expr);
 			head.col_start = col;
 		}	
