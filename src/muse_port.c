@@ -1816,6 +1816,7 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 						h = nt;
 						_unwind(sp);
 						_spush(h);
+						sp = _spos();
 					}
 
 					t = nt;
