@@ -627,7 +627,11 @@ static size_t muse_vsprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
 					time_t t;
 					struct tm _tm;
 					time( &t );
+					#ifdef MUSE_PLATFORM_WIN32
 					localtime_s( &_tm, &t );
+					#else
+					_tm = *localtime(&t);
+					#endif
 					len += wcsftime( buffer+len, maxlen-len, L"%Y-%m-%d %H:%M:%S", &_tm );
 				}
 				break;
