@@ -1498,9 +1498,9 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 		memcpy( p->locals.bottom, env->current_process->locals.bottom, sizeof(muse_cell) * env->num_symbols );
 
 		/* Also set the current_port settings to stdin/out/err. */
-		p->current_port[0] = muse_stdport( env, MUSE_STDIN_PORT );
-		p->current_port[1] = muse_stdport( env, MUSE_STDOUT_PORT );
-		p->current_port[3] = muse_stdport( env, MUSE_STDERR_PORT );
+		p->current_port[MUSE_STDIN_PORT] = muse_stdport( env, MUSE_STDIN_PORT );
+		p->current_port[MUSE_STDOUT_PORT] = muse_stdport( env, MUSE_STDOUT_PORT );
+		p->current_port[MUSE_STDERR_PORT] = muse_stdport( env, MUSE_STDERR_PORT );
 	}
 
 	return p;
