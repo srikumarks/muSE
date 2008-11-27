@@ -38,6 +38,7 @@ muse_cell fn_call_w_keywords( muse_env *env, void *context, muse_cell args );
 muse_cell fn_callcc( muse_env *env, void *context, muse_cell args );
 muse_cell fn_the( muse_env *env, void *context, muse_cell args );
 muse_cell fn_meta( muse_env *env, void *context, muse_cell args );
+muse_cell fn_trace( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Exceptions Raising and handling exceptions */

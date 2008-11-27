@@ -152,8 +152,7 @@ typedef enum
 	MUSE_PROCESS_HAS_TIMEOUT	= 0x10
 } muse_process_state_bits_t;
 
-enum { MUSE_MAX_RECENT_ITEMS = 8 };
-
+/*
 typedef struct {
 	muse_int	key;
 	muse_cell	value;
@@ -168,6 +167,38 @@ typedef struct {
 	int top;
 	int capacity;
 	recent_scope_t *scopes;
+} recent_t;
+*/
+
+enum { MUSE_MAX_RECENT_ITEMS = 8 };
+
+typedef struct {
+	muse_int	key;
+	muse_cell	value;
+} recent_entry_t;
+
+typedef struct {
+	int capacity, top;
+	recent_entry_t *vec;
+} recent_entries_t;
+
+typedef struct {
+	int prev;		/**< Starting entry up to which this context can use history. */
+	int base;		/**< The entry to which the recent history must wrap around. 
+						 If prev = base, you cannot access shallower contexts. */
+	int top;			/**< The absolute top of the entries available within this context. */
+	int depth;		/**< The total number of history items collected in this context. 
+						 base + depth % MUSE_MAX_RECENT_ITEMS gives the next entry slot. */
+} recent_context_t;
+
+typedef struct {
+	int capacity, top;
+	recent_context_t *vec;
+} recent_contexts_t;
+
+typedef struct {
+	recent_entries_t entries;
+	recent_contexts_t contexts;
 } recent_t;
 
 /**
@@ -281,7 +312,7 @@ muse_cell muse_set_slot( muse_env *env, muse_cell nativefn, muse_int *slot );
 /**
  * Initializes the scoped recent calculations data structure.
  */
-void muse_init_recent( recent_t *r, int capacity );
+void muse_init_recent( recent_t *r, int capacity, int depth );
 
 /**
  * Frees the scoped recent calculations data structure.
@@ -303,7 +334,7 @@ void muse_restore_recent( recent_t *r, recent_t *dest );
 /**
  * Marks all objects in the recent scope.
  */
-void muse_mark_recent_scope( muse_env *env, recent_scope_t *s );
+void muse_mark_recent_context( muse_env *env, recent_t *r, int ctxt );
 
 /**
  * Marks all objects in the recent data structure.

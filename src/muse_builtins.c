@@ -38,6 +38,7 @@ static const struct _builtins
 {		L"call/keywords",	fn_call_w_keywords	},
 {		L"the",			fn_the				},
 {		L"meta",		fn_meta				},
+{		L"trace",		fn_trace			},
 
 /************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
@@ -1321,5 +1322,22 @@ muse_cell fn_the( muse_env *env, void *context, muse_cell args )
 			});
 			return key;
 		}
+	}
+}
+
+/**
+ * (trace on) or (trace off)
+ */
+muse_cell fn_trace( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell on = _csymbol(L"on");
+	muse_cell off = _csymbol(L"off");
+	if ( args ) {
+		muse_cell arg = _next(&args);
+		if ( arg == on ) { env->parameters[MUSE_ENABLE_TRACE] = MUSE_TRUE; return on; }
+		if ( arg == off ) { env->parameters[MUSE_ENABLE_TRACE] = MUSE_FALSE; return off; }
+		return MUSE_NIL;
+	} else {
+		return env->parameters[MUSE_ENABLE_TRACE] ? on : off;
 	}
 }

@@ -127,7 +127,8 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 				/* Note that we need to do _tail(_tail(gen)) in order to skip the "recent list"
 				that's added to the beginning of every function. If that's not there,
 				we need to check _tail(gen) instead. */
-		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(_tail(_tail(gen))) == MUSE_NIL ) {
+//CRS		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(_tail(_tail(gen))) == MUSE_NIL ) {
+		if ( _cellt(gen) == MUSE_LAMBDA_CELL && _tail(_tail(gen)) == MUSE_NIL ) {
 			/* It is a dummy function. We should replace the body of the
 			dummy function with the given body. */
 			dummy_function = MUSE_TRUE;

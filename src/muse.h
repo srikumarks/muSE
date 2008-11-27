@@ -299,6 +299,7 @@ typedef enum
 								 *   its own auto-release pool. Default is MUSE_FALSE. */
 	MUSE_OWN_OBJC_AUTORELEASE_POOL, /**< Creates a keeps a reference to an independent auto-release pool, which is 
 									 * released when the muSE environment is destroyed. Default is MUSE_TRUE. */
+	MUSE_ENABLE_TRACE,			/**< Default = MUSE_TRUE. Enables the collection of stack traces during execution for error detection. */
 	
 	MUSE_NUM_PARAMETER_NAMES	/**< Not a parameter. */
 } muse_env_parameter_name_t;

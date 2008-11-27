@@ -295,8 +295,9 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 	that we can revert to this point after we're done with the
 	sub expressions. */
 	int bsp = _bspos();
+	muse_boolean trace = env->parameters[MUSE_ENABLE_TRACE];
 
-	muse_trace_push( env, NULL, fn, args );
+	if ( trace ) muse_trace_push( env, NULL, fn, args );
 
 	/* Bind all formal parameters. If binding failed, return MUSE_NIL. */
 	if ( muse_bind_formals( env, formals, args ) )
@@ -313,12 +314,12 @@ muse_cell muse_apply_lambda( muse_env *env, muse_cell fn, muse_cell args )
 		{
 			/*	Evaluate the body. 
 				Only "result" will remain on the stack. */
-			muse_cell result = _do( _tail(fn) );
+			muse_cell result = _do( _tail(_tail(fn)) );
 		
 			/* Restore the save bindings. */
 			_unwind_bindings(bsp);
 			
-			muse_trace_pop(env);
+			if ( trace ) muse_trace_pop(env);
 			return muse_pop_recent_scope( env, fn, result );
 		}
 	}

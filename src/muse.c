@@ -228,11 +228,12 @@ static void init_parameters( muse_env *env, const int *parameters )
 		1,		/* MUSE_DEFAULT_ATTENTION */
 #if __APPLE__	
 		1,		/* MUSE_ENABLE_OBJC */
-		1		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
+		1,		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
 #else
 		0,		/* MUSE_ENABLE_OBJC */
-		0		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
+		0,		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
 #endif
+		MUSE_TRUE	/* MUSE_ENABLE_TRACE */
 	};
 
 	/* Initialize default values. */
@@ -1490,7 +1491,7 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 	p->next = p->prev = p;
 
 	/* Initialize the recent items. */
-	muse_init_recent( &(p->recent), 2 );
+	muse_init_recent( &(p->recent), 2, 16 );
 
 	/* Copy all the currently defined symbols over to the new process. */
 	if ( env->current_process )
@@ -1689,6 +1690,12 @@ muse_boolean procrastinate( muse_env *env )
 void yield_process( muse_env *env, int spent_attention )
 {
 	muse_process_frame_t *p = env->current_process;
+	
+	if ( p == p->next ) {
+		if ( p->num_eval_timeouts == 0 ) return;
+		check_timeout(env);
+		return;
+	}
 
 	if ( p->atomicity == 0 )
 	{
@@ -1975,11 +1982,15 @@ void check_timeout( muse_env *env )
 /**
  * Initializes the scoped recent calculations data structure.
  */
-void muse_init_recent( recent_t *r, int capacity )
+void muse_init_recent( recent_t *r, int capacity, int depth )
 {
-	r->capacity = (capacity < 1 ? 1 : capacity);
-	r->top = 0;
-	r->scopes = (recent_scope_t*)calloc( capacity, sizeof(recent_scope_t) );
+	r->entries.capacity = capacity;
+	r->entries.top = 0;
+	r->entries.vec = (recent_entry_t*)calloc( sizeof(recent_entry_t), r->entries.capacity );
+	
+	r->contexts.capacity = depth;
+	r->contexts.top = 0;
+	r->contexts.vec = (recent_context_t*)calloc( sizeof(recent_context_t), r->contexts.capacity );
 }
 
 /**
@@ -1987,9 +1998,10 @@ void muse_init_recent( recent_t *r, int capacity )
  */
 void muse_clear_recent( recent_t *r )
 {
-	r->capacity = 0;
-	r->top = -1;
-	free( r->scopes );
+	free( r->entries.vec );
+	free( r->contexts.vec );
+	r->entries.capacity = r->entries.top = 0;
+	r->contexts.capacity = r->contexts.top = 0;
 }
 
 /**
@@ -1999,10 +2011,13 @@ void muse_clear_recent( recent_t *r )
 recent_t muse_copy_recent( recent_t *r )
 {
 	recent_t cpy;
-	int n = r->top + 1;
-	muse_init_recent( &cpy, n );
-	memcpy( cpy.scopes, r->scopes, sizeof(recent_scope_t) * n );
-	cpy.top = r->top;
+	int ne = r->entries.top + 1;
+	int nc = r->contexts.top + 1;
+	muse_init_recent( &cpy, ne, nc );
+	memcpy( cpy.entries.vec, r->entries.vec, sizeof(recent_entry_t) * ne );
+	memcpy( cpy.contexts.vec, r->contexts.vec, sizeof(recent_context_t) * nc );
+	cpy.entries.top = r->entries.top;
+	cpy.contexts.top = r->contexts.top;
 	return cpy;
 }
 
@@ -2019,11 +2034,14 @@ void muse_restore_recent( recent_t *r, recent_t *dest )
 /**
  * Marks all objects remembered in the given recent-scope.
  */
-void muse_mark_recent_scope( muse_env *env, recent_scope_t *s )
+void muse_mark_recent_context( muse_env *env, recent_t *r, int ctxt )
 {
+	int base = r->contexts.vec[ctxt].base;
+	int top = r->contexts.vec[ctxt].top;
+	
 	int j = 0;
-	for ( j = 0; j < MUSE_MAX_RECENT_ITEMS; ++j ) {
-		muse_mark( env, s->recent[j].value );
+	for ( j = base; j < top; ++j ) {
+		muse_mark( env, r->entries.vec[j].value );
 	}
 }
 
@@ -2033,8 +2051,8 @@ void muse_mark_recent_scope( muse_env *env, recent_scope_t *s )
 void muse_mark_recent( muse_env *env, recent_t *r )
 {
 	int i;
-	for ( i = 0; i <= r->top; ++i ) {
-		muse_mark_recent_scope( env, r->scopes + i );
+	for ( i = 0; i <= r->entries.top; ++i ) {
+		muse_mark( env, r->entries.vec[i].value );
 	}
 }
 
@@ -2045,18 +2063,27 @@ void muse_mark_recent( muse_env *env, recent_t *r )
 muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *value )
 {
 	muse_process_frame_t *p = env->current_process;
-	recent_scope_t *s = p->recent.scopes + p->recent.top;
-	int i = s->next, j;
-
-	/* Search backwards in time from the most recent item
-	to the oldest. */
-	for ( j = i-1; j != i; --j ) {
-		if ( j < 0 ) j += MUSE_MAX_RECENT_ITEMS;
-		if ( s->recent[j].key == key ) {
-			(*value) = s->recent[j].value;
-			return MUSE_TRUE;
+	recent_t *r = &(p->recent);
+	recent_context_t *s = r->contexts.vec + r->contexts.top;
+	int i = 0, n = 0;
+	
+	while ( s >= r->contexts.vec && n < MUSE_MAX_RECENT_ITEMS ) {
+	
+		for ( i = s->depth - 1; i >= 0 && n < MUSE_MAX_RECENT_ITEMS; --i, ++n ) {
+			recent_entry_t *e = r->entries.vec + (s->base + i % MUSE_MAX_RECENT_ITEMS);
+			if ( e->key == key ) {
+				(*value) = e->value;
+				return MUSE_TRUE;
+			}
 		}
+		
+		if ( s->prev < s->base ) {
+			muse_assert( s-1 >= r->contexts.vec );
+			--s;
+		} else
+			break;
 	}
+	
 	return MUSE_FALSE;
 }
 
@@ -2066,17 +2093,25 @@ muse_boolean muse_find_recent_item( muse_env *env, muse_int key, muse_cell *valu
 recent_entry_t *muse_find_recent_lazy_item( muse_env *env )
 {
 	muse_process_frame_t *p = env->current_process;
-	recent_scope_t *s = p->recent.scopes + p->recent.top;
-	int i = s->next, j;
-
-	/* Search backwards in time from the most recent item
-	to the oldest. */
-	for ( j = i-1; j != i; --j ) {
-		if ( j < 0 ) j += MUSE_MAX_RECENT_ITEMS;
-		if ( _cellt(s->recent[j].value) == MUSE_LAZY_CELL ) {
-			return s->recent + j;
+	recent_t *r = &(p->recent);
+	recent_context_t *s = r->contexts.vec + r->contexts.top;
+	int i = 0, n = 0;
+	
+	while ( s >= r->contexts.vec && n < MUSE_MAX_RECENT_ITEMS ) {
+	
+		for ( i = s->depth - 1; i >= 0 && n < MUSE_MAX_RECENT_ITEMS; --i, ++n ) {
+			recent_entry_t *e = r->entries.vec + (s->base + i % MUSE_MAX_RECENT_ITEMS);
+			if ( _cellt(e->value) == MUSE_LAZY_CELL )
+				return e;
 		}
+		
+		if ( s->prev < s->base ) {
+			muse_assert( s-1 >= r->contexts.vec );
+			--s;
+		} else
+			break;
 	}
+	
 	return NULL;
 }
 
@@ -2089,12 +2124,21 @@ muse_cell muse_add_recent_item( muse_env *env, muse_int key, muse_cell value )
 {
 	if ( key ) {
 		muse_process_frame_t *p = env->current_process;
-		recent_scope_t *s = p->recent.scopes + p->recent.top;
-		recent_entry_t *n = s->recent + (s->next++);
-		n->key = key;
-		n->value = value;
-		if ( s->next >= MUSE_MAX_RECENT_ITEMS )
-			s->next -= MUSE_MAX_RECENT_ITEMS;
+		recent_t *r = &(p->recent);
+		recent_context_t *rc = r->contexts.vec + r->contexts.top;
+		int i = rc->base + rc->depth % MUSE_MAX_RECENT_ITEMS;
+		
+		if ( i >= r->entries.capacity ) {
+			int newcaps = r->entries.capacity * 2;
+			r->entries.vec = (recent_entry_t*)realloc( r->entries.vec, sizeof(recent_entry_t) * newcaps );
+			r->entries.capacity = newcaps;
+		}
+		
+		r->entries.vec[i].key = key;
+		r->entries.vec[i].value = value;
+		
+		rc->depth++;
+		rc->top = rc->base + (rc->depth > MUSE_MAX_RECENT_ITEMS ? MUSE_MAX_RECENT_ITEMS : rc->depth);
 	}
 	return value;
 }
@@ -2106,27 +2150,36 @@ muse_cell muse_add_recent_item( muse_env *env, muse_int key, muse_cell value )
 void muse_withdraw_recent_item( muse_env *env )
 {
 	muse_process_frame_t *p = env->current_process;
-	recent_scope_t *s = p->recent.scopes + p->recent.top;
-
-	s->next--;
-
-	if ( s->next < 0 )
-		s->next += MUSE_MAX_RECENT_ITEMS;
+	recent_t *r = &(p->recent);
+	recent_context_t *rc = r->contexts.vec + r->contexts.top;
+	
+	if ( rc->depth > 0 ) {
+		rc->depth--;
+		rc->top = rc->base + (rc->depth > MUSE_MAX_RECENT_ITEMS ? MUSE_MAX_RECENT_ITEMS : rc->depth);
+	}
 }
 
-static muse_process_frame_t *muse_push_recent_scope_base( muse_env *env )
+static recent_context_t *muse_push_recent_scope_base( muse_env *env )
 {
 	muse_process_frame_t *p = env->current_process;
-
-	if ( p->recent.top + 1 >= p->recent.capacity ) {
-		// Need to grow capacity.
-		int newcaps = p->recent.capacity * 2;
-		p->recent.scopes = (recent_scope_t*)realloc( p->recent.scopes, sizeof(recent_scope_t)*newcaps );
-		p->recent.capacity = newcaps;
+	recent_t *r = &(p->recent);
+	
+	if ( r->contexts.top + 1 >= r->contexts.capacity ) {
+		int newcaps = r->contexts.capacity * 2;
+		r->contexts.vec = (recent_context_t*)realloc( r->contexts.vec, sizeof(recent_context_t) * newcaps );
+		r->contexts.capacity = newcaps;
 	}
 
-	p->recent.top++;
-	return p;
+	r->contexts.top++;
+	
+	{
+		recent_context_t *rc = r->contexts.vec + r->contexts.top;
+		rc->base = rc[-1].top;
+		rc->prev = rc->base;
+		rc->top = rc->base;
+		rc->depth = 0;
+		return rc;
+	}
 }
 
 /**
@@ -2134,16 +2187,13 @@ static muse_process_frame_t *muse_push_recent_scope_base( muse_env *env )
  */
 void muse_push_recent_scope( muse_env *env )
 {
-	muse_process_frame_t *p = muse_push_recent_scope_base(env);
-
-	memset( p->recent.scopes + p->recent.top, 0, sizeof(recent_scope_t) );
+	muse_push_recent_scope_base(env);
 }
 
 void muse_push_copy_recent_scope( muse_env *env )
 {
-	muse_process_frame_t *p = muse_push_recent_scope_base(env);
-
-	memcpy( p->recent.scopes + p->recent.top, p->recent.scopes + p->recent.top-1, sizeof(recent_scope_t) );
+	recent_context_t *rc = muse_push_recent_scope_base(env);
+	rc->prev = rc[-1].prev;
 }
 
 /**
@@ -2153,10 +2203,11 @@ void muse_push_copy_recent_scope( muse_env *env )
 muse_cell muse_pop_recent_scope( muse_env *env, muse_int key, muse_cell value )
 {
 	muse_process_frame_t *p = env->current_process;
+	recent_t *r = &(p->recent);
+	
+	r->contexts.top--;
 
-	p->recent.top--;
-
-	muse_assert( p->recent.top >= 0 );
+	muse_assert( r->contexts.top >= 0 );
 
 	return muse_add_recent_item( env, key, value );
 }

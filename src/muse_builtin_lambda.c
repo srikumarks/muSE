@@ -219,6 +219,7 @@ muse_cell muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_
 	}
 }
 
+#if 0
 /**
  * A "captured recent scope" object is for the purpose of
  * allowing the use of (the ..) expressions and 'it' within
@@ -279,6 +280,7 @@ static muse_functional_object_type_t g_captured_recent_scope_type =
 	NULL,
 	crs_write
 };
+#endif
 
 /**
  * (fn formal-args <body>).
@@ -359,7 +361,7 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 	/* Capture the recently computed items so that the closure can
 	refer to them using (the ..) expressions and 'it'. The _cons
 	is to turn the captured function into a function call. */
-	muse_cell crs = _cons( muse_mk_functional_object( env, &g_captured_recent_scope_type, MUSE_NIL ), MUSE_NIL );
+//CRS	muse_cell crs = _cons( muse_mk_functional_object( env, &g_captured_recent_scope_type, MUSE_NIL ), MUSE_NIL );
 
 	if ( _head(formals) == env->builtin_symbols[MUSE_QUOTE] )
 	{
@@ -382,7 +384,8 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		anonymize_formals( env, formals );
 		anonymize_formals( env, _builtin_symbol(MUSE_IT) );
 		
-		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
+//CRS		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
+		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
 		
 		_unwind_bindings(bsp);
 
@@ -397,8 +400,9 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 		anonymize_formals( env, formals );
 		anonymize_formals( env, _builtin_symbol(MUSE_IT) );
 		
-		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
-		
+//CRS		_sett( closure, _cons( crs, muse_bind_copy_expr( env, body, MUSE_FALSE ) ) );
+		_sett( closure, muse_bind_copy_expr( env, body, MUSE_FALSE ) );
+				
 		_unwind_bindings(bsp);
 
 		_seth( closure, formals );
