@@ -442,7 +442,8 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
 		_unwind_bindings( rp->bspos );
 		_define( _builtin_symbol( MUSE_TRAP_POINT ), rp->trapval );
 		rp->result = (setjmp_result >= 0) ? (setjmp_result-1) : setjmp_result;
-		env->current_process->recent = rp->recent;
+		env->current_process->recent.entries.top = rp->recent.entries.top;
+		env->current_process->recent.contexts.top = rp->recent.contexts.top;
 	}
 
 	return setjmp_result;
