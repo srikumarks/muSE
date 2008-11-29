@@ -102,7 +102,7 @@ static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cel
 			_spush(h);
 
 			val = _cons( _apply( fn, 
-										 _cons( _head(list), MUSE_NIL ),
+										 _cons( muse_head(env,list), MUSE_NIL ),
 										 MUSE_TRUE ),
 							 MUSE_NIL );
 			
@@ -117,7 +117,7 @@ static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cel
 				h = t = val;
 		}
 		
-		return list_map( env, _tail(list), fn, h, t );
+		return list_map( env, muse_tail(env,list), fn, h, t );
 	}
 	else
 	{
@@ -181,8 +181,8 @@ muse_cell list_append_generator( muse_env *env, struct list_append_generator_con
 {
 	while ( ctxt->lists && !ctxt->iter )
 	{
-		ctxt->lists = _tail( ctxt->lists );
-		ctxt->iter = _head( ctxt->lists );
+		ctxt->lists = muse_tail( env, ctxt->lists );
+		ctxt->iter = muse_head( env, ctxt->lists );
 	}
 	
 	if ( ctxt->lists )
@@ -199,7 +199,7 @@ muse_cell list_append_generator( muse_env *env, struct list_append_generator_con
 
 static muse_cell list_join( muse_env *env, muse_cell lists )
 {
-	struct list_append_generator_context_t ctxt = { lists, _head(lists) };
+	struct list_append_generator_context_t ctxt = { lists, muse_head(env,lists) };
 	return muse_generate_list( env, (muse_list_generator_t)list_append_generator, &ctxt );
 }
 
@@ -270,7 +270,7 @@ static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicat
 	if ( list )
 	{
 		int sp = _spos();
-		muse_cell thing = _head(list);
+		muse_cell thing = muse_head(env,list);
 		muse_cell args = MUSE_NIL;
 		
 		_spush(h);
@@ -292,7 +292,7 @@ static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicat
 
 		_unwind(sp);
 		
-		return list_collect( env, _tail(list), predicate, mapper, h, t );
+		return list_collect( env, muse_tail(env,list), predicate, mapper, h, t );
 	}
 	else
 	{
@@ -363,12 +363,12 @@ static muse_cell list_reduce( muse_env *env, muse_cell obj, muse_cell reduction_
 			
 			_spush(acc);
 			
-			acc = _apply( reduction_fn, _cons( acc, _cons( _head(obj), MUSE_NIL ) ), MUSE_TRUE );
+			acc = _apply( reduction_fn, _cons( acc, _cons( muse_head(env,obj), MUSE_NIL ) ), MUSE_TRUE );
 		
 			_unwind(sp);
 		}
 		
-		return list_reduce( env, _tail(obj), reduction_fn, acc );
+		return list_reduce( env, muse_tail(env,obj), reduction_fn, acc );
 	}
 	else
 		return acc;
