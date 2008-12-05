@@ -17,13 +17,13 @@ static muse_cell list_iterator( muse_env *env, void *self, muse_iterator_callbac
 {
 	muse_cell list = (muse_cell)(size_t)self;
 	int sp = _spos();
-	int cont = MUSE_TRUE;
+	muse_boolean cont = MUSE_TRUE;
 	
 	while ( list )
 	{
 		cont = callback( env, self, context, muse_head(env,list) );
 		_unwind(sp);
-		if ( !cont )
+		if ( cont == MUSE_FALSE )
 			return list;
 		
 		list = muse_tail(env,list);
@@ -91,33 +91,31 @@ muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+static muse_cell lazy_mapper( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell orig = args; /**< Since only lazy_mapper can generate a call to itself,
+								we know exactly what args looks like and can reuse
+								it for each subsequent call. */
+	muse_cell me = _quq(_head(args)); args = _tail(args);
+	muse_cell fn = _quq(_head(args)); args = _tail(args);
+	muse_cell list = _quq(_head(args));
+	
+	if ( list ) {
+		muse_cell h = muse_head(env,list);
+		_seth( args, _tail(list) );
+		return _cons( _apply( fn, _cons( h, MUSE_NIL ), MUSE_TRUE ), 
+		             _setcellt( _cons( me, orig ), MUSE_LAZY_CELL ) );
+	} else {
+		return MUSE_NIL;
+	}
+}
+
 static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cell h, muse_cell t )
 {
 	if ( list )
 	{
-		{
-			int sp = _spos();
-			muse_cell val;
-			
-			_spush(h);
-
-			val = _cons( _apply( fn, 
-										 _cons( muse_head(env,list), MUSE_NIL ),
-										 MUSE_TRUE ),
-							 MUSE_NIL );
-			
-			_unwind(sp);
-			
-			if ( t )
-			{
-				_sett( t, val );
-				t = val;
-			}
-			else
-				h = t = val;
-		}
-		
-		return list_map( env, muse_tail(env,list), fn, h, t );
+		muse_cell lm = _mk_nativefn( lazy_mapper, NULL ); 
+		return lazy_mapper( env, NULL, _cons( lm, _cons( fn, _cons( list, MUSE_NIL ) ) ) );
 	}
 	else
 	{
@@ -265,34 +263,38 @@ muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 	
 }
 
+static muse_cell lazy_collect( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell orig = args; /**< Since only lazy_collect can generate a call to itself,
+	                            we know exactly what args looks like and we can reuse it. */
+	muse_cell me = _quq(_head(args)); args = _tail(args);
+	muse_cell predicate = _quq(_head(args)); args = _tail(args);
+	muse_cell mapper = _quq(_head(args)); args = _tail(args);
+	muse_cell list = _quq(_head(args));
+
+	if ( list ) {
+		muse_cell thing = _cons( _head(list), MUSE_NIL );
+		muse_cell lazy_tail = _setcellt( _cons( me, orig ), MUSE_LAZY_CELL );
+		if ( !predicate || _apply( predicate, thing, MUSE_TRUE ) ) {
+			if ( mapper )
+				_seth( thing, _apply( mapper, thing, MUSE_TRUE ) );
+			_seth( args, _tail(list) );
+			return _cons( _head(thing), lazy_tail );
+		} else {
+			_seth( args, _tail(list) );
+			return lazy_tail;
+		}
+	} else {
+		return MUSE_NIL;
+	}
+}
+
 static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicate, muse_cell mapper, muse_cell h, muse_cell t )
 {
 	if ( list )
 	{
-		int sp = _spos();
-		muse_cell thing = muse_head(env,list);
-		muse_cell args = MUSE_NIL;
-		
-		_spush(h);
-		args = _cons( thing, MUSE_NIL );
-		
-		if ( !predicate || _apply( predicate, args, MUSE_TRUE ) )
-		{
-			if ( mapper )
-				_seth( args, _apply( mapper, args, MUSE_TRUE ) );
-			
-			if ( t )
-			{
-				_sett( t, args );
-				t = args;
-			}
-			else
-				h = t = args;
-		}
-
-		_unwind(sp);
-		
-		return list_collect( env, muse_tail(env,list), predicate, mapper, h, t );
+		muse_cell lc = _mk_nativefn( lazy_collect, NULL );
+		return lazy_collect( env, NULL, _cons( lc, _cons( predicate, _cons( mapper, _cons( list, MUSE_NIL )))) );
 	}
 	else
 	{
@@ -554,7 +556,7 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 
  
 /**
- * (for-each fn collection [result]).
+ * (for-each collection fn [result]).
  *
  * Same as fn_map(), but doesn't collect results.
  * The collection can be a list, vector or a hashtable.
@@ -566,8 +568,8 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell fn = _evalnext(&args);
 	muse_cell list = _evalnext(&args);
+	muse_cell fn = _evalnext(&args);
 	
 	mapinfo_t info = { fn, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
