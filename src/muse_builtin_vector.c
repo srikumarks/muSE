@@ -59,7 +59,7 @@ typedef struct
 static muse_cell vector_force( muse_env *env, vector_t *v, int index, muse_cell val );
 static void vector_forceall( muse_env *env, vector_t *v );
 
-static void vector_init_with_length( void *ptr, int length )
+static vector_t *vector_init_with_length( void *ptr, int length )
 {
 	vector_t *v = (vector_t*)ptr;
 	if ( length > 0 )
@@ -67,11 +67,19 @@ static void vector_init_with_length( void *ptr, int length )
 		v->length = length;
 		v->slots = (muse_cell*)calloc( v->length, sizeof(muse_cell) );
 	}
+	
+	return v;
 }
 
 static void vector_init( muse_env *env, void *ptr, muse_cell args )
 {
-	vector_init_with_length( ptr, args ? (int)_intvalue(_evalnext(&args)) : 0 );
+	vector_t *v = vector_init_with_length( ptr, args ? (int)_intvalue(_evalnext(&args)) : 0 );
+	if ( args ) {
+		muse_cell datafn = _evalnext(&args);
+		if ( _isfn(datafn) ) {
+			v->datafn = datafn;
+		}
+	}
 }
 
 static void vector_mark( muse_env *env, void *ptr )
@@ -267,6 +275,15 @@ static muse_cell vector_map( muse_env *env, void *self, muse_cell fn )
 		result_ptr->slots[i] = _apply( fn, args, MUSE_TRUE );
 		
 		_unwind(sp);
+	}
+	
+	if ( v->datafn != MUSE_NIL ) {
+		/* Apply the mapper to the datafn so that the new vector's
+		elements are generated accordingly. */
+		result_ptr->datafn = muse_eval( env, muse_list( env, "S(S)(c(cS))", 
+															 L"fn", L"$x", 
+															   fn, v->datafn, L"$x" ),
+										     MUSE_FALSE );
 	}
 	
 	return result;
@@ -495,7 +512,7 @@ static muse_functional_object_type_t g_vector_type =
 };
 
 /**
- * (mk-vector N).
+ * (mk-vector N [datafn]).
  * Creates a new vector of length N. All slots in the vector
  * are initially NIL. The returned object is a nativefn
  * (functional object). If \c vec is the returned object,

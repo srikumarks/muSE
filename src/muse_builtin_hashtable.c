@@ -66,15 +66,28 @@ typedef struct
 	muse_cell	datafn;			/**< fn(key)->value for use when key is not found. */
 } hashtable_t;
 
+static void get_size_or_datafn( muse_env *env, hashtable_t *h, muse_cell *args )
+{
+	if ( *args ) {
+		muse_cell arg = _evalnext(args);
+		if ( _isfn(arg) ) {
+			h->datafn = arg;
+		} else if ( _cellt(arg) == MUSE_INT_CELL ) {
+			h->bucket_count = (int)_intvalue( arg );
+		}
+	}
+}
+
 static void hashtable_init( muse_env *env, void *p, muse_cell args )
 {
 	hashtable_t *h = (hashtable_t*)p;
-
-	if ( args )
-		h->bucket_count = (int)_intvalue( _evalnext(&args) );
-	else
-		h->bucket_count = 7;
 	
+	h->bucket_count = 7;
+
+	get_size_or_datafn( env, h, &args );
+	get_size_or_datafn( env, h, &args );
+	
+	muse_assert( h->bucket_count > 0 );
 	h->buckets = (muse_cell*)calloc( h->bucket_count, sizeof(muse_cell) );	
 }
 
@@ -424,6 +437,16 @@ static muse_cell hashtable_map( muse_env *env, void *self, muse_cell fn )
 		}
 	}
 	
+	if ( h->datafn != MUSE_NIL ) {
+		/* Apply the mapper to the datafn so that the new hashtable's
+		elements are generated accordingly. */
+		result_ptr->datafn =
+			muse_eval( env, muse_list( env, "S(S)(c(cS))",
+											L"fn", L"$x",
+  				 							  fn, h->datafn, L"$x" ),
+							MUSE_FALSE );
+	}
+	
 	return result;
 }
 
@@ -608,9 +631,11 @@ static muse_functional_object_type_t g_hashtable_type =
 };
 
 /**
- * (mk-hashtable [size]).
+ * (mk-hashtable [datafn] [size]).
  * Creates a new hash table. No arguments are required, but
- * you can give the expected size of the hash table as an argument.
+ * you can give the expected size of the hash table as an argument
+ * and/or the datafn to use to map keys to values. You may give
+ * the size and the datafn in any order.
  */
 muse_cell fn_mk_hashtable( muse_env *env, void *context, muse_cell args )
 {
@@ -756,7 +781,7 @@ void muse_define_builtin_type_hashtable(muse_env *env)
 MUSEAPI muse_cell muse_mk_hashtable( muse_env *env, int length )
 {
 	int sp = _spos();
-	muse_cell ht = fn_mk_hashtable( env, NULL, _cons( _mk_int(length), MUSE_NIL ) );
+	muse_cell ht = fn_mk_hashtable( env, NULL, (length > 0 ? _cons( _mk_int(length), MUSE_NIL ) : MUSE_NIL) );
 	_unwind(sp);
 	_spush(ht);
 	return ht;
