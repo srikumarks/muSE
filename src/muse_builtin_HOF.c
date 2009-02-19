@@ -93,12 +93,14 @@ muse_cell fn_length( muse_env *env, void *context, muse_cell args )
 
 static muse_cell lazy_mapper( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell orig = args; /**< Since only lazy_mapper can generate a call to itself,
+	muse_cell orig, me, fn, list;
+
+	orig = args; /**< Since only lazy_mapper can generate a call to itself,
 								we know exactly what args looks like and can reuse
 								it for each subsequent call. */
-	muse_cell me = _quq(_head(args)); args = _tail(args);
-	muse_cell fn = _quq(_head(args)); args = _tail(args);
-	muse_cell list = _quq(_head(args));
+	me = _quq(_head(args)); args = _tail(args);
+	fn = _quq(_head(args)); args = _tail(args);
+	list = _quq(_head(args));
 	
 	if ( list ) {
 		muse_cell h = muse_head(env,list);
@@ -265,12 +267,14 @@ muse_cell fn_join( muse_env *env, void *context, muse_cell args )
 
 static muse_cell lazy_collect( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell orig = args; /**< Since only lazy_collect can generate a call to itself,
+	muse_cell orig, me, predicate, mapper, list;
+
+	orig = args; /**< Since only lazy_collect can generate a call to itself,
 	                            we know exactly what args looks like and we can reuse it. */
-	muse_cell me = _quq(_head(args)); args = _tail(args);
-	muse_cell predicate = _quq(_head(args)); args = _tail(args);
-	muse_cell mapper = _quq(_head(args)); args = _tail(args);
-	muse_cell list = _quq(_head(args));
+	me = _quq(_head(args)); args = _tail(args);
+	predicate = _quq(_head(args)); args = _tail(args);
+	mapper = _quq(_head(args)); args = _tail(args);
+	list = _quq(_head(args));
 
 	if ( list ) {
 		muse_cell thing = _cons( _head(list), MUSE_NIL );
