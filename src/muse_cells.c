@@ -307,7 +307,7 @@ int	muse_list_length( muse_env *env, muse_cell list )
 	while ( list )
 	{
 		++length;
-		list = _tail(list);
+		list = muse_tail(env,list);
 	}
 	
 	return length;
