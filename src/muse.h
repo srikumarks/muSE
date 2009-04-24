@@ -449,8 +449,9 @@ MUSEAPI const muse_char *muse_typename( muse_cell thing );
 MUSEAPI size_t		muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, const muse_char *format, ... );
 MUSEAPI void		muse_message( muse_env *env, const muse_char *context, const muse_char *format, ... );
 MUSEAPI muse_boolean muse_expect( muse_env *env, const muse_char *context, const muse_char *spec, ... );
-MUSEAPI muse_cell	muse_similar_symbol( muse_env *env, muse_cell symbol, int *distance );
+MUSEAPI muse_cell	muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance, muse_nativefn_t predicate, void *context );
 MUSEAPI muse_cell	muse_symbol_with_value( muse_env *env, muse_cell value );
+MUSEAPI muse_cell	muse_symbol_is_defined( muse_env *env, void *context, muse_cell symbol );
 /*@}*/
 
 /** @name Multilingual stuff */

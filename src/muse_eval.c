@@ -373,6 +373,11 @@ static muse_cell quick_unquote_list( muse_env *env, muse_cell list )
 	return list;
 }
 
+static muse_cell symbol_isa_fn( muse_env *env, void *context, muse_cell symbol )
+{
+	return _isfn(_symval(symbol)) ? _builtin_symbol(MUSE_T) : MUSE_NIL;
+}
+
 /**
  * Applies the given native function or lambda to the given
  * list of arguments and returns the result. The arguments
@@ -441,20 +446,20 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 					case MUSE_SYMBOL_CELL :
 						{
 							int dist = 0;
-							muse_cell sim = muse_similar_symbol( env, fn, &dist );
-							const muse_char *csim = muse_symbol_name( env, sim );
-							if ( dist >= 5 ) csim = L"...can't guess...";
+							muse_cell sim = muse_similar_symbol( env, fn, &dist, symbol_isa_fn, NULL );
+							int fn_len = (int)wcslen( muse_symbol_name(env,fn) );
+							int sim_len = (sim ? (int)wcslen( muse_symbol_name(env,sim) ) : 0);
 							muse_message( env, L"apply", 
 													L"You tried to use the undefined symbol [%m] as a function.\n"
 													L"in the expression - \n\n%m\n\n"
 													L"Maybe you meant [%s]?",
-												fn,
-												_cons( fn, args ),
-													csim );
+													fn,
+													_cons( fn, args ),
+													(dist >= min(fn_len,sim_len) ? L"...can't guess..." : muse_symbol_name( env, sim )) );
 						}
 						break;
 					default:
-						muse_message( env, L"apply", L"You tried to use the undefined symbol [%m] as a function\n"
+						muse_message( env, L"apply", L"You tried to use [%m] as a function\n"
 												L"in the expression -\n\n%m\n\n"
 												L"It will be considered as a list.",
 												fn, _cons( fn, args ) );

@@ -500,6 +500,7 @@ static size_t muse_vsprintf_object( muse_env *env, muse_char *buffer, size_t max
 static size_t muse_sprintf_object( muse_env *env, muse_char *buffer, size_t maxlen, muse_cell thing )
 {
 	size_t len = 0;
+	thing = _quq(thing);
 
 	switch ( _cellt(thing) )
 	{
@@ -824,6 +825,18 @@ MUSEAPI muse_boolean muse_expect( muse_env *env, const muse_char *context, const
 }
 
 /**
+ * Returns T if the given symbol is defined and () if it isn't.
+ * The design of this function might look too bloated 
+ * for just checking whether a symbol is defined or not.
+ * The signature is like this just so you can use it as an argument
+ * to muse_similar_symbol() to consider only defined symbols.
+ */
+MUSEAPI muse_cell muse_symbol_is_defined( muse_env *env, void *context, muse_cell symbol )
+{
+	return (_symval(symbol) == symbol) ? MUSE_NIL : _builtin_symbol(MUSE_T);
+}
+
+/**
  * Sometimes, it is useful to know whether another symbol 
  * that's very similar in textual representation from a
  * known symbol. For example, the user may make a spelling
@@ -837,8 +850,14 @@ MUSEAPI muse_boolean muse_expect( muse_env *env, const muse_char *context, const
  * two symbols if you supply an int pointer in \p outDistance. 
  * You can then use the distance measure to decide whether the 
  * similar symbol is worth bothering about.
+ *
+ * If you only want to consider certain types of symbols, you
+ * can give a predicate and an arbitrary context pointer that
+ * will be given to it. muse_symbol_is_defined can be used
+ * as a predicate, with a context pointer of NULL to consider
+ * only defined symbols.
  */
-MUSEAPI muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance )
+MUSEAPI muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance, muse_nativefn_t predicate, void *context )
 {
 	int distance = 0x7fffffff;
 	int result = MUSE_NIL;
@@ -865,7 +884,7 @@ MUSEAPI muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *out
 
 			/* Don't consider comparing the symbol with itself.
 			Ignore operators and special symbols. */
-			if ( s2 != symbol && isalpha(s2name[0]) )
+			if ( s2 != symbol && isalpha(s2name[0]) && (predicate ? predicate(env,context,s2) : MUSE_TRUE) )
 			{
 				int d = (int)levenshtein_distance( s1, s2name );
 				if ( d < distance )
@@ -1130,7 +1149,7 @@ static muse_boolean muse_test_one( muse_env *env, const muse_char *context, muse
 						else
 							muse_message( env,context, L"[%m] is expected to be %s.\n"
 												   L"Maybe you meant [%m] instead?",
-												   symbol, label, muse_similar_symbol(env,symbol,NULL) );
+												   symbol, label, muse_similar_symbol(env, symbol, NULL, muse_symbol_is_defined, NULL) );
 					}
 					else
 					{
