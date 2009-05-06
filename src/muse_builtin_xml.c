@@ -227,6 +227,19 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag );
 
 /**
+ * {xml}
+ * 
+ * Reads the XML expression immediately following {xml}
+ * as a value. This way you can use XML data inline in
+ * muSE code. 
+ */
+muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
+{
+	return muse_quote( env, xml_read_tag( env, muse_current_port( env, MUSE_STDIN_PORT, NULL ) ) );
+}
+
+
+/**
  * (read-xml port)
  *
  * Reads one xml node (a simple subset of xml) and returns it in the 

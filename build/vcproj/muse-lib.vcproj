@@ -342,6 +342,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_builtin_json.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_builtin_lambda.c"
 				>
 			</File>
