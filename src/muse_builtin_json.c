@@ -471,6 +471,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 
 static muse_cell json_read_array_expr_items( muse_env *env, muse_port_t p, muse_cell h, muse_cell t, int N );
 static muse_cell json_share_array_expr( muse_env *env, muse_cell arr );
+muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_array_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
@@ -480,7 +481,7 @@ static muse_cell json_read_array_expr( muse_port_t p )
 	return json_share_array_expr( 
 				env, 
 				_cons( 
-					_symval(_csymbol(L"vector")), 
+					_mk_nativefn(fn_vector_from_args,NULL),
 					json_read_array_expr_items( env, p, MUSE_NIL, MUSE_NIL, 0 ) ) );
 }
 
@@ -616,6 +617,7 @@ static muse_cell json_read_object_items( muse_env *env, muse_port_t p, muse_cell
 
 static muse_cell json_read_object_expr_items( muse_env *env, muse_port_t p, muse_cell h, muse_cell t, int sp );
 static muse_cell json_share_object_expr( muse_env *env, muse_cell objexpr );
+muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_object_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
@@ -626,8 +628,8 @@ static muse_cell json_read_object_expr( muse_port_t p )
 	{
 		muse_cell h = _cons( MUSE_NIL, MUSE_NIL );
 		int sp = _spos();
-		muse_cell t = _cons( _symval(_csymbol(L"list")), MUSE_NIL );
-		_setht( h, _symval(_csymbol(L"hashtable")), _cons( t, MUSE_NIL ) );
+		muse_cell t = _cons( _mk_nativefn(fn_list,NULL), MUSE_NIL );
+		_setht( h, _mk_nativefn(fn_alist_to_hashtable,NULL), _cons( t, MUSE_NIL ) );
 		_unwind(sp);
 		return json_share_object_expr( env, json_read_object_expr_items( env, p, h, t, sp ) );
 	}
@@ -659,7 +661,7 @@ static muse_cell json_read_object_expr_items( muse_env *env, muse_port_t p, muse
 					if ( json_is_constant(env, value) ) {
 						assoc = _cons( muse_quote( env, _cons( key, value ) ), MUSE_NIL );
 					} else {
-						assoc = _cons( _cons( _symval(_csymbol(L"cons")), _cons( muse_quote(env,key), _cons( value, MUSE_NIL ) ) ), MUSE_NIL );
+						assoc = _cons( _cons( _mk_nativefn(fn_cons,NULL), _cons( muse_quote(env,key), _cons( value, MUSE_NIL ) ) ), MUSE_NIL );
 					}
 					_sett( t, assoc );
 					t = assoc;
