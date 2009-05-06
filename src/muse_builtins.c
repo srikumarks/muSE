@@ -1255,7 +1255,7 @@ muse_cell fn_with_timeout_us( muse_env *env, void *context, muse_cell args )
  *
  * @note The \c add and \c sub recent results are not accessible to the
  * caller of \c h. Evaluating @code (the add) @endcode after evaluating
- * @code (h 5 2) @encode will result in a "recent item not found" message
+ * @code (h 5 2) @endcode will result in a "recent item not found" message
  * box. This is a very important property of \c the - its ability to
  * restrict the scope of the recent computations to the scope of user
  * defined functions so that callers can access the results of <em>their</em>

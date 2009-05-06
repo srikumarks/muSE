@@ -67,7 +67,7 @@ static void json_write_object( muse_port_t p, muse_cell obj );
  * definition of a complex nested data structure 
  * you need as a value in Scheme.
  *
- * The difference between (read-json) and {json}
+ * The difference between \ref fn_read_json "(read-json)" and {json}
  * is that (read-json) reads a constant JSON expression
  * which is therefore useful to parse query results
  * from servers. OTOH, {json} treats the following
@@ -80,7 +80,7 @@ static void json_write_object( muse_port_t p, muse_cell obj );
  * 'false' will end up as quoted symbols and the keyword 'null' will
  * end up being translated as (). Other than that, value
  * positions can use full Scheme expressions. Here is an example -
- * @begincode
+ * @code
  * >  (define (info name)
  *      {json}
  *      { "name" : name,
@@ -133,16 +133,19 @@ muse_cell fn_write_json( muse_env *env, void *context, muse_cell args )
  * (read-json port)
  * (read-json)
  *
- * Reads and returns a json compatible object - which is
+ * Reads and returns a JSON compatible object - which is
  * either a number, a string, a vector or a hashtable.
+ * The values in the vectors and hashtables themselves
+ * must be JSON compatible objects.
+ *
  * If you have nested containers expressed in JSON, you
  * can use the (get ...) function to index deeply into
  * the structure. For example,
- * @begincode
+ * @code
  *   > (define j (read-json))
  *   {"kind":"prime-numbers","message":[2,3,5,7,11,13,17]}
- *   {hashtable '(("message" . {vector 2 3 5 7 11 13 17}) ("kind" . "prime-numbers"))}
- *   > (get j "message" 4)
+ *   {hashtable '((message . {vector 2 3 5 7 11 13 17}) (kind . "prime-numbers"))}
+ *   > (get j 'message 4)
  *   11
  * @endcode
  */
