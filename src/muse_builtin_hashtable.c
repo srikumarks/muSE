@@ -380,7 +380,7 @@ static void hashtable_merge_one( muse_env *env, hashtable_t *h1, muse_cell key, 
 	muse_int hash = 0;
 	muse_cell *new_kv = hashtable_get( env, h1, key, &hash );
 	
-	if ( new_kv )
+	if ( new_kv && *new_kv )
 	{
 		/* Key already exists. */
 		if ( reduction_fn )
