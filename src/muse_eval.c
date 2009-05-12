@@ -378,6 +378,11 @@ static muse_cell symbol_isa_fn( muse_env *env, void *context, muse_cell symbol )
 	return _isfn(_symval(symbol)) ? _builtin_symbol(MUSE_T) : MUSE_NIL;
 }
 
+static inline intmin( int m, int n )
+{
+	return (m < n) ? m : n;
+}
+
 /**
  * Applies the given native function or lambda to the given
  * list of arguments and returns the result. The arguments
@@ -455,7 +460,7 @@ MUSEAPI muse_cell muse_apply( muse_env *env, muse_cell fn, muse_cell args, muse_
 													L"Maybe you meant [%s]?",
 													fn,
 													_cons( fn, args ),
-													(dist >= min(fn_len,sim_len) ? L"...can't guess..." : muse_symbol_name( env, sim )) );
+													(dist >= intmin(fn_len,sim_len) ? L"...can't guess..." : muse_symbol_name( env, sim )) );
 						}
 						break;
 					default:
