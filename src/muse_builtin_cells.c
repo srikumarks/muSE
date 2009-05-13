@@ -41,7 +41,7 @@ MUSEAPI muse_cell muse_get_meta( muse_env *env, muse_cell fn )
 		// No meta. Insert new meta object.
 		{
 			int sp = _spos();
-			muse_cell meta = muse_mk_anon_symbol(env);
+			muse_cell meta = fn_new( env, NULL, MUSE_NIL );
 			_sett( fn, _cons(-meta,body) );
 			_unwind(sp);
 			return meta;
@@ -57,7 +57,7 @@ muse_cell meta_getname( muse_env *env, muse_cell fn )
 {
 	muse_cell meta = muse_get_meta( env, fn );
 	if ( meta )
-		return _tail(muse_search_object( env, meta, _builtin_symbol(MUSE_NAME) ));
+		return muse_get( env, meta, _builtin_symbol(MUSE_NAME), MUSE_NIL );
 	else
 		return MUSE_NIL;
 }
@@ -65,8 +65,13 @@ muse_cell meta_getname( muse_env *env, muse_cell fn )
 muse_cell meta_putname( muse_env *env, muse_cell fn, muse_cell name )
 {
 	muse_cell meta = muse_get_meta( env, fn );
-	if ( meta )
-		muse_put_prop( env, meta, _builtin_symbol(MUSE_NAME), name );
+	if ( meta ) {
+		int sp = _spos();
+		muse_cell argcell = _cons(name,MUSE_NIL);
+		muse_put( env, meta, _builtin_symbol(MUSE_NAME), argcell );
+		_unwind(sp);
+		_returncell(argcell);
+	}
 	return meta;
 }
 

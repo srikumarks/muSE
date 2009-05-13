@@ -141,11 +141,10 @@ muse_cell fn_number( muse_env *env, void *context, muse_cell args );
 
 /** @addtogroup ObjectSystem Object system */
 /*@{*/
-muse_cell fn_class( muse_env *env, void *context, muse_cell args );
 muse_cell fn_new( muse_env *env, void *context, muse_cell args );
-muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args );
-muse_cell fn_send( muse_env *env, void *context, muse_cell args );
-muse_cell fn_send_super( muse_env *env, void *context, muse_cell args );
+muse_cell fn_supers( muse_env *env, void *context, muse_cell args );
+muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args );
+muse_cell fn_super_invoke_explicit( muse_env *env, void *context, muse_cell args );
 muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args );
 /*@}*/
 

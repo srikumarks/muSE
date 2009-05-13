@@ -53,7 +53,8 @@ static muse_cell json_read_object_expr( muse_port_t p );
 static void json_write( muse_port_t p, muse_cell thing );
 static void json_write_number( muse_port_t p, muse_cell num );
 static void json_write_string( muse_port_t p, muse_cell str );
-static void json_write_array( muse_port_t p, muse_cell arr );
+static void json_write_vector( muse_port_t p, muse_cell arr );
+static void json_write_hash( muse_port_t p, muse_cell obj );
 static void json_write_object( muse_port_t p, muse_cell obj );
 
 /**
@@ -719,8 +720,10 @@ static void json_write( muse_port_t p, muse_cell thing )
 			case MUSE_NATIVEFN_CELL:
 				{
 					if ( muse_functional_object_data( env, thing, 'vect' ) ) {
-						json_write_array( p, thing );
+						json_write_vector( p, thing );
 					} else if ( muse_functional_object_data( env, thing, 'hash' ) ) {
+						json_write_hash( p, thing ); 
+					} else if ( muse_functional_object_data( env, thing, 'mobj' ) ) {
 						json_write_object( p, thing ); 
 					} else {
 						muse_raise_error( env, _csymbol(L"json:invalid-json-type"), thing );
@@ -772,7 +775,7 @@ static void json_write_string( muse_port_t p, muse_cell str )
 	port_putc( '"', p );
 }
 
-static void json_write_array( muse_port_t p, muse_cell arr )
+static void json_write_vector( muse_port_t p, muse_cell arr )
 {
 	muse_env *env = p->env;
 	int len = muse_vector_length( env, arr );
@@ -790,7 +793,7 @@ static void json_write_array( muse_port_t p, muse_cell arr )
 
 muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args );
 
-static void json_write_object( muse_port_t p, muse_cell obj )
+static void json_write_hash( muse_port_t p, muse_cell obj )
 {
 	muse_env *env = p->env;
 	int sp = _spos();
@@ -803,6 +806,24 @@ static void json_write_object( muse_port_t p, muse_cell obj )
 		port_putc(':',p);
 		json_write(p,_tail(ht));
 		if ( alist )
+			port_putc( ',', p );
+	}
+	port_putc( '}', p );
+}
+
+muse_cell object_plist( muse_env *env, muse_cell obj );
+
+static void json_write_object( muse_port_t p, muse_cell obj )
+{
+	muse_env *env = p->env;
+	muse_cell plist = object_plist( env, obj );
+	port_putc( '{', p );
+	while ( plist ) {
+		muse_cell ht = _next(&plist);
+		json_write_string(p, _symname(_head(ht)));
+		port_putc(':',p);
+		json_write(p,_tail(ht));
+		if ( plist )
 			port_putc( ',', p );
 	}
 	port_putc( '}', p );

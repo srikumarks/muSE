@@ -146,13 +146,11 @@ static const struct _builtins
 {		L"reverse!",	fn_reverse_inplace	},
 	
 /************** Classes ***************/
-{		L"class",		fn_class			},
 {		L"new",			fn_new				},
-{		L"->",			fn_obj_pty			},
-{		L"send",		fn_send				},
-{		L"send-super",	fn_send_super		},
-{		L"<-",			fn_send				},
-{		L"<<-",			fn_send_super		},
+{		L"object",		fn_new				},
+{		L"supers",		fn_supers			},
+{		L"super-invoke",	fn_super_invoke	},
+{		L"super-invoke*",	fn_super_invoke_explicit	},
 {		L"isa?",		fn_isa_p			},
 	
 /************** Ports ***************/

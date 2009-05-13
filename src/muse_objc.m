@@ -31,8 +31,8 @@ typedef struct
 	muse_boolean compiled;
 } compiled_sel_t;
 
-muse_cell fn_send( muse_env *env, void *context, muse_cell args );
-muse_cell fn_send_super( muse_env *env, void *context, muse_cell args );
+muse_cell fn_supers( muse_env *env, compiled_sel_t *sel, muse_cell args );
+muse_cell fn_super_invoke_explicit( muse_env *env, compiled_sel_t *sel, muse_cell args );
 muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args );
 muse_cell fn_objc_class( muse_env *env, Class c, muse_cell args );
 muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell args );
@@ -535,13 +535,11 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 		} else if ( objcell == muse_builtin_symbol( env, MUSE_SUPER ) ) {
 			// Not an objc symbol and refers to the super tree.
 			muse_cell obj = _symval(sel->sym_self);
-			return fn_send_super( env, NULL, _cons( _qq(_tail(muse_get_prop(env,obj,objcell))), 
-													_cons( obj,
-														   _cons( _qq(objcell), args ) ) ) );																	  
+			return fn_super_invoke_explicit( env, NULL, _cons( obj, _cons( _qq(fn_supers(env,NULL,_cons(obj,MUSE_NIL))), _cons( _qq(objcell), args ) ) ) );
 		} else if ( _cellt(objcell) == MUSE_SYMBOL_CELL ) {
 			// Not an objc class symbol.
 			// Send the message to the muSE object.
-			return fn_send( env, NULL, _cons( _qq(objcell), _cons( _qq(sel->sym), args ) ) );
+			return muse_apply( env, objcell, _cons( _qq(sel->sym), args ), MUSE_FALSE, MUSE_FALSE );
 		}
 	}
 	
@@ -752,7 +750,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	_unwind(sp);
 	
 	{
-		muse_cell impl = muse_search_object( env, obj, museSel );
+		muse_cell impl = muse_get( env, obj, museSel, MUSE_NIL );
 		return impl ? YES : NO;
 	}
 }
@@ -786,7 +784,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 		_unwind(sp);
 		
 		{
-			muse_cell impl = muse_search_object( env, obj, museSel );
+			muse_cell impl = muse_get( env, obj, museSel, MUSE_NIL );
 			if ( impl )
 				nargs = muse_list_length(env,_head(_tail(impl))) - 1;
 		}
@@ -924,7 +922,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	int sp = _spos();
 	muse_cell sym = muse_csymbol_utf8( env, [key UTF8String] );
 	
-	muse_cell kvpair = muse_search_object( env, obj, sym );
+	muse_cell kvpair = muse_get( env, obj, sym, MUSE_NIL );
 	
 	muse_cell val = _tail(kvpair);
 	
@@ -947,13 +945,13 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 {
 	char name[256];
 	[self performSelector:sel withObject:key];
-	muse_cell affected = _tail(muse_search_object( env, obj, dependenciesSym ));
+	muse_cell affected = _tail(muse_get( env, obj, dependenciesSym, MUSE_NIL ));
 	switch ( _cellt(affected) ) {
 		case MUSE_CONS_CELL : // Assoc list.
 			affected = _tail(muse_assoc(env,affected,sym));
 			break;
 		case MUSE_SYMBOL_CELL : // Object
-			affected = _tail(muse_search_object(env,affected,sym));
+			affected = _tail(muse_get(env,affected,sym,MUSE_NIL));
 			break;
 		case MUSE_LAMBDA_CELL : // fn(self,key) returning list of affected keys.
 			affected = muse_apply( env, affected, _cons(obj,_cons(sym,MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
@@ -973,7 +971,7 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 	int sp = _spos();
 	muse_cell sym = muse_csymbol_utf8( env, [key UTF8String] );
 	
-	muse_cell kvpair = muse_search_object( env, obj, sym );
+	muse_cell kvpair = muse_get( env, obj, sym, MUSE_NIL );
 	
 	muse_cell oldval = _tail(kvpair);
 	

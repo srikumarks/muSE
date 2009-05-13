@@ -89,7 +89,7 @@ static void notify( muse_env *env, muse_cell key, NSString *keyStr, id obj, SEL 
 
 static muse_cell getval( muse_env *env, muse_cell obj, muse_cell key )
 {
-	muse_cell val = obj ? _tail(muse_search_object(env,obj,key)) : _symval(key);
+	muse_cell val = obj ? _tail(muse_get(env,obj,key,MUSE_NIL)) : _symval(key);
 	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
 		val = muse_apply( env, val, obj ? _cons(obj,MUSE_NIL) : MUSE_NIL, MUSE_TRUE, MUSE_FALSE );
 	}
@@ -98,11 +98,13 @@ static muse_cell getval( muse_env *env, muse_cell obj, muse_cell key )
 
 static void setval( muse_env *env, muse_cell obj, muse_cell key, muse_cell oldval, muse_cell newval )
 {
-	muse_cell val = oldval ? oldval : (obj ? _tail(muse_search_object(env,obj,key)) : _symval(key));
+	muse_cell val = oldval ? oldval : (obj ? _tail(muse_get(env,obj,key,MUSE_NIL)) : _symval(key));
 	if ( _cellt(val) == MUSE_LAMBDA_CELL ) {
 		val = muse_apply( env, val, (obj ? _cons(obj,_cons(newval,MUSE_NIL)) : _cons(newval,MUSE_NIL)), MUSE_TRUE, MUSE_FALSE );
 	} else if ( obj ) {
-		muse_put_prop( env, obj, key, newval );
+		muse_cell cont = _cons( newval, MUSE_NIL );
+		muse_put( env, obj, key, cont );
+		_returncell(cont);
 	} else {
 		_define( key, newval );
 	}
@@ -118,7 +120,7 @@ static void notify( muse_env *env, muse_cell key, NSString *keyStr, id obj, SEL 
 			deps = _tail(muse_assoc(env,deps,key));
 			break;
 		case MUSE_SYMBOL_CELL : // Object.
-			deps = _tail(muse_search_object(env,deps,key));
+			deps = _tail(muse_get(env,deps,key,MUSE_NIL));
 			break;
 		case MUSE_LAMBDA_CELL : // fn(key) that returns a list of keys to update when key changes.
 			deps = muse_apply( env, deps, _cons(key,MUSE_NIL), MUSE_TRUE, MUSE_FALSE );

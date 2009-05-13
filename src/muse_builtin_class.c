@@ -11,331 +11,374 @@
 
 
 #include "muse_builtins.h"
+#include "muse_port.h"
+#include <memory.h>
 
-/**
- * (class name super-tree  plist).
- * Syntax -
- * @code
- * (class class-name-symbol
- *        list-of-super-classes
- *        class-property-list...)
- * @endcode
- * 
- * Returns a new class object - a symbol that has a certain
- * set of properties that can be inherited by "derived" objects.
- * muSE's class system is prototype based. A class is like an
- * object prototype and the inheritance tree of an object actually
- * traces which objects it is prototyped from. Almost the only
- * difference between \ref fn_class "class" and \ref fn_new "new" 
- * is the syntax.
- *
- * The \p list-of-super-classes parameter is a list each of
- * whose elements are evaluated and the result taken to be a
- * super class. This list therefore does not need to have the
- * \c list function call at the head.
- *
- * The \p class-property-list is not part consists of two-element
- * lists where the head specifies the property symbol (in unquoted form)
- * and the second element specifies the value of the property or method.
- * 
- * For example, here is a \c &lt;size&gt; class that has a width
- * and height and can compute its area.
- * @code
- * (class <size>			; The symbol <size> will have the class object as its value.
- *        ()            		; Empty super tree
- *        (width 320)		; Default width of 320
- *        (height 240)		; Default height of 240
- *        (area (fn (self) 	; area method to compute the area of a size object.
- *                (* (-> self 'width) 
- *                   (-> self 'height)))))
- * @endcode
- *
- * The notion of a class in muSE is very dynamic. You can add 
- * properties and methods to classes after defining them, you can
- * change the inheritance hierarchy of an object at run time, etc.
- *
- * Classes are also values and for all practical purposes are 
- * indistinguishable from objects. So definitions can be within
- * modules, exported from modules, etc. just like other values.
- * Also, you can have private class definitions within modules,
- * just like normal values.
- *
- * If you want to refer to a class by value before its
- * definition, you can "forward declare" it like this -
- * @code (class ClassName) @endcode 
- * What this does is to define a class with an empty body
- * and an empty supers list so that a following definition
- * can add to the properties and supers.
- * 
- * @see fn_new   
- */
-muse_cell fn_class( muse_env *env, void *context, muse_cell args )
+
+typedef struct { muse_boolean inherited; muse_cell key, kvpair; } assoc_t;
+enum { 
+	ASSOC_CACHE_KEY_BITS = 4, 
+	ASSOC_CACHE_SIZE = 1 << ASSOC_CACHE_KEY_BITS, 
+	ASSOC_CACHE_MASK = ASSOC_CACHE_SIZE - 1 
+};
+
+typedef struct 
 {
-	muse_cell className = _next(&args);
-	muse_cell currentClassDef = _symval(className);
-	muse_cell classDef = MUSE_NIL;
-	int sp = 0;
+	muse_functional_object_t base;
+	muse_cell self;
+	muse_cell supers;
+	muse_cell plist;
+	assoc_t cache[ASSOC_CACHE_SIZE];
+} object_t;
 
-	/* We do the define right at the beginning so that
-	methods can create instances of this class without
-	referring to it by name alone. */
-	if ( currentClassDef == className ) {
-		classDef = muse_mk_anon_symbol(env);
-		_define( className, classDef );
-	} else {
-		/* Extend the current class definition. 
-		This way, all objects that inherit from this
-		class automatically get the extended features. */
-		classDef = currentClassDef;
-	}
+static muse_cell object_get_prop( muse_env *env, void *self, muse_cell key, muse_cell argv );
+static muse_cell object_put_prop( muse_env *env, void *self, muse_cell key, muse_cell argv );
 
-	sp = _spos();
+static muse_prop_view_t g_object_prop_view = {
+	object_get_prop,
+	object_put_prop
+};
 
-	/* Specify the super list. If the class is already defined,
-	this new definition serves to extend the previous one. The
-	new super list gets priority over the earlier defined ones. */
-	{
-		muse_cell newsupers = muse_eval_list( env, _next(&args) );
-		muse_cell supers = _get_prop( classDef, _builtin_symbol(MUSE_SUPER) );
-		if ( supers )
-			_sett( supers, muse_list_append( env, newsupers, _tail(supers) ) );
-		else
-			_put_prop( classDef, _builtin_symbol(MUSE_SUPER), newsupers );
-	}
+static void object_init( muse_env *env, void *ptr, muse_cell args )
+{
+	object_t *obj = (object_t*)ptr;
 
-	while ( args )
-	{
-		muse_cell pty = _head(args);
-		
-		_put_prop( classDef, _head(pty), _eval(_head(_tail(pty))) );
-		
+	obj->supers = _evalnext(&args);
+	obj->plist = MUSE_NIL;
+
+	while ( args ) {
+		int sp = _spos();
+		muse_cell key = _evalnext(&args);
+		muse_cell value = _evalnext(&args);
+
+		obj->plist = _cons( _cons( key, value ), obj->plist );
 		_unwind(sp);
-
-		args = _tail(args);
 	}
 
-	return classDef;
+	memset( obj->cache, 0, sizeof(obj->cache) );
 }
 
+static void *object_view( muse_env *env, int id ) 
+{
+	if ( id == 'prop' )
+		return &g_object_prop_view;
+	else
+		return NULL;
+}
+
+static void object_mark( muse_env *env, void *obj )
+{
+	muse_mark( env, ((object_t*)obj)->supers );
+	muse_mark( env, ((object_t*)obj)->plist );
+}
+
+static void object_destroy( muse_env *env, void *obj )
+{
+}
+
+static void object_write( muse_env *env, void *_self, void *_port )
+{
+	object_t *self = (object_t*)_self;
+	muse_port_t port = (muse_port_t)_port;
+
+	port_write( "{object ", 8, port );
+	muse_pwrite( port, self->supers );
+
+	{
+		muse_cell plist = self->plist;
+		while ( plist ) {
+			muse_cell kv = _next(&plist);
+			port_putc( ' ', port );
+			port_putc( '\'', port );
+			muse_pwrite( port, _head(kv) );
+			port_putc( ' ', port );
+			port_putc( '\'', port );
+			muse_pwrite( port, _tail(kv) );
+		}
+	}
+	port_putc( '}', port );
+}
+
+muse_cell object_plist( muse_env *env, muse_cell obj )
+{
+	return ((object_t*)muse_functional_object_data( env, obj, 'mobj' ))->plist;
+}
+
+static muse_cell fn_object_fn( muse_env *env, object_t *obj, muse_cell args )
+{
+	muse_cell key = _evalnext(&args);
+	muse_cell method = object_get_prop( env, obj, key, MUSE_NIL );
+
+	return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->self, args ), MUSE_FALSE, MUSE_FALSE ) );
+}
+
+static muse_functional_object_type_t g_object_type =
+{
+	'muSE',
+	'mobj',
+	sizeof(object_t),
+	(muse_nativefn_t)fn_object_fn,
+	object_view,
+	object_init,
+	object_mark,
+	object_destroy,
+	object_write
+};
+
+
 /**
- * (new supers plist).
- * Syntax -
+ * (new supers-list prop1 value1 prop2 value2 ...)
+ * (new supers-list)
+ * (new)
+ *
+ * Creates an "object" that you can use for OOP.
+ * \ref fn_get "get" gets properties of the object
+ * (even if nested) and \ref fn_put "put" sets
+ * properties of objects, even if nested. You can
+ * use "object" instead of "new" for clarity. They
+ * are synonyms.
+ *
+ * \ref fn_get "get" searches the object's hierarchy
+ * for the property if it is not found in the object 
+ * itself. \ref fn_put "put" always modifies only
+ * the object's own properties, even if nested.
+ *
+ * The result of the most recent get or put operation 
+ * can be obtained using \ref fn_the "the" by giving the
+ * property key as the argument. For example -
  * @code
- * (new [super-class | list-of-super-classes]
- *      optional-property-list)
+ * > (new () 'message "hi there!")
+ * > (get (the object) 'message)
+ * hi there!
+ * > (write (the 'message))
+ * "hi there!"
  * @endcode
- * 
- * Creates a new object with the given properties overriding the class's properties.
- * The list of super classes of an object is available as the object's \c super
- * property. You can get this property using the expression -
+ *
+ * Using the object in the function position with
+ * a method key as the first argument will invoke
+ * the corresponding method on the object. The result
+ * of the most recent method invocation can be accessed
+ * using \ref fn_the "the" by supplying the method key.
+ * For example -
  * @code
- * (-> obj 'super)
+ * > (define o (object () 'task (fn (self) (print "did task") "result")))
+ * > (o 'task)
+ * did task
+ * result
+ * > (write (the 'task))
+ * "result"
  * @endcode
- * 
- * For example, here is an instance of the \c <size> class -
- * @code
- * (define pal-video-size (new '<size> '((width . 720) (height . 576))))
- * @endcode
- * 
- * Now you can compute the number of pixels in a PAL video frame using
- * the expression -
- * @code
- * (<- pal-video-size 'area)
- * @endcode
- * 
- * @see fn_send
- * @see fn_class
+ *
+ * You can use \ref fn_super_invoke "super-invoke"
+ * to call methods defined in the super objects.
+ *
+ * You can edit an object's supers list using
+ * \ref fn_supers "supers".
+ *
+ * @note Property and method access will be fastest
+ * if keyed by a symbol since symbol equality can
+ * be tested by an int comparison.
  */
 muse_cell fn_new( muse_env *env, void *context, muse_cell args )
 {
-	if ( !args )
-		return _mk_anon_symbol();
-	else
-	{
-		muse_cell className = _evalnext(&args);
-		muse_cell obj = _mk_anon_symbol();
-	
-		muse_cell supers = MUSE_NIL;
-		switch ( _cellt(className) )
-		{
-			case MUSE_SYMBOL_CELL : supers = _cons( className, MUSE_NIL ); break;
-			case MUSE_CONS_CELL : supers = className; break;
-			default :
-				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(new >>class/-or-supers<< ...)",
-									   L"v|??|", className, MUSE_SYMBOL_CELL, MUSE_CONS_CELL ) )
-					{
-						muse_message( env, L"(new >>class-or-supers<< ...)",
-									  L"new's first argument is expected to be a class symbol\n"
-									  L"or a list of super class symbols." );
+	muse_cell obj = _mk_functional_object( &g_object_type, args );
+	((object_t*)_fnobjdata(obj))->self = obj;
+	return muse_add_recent_item( env, (muse_int)fn_new, obj );
+}
+
+/**
+ * (supers object)
+ *
+ * Gets the object's supers list. 
+ *
+ * (supers object supers-list)
+ *
+ * Sets the object's supers list to the one given. If you
+ * modify the list returned by (supers object), do call (supers object supers-list)
+ * to tell the object that its supers list has changed.
+ */
+muse_cell fn_supers( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell orig_args = args;
+	muse_cell obj = _evalnext(&args);
+	object_t *it = (object_t*)muse_functional_object_data( env, obj, 'mobj' );
+	if ( it ) {
+		if ( args ) {
+			/* Change supers list. */
+			it->supers = _evalnext(&args);
+
+			/* Invalidate cache. */
+			memset( it->cache, 0, sizeof(it->cache) );
+		}
+
+		return it->supers;
+	} else {
+		return muse_raise_error( env, _csymbol(L"supers:object-expected"), orig_args );
+	}
+}
+
+
+static inline int keyindex( muse_cell key )
+{
+	return (int)(_celli(key) & ASSOC_CACHE_MASK);
+}
+
+static muse_cell object_cache( object_t *self, int keyi, muse_cell key, muse_cell kvpair, muse_boolean inherited )
+{
+	assoc_t *a = self->cache + keyi;
+	a->inherited = inherited;
+	a->key = key;
+	a->kvpair = kvpair;
+	return kvpair;
+}
+
+static muse_cell object_search_prop( muse_env *env, object_t *self, muse_cell key, muse_boolean *inherited, muse_boolean search_hierarchy )
+{
+	int keyi = keyindex(key);
+
+	if ( self->cache[keyi].key == key ) {
+		/* Cache hit. */
+		muse_cell kv = self->cache[keyi].kvpair;
+		if ( inherited ) (*inherited) = self->cache[keyi].inherited;
+		return kv;
+	} else {
+		/* Cache miss. */
+		muse_cell kv = muse_assoc( env, self->plist, key );
+		if ( kv ) {
+			/* Found in current object. Store in cache. */
+			if ( inherited ) (*inherited) = MUSE_FALSE;
+			return object_cache( self, keyi, key, kv, MUSE_FALSE );
+		} else if ( search_hierarchy ) {
+			/* Not found. Search hierarchy. */
+			muse_cell supers = self->supers;
+			muse_cell kv = MUSE_NIL;
+			while ( supers && !kv ) {
+				muse_cell super = _next(&supers);
+				object_t *superobj = (object_t*)muse_functional_object_data( env, super, 'mobj' );
+				if ( superobj ) {
+					kv = object_search_prop( env, superobj, key, NULL, MUSE_TRUE );
+					if ( kv ) {
+						if ( inherited ) (*inherited) = MUSE_TRUE;
+						return object_cache( self, keyi, key, kv, MUSE_TRUE );
 					}
-				});
+				} else {
+					return MUSE_NIL;
+				}
+			}
+			return MUSE_NIL;
+		} else {
+			/* Not found anywhere. */
+			return MUSE_NIL;
 		}
-		
-		_put_prop( obj, _builtin_symbol(MUSE_SUPER), supers );
-		
-		if ( args )
-		{
-			/* Append the given plist to it. */
-			muse_list_append( env, _tail(obj), _evalnext(&args) );
+	}
+}
+
+static muse_cell object_get_prop( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+	object_t *obj = (object_t*)self;
+
+	muse_cell kv = object_search_prop( env, obj, key, NULL, MUSE_TRUE );
+	if ( kv ) {
+		/* Found. */
+		if ( argv ) {
+			return muse_get( env, muse_add_recent_item( env, key, _tail(kv) ), _head(argv), _tail(argv) );
+		} else {
+			return muse_add_recent_item( env, key, _tail(kv) );
 		}
-		
-		return obj;
-	}
-}
-
-static muse_cell search_class_hierarchy( muse_env *env, muse_cell classHierarchy, muse_cell member )
-{
-	while ( classHierarchy )
-	{
-		muse_cell parent = _head(classHierarchy);
-
-		/* Search specified class. */
-		muse_cell result = _get_prop( parent, member );
-		if ( result )
-			return result;
-
-		/* Method not available in class. Search super classes. */
-		result = search_class_hierarchy( env, _tail(_get_prop( parent, _builtin_symbol(MUSE_SUPER) )), member );
-		if ( result )
-			return result;
-		
-		classHierarchy = _tail(classHierarchy);
-	}
-	
-	return MUSE_NIL;
-}
-
-/**
- * Searches the given object and its inheritance hierarchy for 
- * the given member property. Evaluates to the property-value
- * cons pair if it was found anywhere in the hierarchy, or to
- * () (= MUSE_NIL) if the member doesn't exist.
- */
-MUSEAPI muse_cell muse_search_object( muse_env *env, muse_cell obj, muse_cell member )
-{
-	muse_cell prop = _get_prop( obj, member );
-	
-	if ( prop )
-		return prop;
-	else
-	{
-		muse_cell classHierarchy = _tail(_get_prop( obj, _builtin_symbol(MUSE_SUPER) ));
-		return search_class_hierarchy( env, classHierarchy, member );
-	}
-}
-
-
-/**
- * (<- obj msg [args]).
- * Syntax -
- * @code
- * (<- obj message-symbol arg1 arg2 ...)
- * @endcode
- * The notation <tt>&lt;-</tt> for \c fn_send is to imply the notion of
- * sending a message to the object. "Sending a message" is the same as
- * "invoking a method". A message handler is the looked up in the object's
- * inheritance hierarchy and invoked with the object as the first
- * argument, usually named \c self. The additional arguments are passed to
- * the message handler function as is.
- * 
- * \c fn_send is technically equivalent to writing -
- * @code
- * ((-> obj message-symbol) obj arg1 arg2 ...)
- * @endcode
- * 
- * @see fn_new
- * @see fn_obj_pty
- */
-muse_cell fn_send( muse_env *env, void *context, muse_cell args )
-{
-	muse_cell obj			= _evalnext(&args);
-	muse_cell memberName	= _evalnext(&args);
-	muse_cell member		= muse_search_object( env, obj, memberName );
-	muse_cell memberVal		= _tail(member);
-	
-	/* If we're calling send, the member is expected to be a function
-	   we can call. */
-	if ( memberVal )
-		return _lapply( memberVal, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
-	else
+	} else {
 		return MUSE_NIL;
-}
-
-/**
- * (<<- [class(es)] obj method-symbol arg1 arg2 etc).
- * 
- * Use for invoking methods in specific super classes of an objecct
- * instead of following the object's original inheritance hierarchy.
- * This super class method invocation is normally for use within
- * message handler functions and is technically equivalent to -
- * @code
- * ((-> super-class method-symbol) obj arg1 arg2 etc)
- * @endcode
- *
- * You can give a list of super-classes to search for the given method.
- * This way, a message handler can surreptituosly change the inheritance 
- * hierarchy.
- *
- * This function is really very liberal with what it accepts.
- * It is not necessary for the given classes to be anywhere in
- * the object's inheritance hierarchy, for example. So you can
- * do delegation within a single method.
- * 
- * @see fn_send
- * @see fn_new
- */
-muse_cell fn_send_super( muse_env *env, void *context, muse_cell args )
-{
-	muse_cell classes		= _evalnext(&args);
-	muse_cell obj			= _evalnext(&args);
-	muse_cell methodName	= _evalnext(&args);
-	muse_cell methodEntry	= (_cellt(classes) == MUSE_CONS_CELL) 
-								? search_class_hierarchy( env, classes, methodName )
-								: muse_search_object( env, classes, methodName );
-	muse_cell method		= _tail(methodEntry);
-	
-	if ( method )
-		return _lapply( method, _cons( obj, muse_eval_list(env,args) ), MUSE_TRUE );
-	else
-		return MUSE_NIL;
-}
-
-/**
- * (-> obj pty [value]).
- * Syntax to retrieve an object's property -
- * @code
- * (-> obj property-name)
- * @endcode
- * 
- * Syntax to set an object's property -
- * @code
- * (-> obj property-name value)
- * @endcode
- * 
- * The \c -> notation is to mimic the C++ style indirection
- * operator for accessing an object's member variables and functions.
- * 
- * @see fn_send
- * @see fn_new
- */
-muse_cell fn_obj_pty( muse_env *env, void *context, muse_cell args )
-{
-	muse_cell obj			= _evalnext(&args);
-	muse_cell memberName	= _evalnext(&args);
-	
-	if ( args )
-	{
-		/* Argument given. We should set the member value. */
-		return _tail( muse_put_prop( env, obj, memberName, _evalnext(&args) ) );
-	}
-	else
-	{
-		/* Argument not given. We should get the member value. */
-		return _tail(muse_search_object( env, obj, memberName ));
 	}
 }
 
+static muse_cell object_put_prop( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+	object_t *obj = (object_t*)self;
+	muse_boolean inherited = MUSE_FALSE;
+
+	muse_cell kv = object_search_prop( env, obj, key, &inherited, MUSE_FALSE );
+	muse_cell val = _next(&argv);
+	if ( kv && !inherited ) {
+		/* Found. */
+		if ( argv ) {
+			return muse_put( env, muse_add_recent_item( env, key, _tail(kv) ), val, argv );
+		} else {
+			_sett( kv, val );
+			return muse_add_recent_item( env, key, val );
+		}
+	} else {
+		/* Not found in object (even if found in parent). Add to object. */
+		int keyi = keyindex(key);
+		if ( argv ) {
+			/* If deep property setting, create an object. */
+			muse_cell newobj = fn_new( env, NULL, MUSE_NIL );
+			kv = _cons( key, newobj );
+			obj->plist = _cons( kv, obj->plist );
+			object_cache( obj, keyi, key, kv, MUSE_FALSE );
+			return muse_put( env, muse_add_recent_item( env, key, newobj ), val, argv );
+		} else {
+			kv = _cons( key, val );
+			obj->plist = _cons( kv, obj->plist );
+			object_cache( obj, keyi, key, kv, MUSE_FALSE );
+			return muse_add_recent_item( env, key, val );
+		}
+	}
+}
+
+static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, muse_cell methodkey, muse_cell args )
+{
+	while ( supers ) {
+		muse_cell super = _next(&supers);
+		muse_cell method = muse_get( env, super, methodkey, MUSE_NIL );
+		if ( method ) {
+			return muse_add_recent_item( 
+						env, 
+						methodkey,
+						muse_apply( env, method, _cons( self->self, args ), MUSE_FALSE, MUSE_FALSE ) );
+
+		} 
+	}
+
+	return muse_raise_error( env, _csymbol(L"super-invoke:method-not-found"), methodkey );
+}
+
+/**
+ * (super-invoke obj 'method-name . args)
+ *
+ * Invokes a method definition searching the super list
+ * without searching the object's own property list.
+ */
+muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell obj = _evalnext(&args);
+	muse_cell methodkey = _evalnext(&args);
+	object_t *it = (object_t*)muse_functional_object_data( env, obj, 'mobj' );
+	if ( it ) {
+		return super_invoke( env, it, it->supers, methodkey, args );
+	} else {
+		return muse_raise_error( env, _csymbol(L"super-invoke:object-expected"), obj );
+	}
+}
+
+/**
+ * (super-invoke* obj supers-list 'method-name . args)
+ *
+ * Invokes a method definition searching the *given* super list
+ * without searching the object's own property list.
+ * @code (super-invoke obj methodkey . args) @endcode is equivalent to
+ * @code (super-invoke* obj (supers obj) methodkey . args) @endcode
+ */
+muse_cell fn_super_invoke_explicit( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell obj = _evalnext(&args);
+	object_t *it = (object_t*)muse_functional_object_data( env, obj, 'mobj' );
+	if ( it ) {
+		muse_cell supers = _evalnext(&args);
+		muse_cell methodkey = _evalnext(&args);
+		return super_invoke( env, it, supers, methodkey, args );
+	} else {
+		return muse_raise_error( env, _csymbol(L"super-invoke:object-expected"), obj );
+	}
+}
 
 /**
  * Either x == type or x inherits from type directly or indirectly.
@@ -347,7 +390,7 @@ static muse_cell is_parent_of( muse_env *env, muse_cell type, muse_cell x, muse_
 	if ( type == x )
 		return retval;
 	else {
-		muse_cell supers = _get_prop( x, _builtin_symbol(MUSE_SUPER) );
+		muse_cell supers = ((object_t*)muse_functional_object_data( env, x, 'mobj' ))->supers;
 		while ( supers ) {
 			muse_cell a = is_parent_of( env, type, _next(&supers), retval );
 			if ( a ) return retval;
@@ -369,7 +412,7 @@ muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args )
 	muse_cell type = _evalnext(&args);
 	muse_cell x = _evalnext(&args);
 
-	if ( _cellt(type) == MUSE_SYMBOL_CELL && _cellt(x) == MUSE_SYMBOL_CELL ) {
+	if ( muse_functional_object_data( env, type, 'mobj' ) && muse_functional_object_data( env, x, 'mobj' ) ) {
 		return is_parent_of( env, type, x, x );		
 	} else {
 		return _cellt(x) == _cellt(type) ? type : MUSE_NIL;

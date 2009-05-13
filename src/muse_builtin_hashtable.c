@@ -288,7 +288,7 @@ static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key, m
 
 	if ( *kvpair ) {
 		muse_cell val = _tail( _head( *kvpair ) );
-		return argv ? muse_get( env, val, _head(argv), _tail(argv) ) : val;
+		return argv ? muse_get( env, muse_add_recent_item( env, key, val ), _head(argv), _tail(argv) ) : val;
 	} else {
 		/* key doesn't exist. Try to compute using the func spec. */
 		muse_cell value = MUSE_NIL;
@@ -301,7 +301,8 @@ static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key, m
 		if ( value )
 			hashtable_add( env, h, key, value, &hash );
 
-		return argv ? muse_get( env, value, _head(argv), _tail(argv) ) : value;
+		return argv ? muse_get( env, muse_add_recent_item( env, key, value ), _head(argv), _tail(argv) ) 
+					: muse_add_recent_item( env, key, value );
 	}
 }
 
@@ -315,10 +316,10 @@ static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, m
 		{
 			/* It already exists. Simply change the value to the new one. */
 			if ( argv ) {
-				return muse_put( env, _tail(_head(*kvpair)), value, argv );
+				return muse_put( env, muse_add_recent_item( env, key, _tail(_head(*kvpair)) ), value, argv );
 			} else {
 				_sett( _head(*kvpair), value );
-				return value;
+				return muse_add_recent_item( env, key, value );
 			}
 		} 
 		else
@@ -337,7 +338,7 @@ static muse_cell hashtable_put_prop( muse_env *env, void *self, muse_cell key, m
 			We rehash if we have to do more than 2 linear
 			searches on the average for each access. */
 			hashtable_fast_add( env, h, kvpair, key, value );
-			return value;
+			return muse_add_recent_item( env, key, value );
 		}
 		else
 		{

@@ -432,7 +432,13 @@ muse_cell syntax_lambda( muse_env *env, void *context, muse_cell args )
 				}
 			}
 
-			muse_put_prop( env, muse_get_meta( env, closure ), _builtin_symbol(MUSE_CODE), body );
+			{
+				int sp = _spos();
+				muse_cell argcell = _cons( body, MUSE_NIL );
+				muse_put( env, muse_get_meta( env, closure ), _builtin_symbol(MUSE_CODE), argcell );
+				_unwind(sp);
+				_returncell(argcell);
+			}
 		}
 	}
 
