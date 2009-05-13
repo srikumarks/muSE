@@ -127,6 +127,7 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 	{
 		int s_pos = 0;
 		int s_size = 0;
+		muse_boolean new_exec = MUSE_TRUE;
 		
 		fseek( e, 0, SEEK_SET );
 		buffer = malloc( e_size );
@@ -139,10 +140,25 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 			will simply be appended to the old source. */
 			s_totalsize += s_size;
 			e_size -= MUSE_FOOTER_SIZE;
+			new_exec = MUSE_FALSE;
 		}
 		
 		fwrite( buffer, 1, e_size, o );
 		free( buffer );
+
+		if ( new_exec ) 
+		{
+			/* Write out the beginning. */
+			int n = fprintf( o, 
+						"(define *PRELOADED-FILES* (hashtable))"
+						"(define *ORIGINAL-LOADER* load)"
+						"(set! load (fn (f)"
+						              "(if (*PRELOADED-FILES* f) 'T (*ORIGINAL-LOADER* f))))\n" 
+						);
+			e_size += n;
+			s_totalsize += n;
+		}
+
 		fclose(e);
 	}
 	
@@ -155,13 +171,22 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 			
 			if ( s != NULL )
 			{
-				int s_size = fsize(s);
-				buffer = malloc( s_size );
-				fread( buffer, 1, s_size, s );
-				fwrite( buffer, 1, s_size, o );
-				free( buffer );
-				fclose(s);		
-				s_totalsize += s_size;
+				{
+					int n = fprintf( o, "\n;----------------------\n"
+						                "(put *PRELOADED-FILES* \"%s\" 'T)"
+										"\n;----------------------\n", argv[ix]  );
+					s_totalsize += n;
+				}
+
+				{
+					int s_size = fsize(s);
+					buffer = malloc( s_size );
+					fread( buffer, 1, s_size, s );
+					fwrite( buffer, 1, s_size, o );
+					free( buffer );
+					fclose(s);		
+					s_totalsize += s_size;
+				}
 			}
 		}
 	}
