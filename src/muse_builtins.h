@@ -105,6 +105,8 @@ muse_cell fn_ne( muse_env *env, void *context, muse_cell args );
 muse_cell fn_and( muse_env *env, void *context, muse_cell args );
 muse_cell fn_or( muse_env *env, void *context, muse_cell args );
 muse_cell fn_not( muse_env *env, void *context, muse_cell args );
+muse_cell fn_min( muse_env *env, void *context, muse_cell args );
+muse_cell fn_max( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup LanguageConstructs Language constructs */

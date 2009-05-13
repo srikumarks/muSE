@@ -169,3 +169,43 @@ muse_cell fn_not( muse_env *env, void *context, muse_cell args )
 	muse_cell c = _evalnext(&args);
 	return c ? MUSE_NIL : _t();
 }
+
+/**
+ * (min x0 ... xn)
+ * Returns the minimum element x,
+ * where x <= x0 <= ... <= xn
+ */
+muse_cell fn_min( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell result = _evalnext(&args);
+
+	while ( args )
+	{
+		muse_cell candidate = _evalnext(&args);
+
+		if ( deep_compare( env, result, candidate ) > 0 )
+			result = candidate;
+	}
+
+	return result;
+}
+
+/**
+ * (max x0 ... xn)
+ * Returns the maximum element x,
+ * where x0 <= ... <= xn <= x
+ */
+muse_cell fn_max( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell result = _evalnext(&args);
+
+	while ( args )
+	{
+		muse_cell candidate = _evalnext(&args);
+
+		if ( deep_compare( env, result, candidate ) < 0 )
+			result = candidate;
+	}
+
+	return result;
+}

@@ -111,6 +111,8 @@ static const struct _builtins
 {		L"and",			fn_and				},
 {		L"or",			fn_or				},
 {		L"not",			fn_not				},
+{		L"min",			fn_min				},
+{		L"max",			fn_max				},
 	
 /************** Constructs ***************/
 {		L"if",			syntax_if			},
