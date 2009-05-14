@@ -923,6 +923,8 @@ muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL; /* Never returns! */
 }
 
+muse_cell fn_with_recent( muse_env *env, void *context, muse_cell args );
+
 /**
  * (finally ...block...)
  *
@@ -952,8 +954,12 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 	
 	if ( trap )
 	{
-		muse_cell finalizer = _force(_eval( syntax_lambda(env,NULL,_cons(MUSE_NIL,args)) ));
+		muse_cell fn = _mk_nativefn(syntax_lambda,NULL);
+		muse_cell argv = _cons( _cons( fn, _cons( MUSE_NIL, args ) ), MUSE_NIL );
+		muse_cell finalizer = fn_with_recent( env, NULL, argv );
 		trap->finalizers = _cons( finalizer, trap->finalizers );	
+		_returncell(argv);
+		_returncell(fn);
 		return finalizer;
 	}
 	else

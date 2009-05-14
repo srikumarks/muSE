@@ -39,6 +39,7 @@ static const struct _builtins
 {		L"the",			fn_the				},
 {		L"meta",		fn_meta				},
 {		L"trace",		fn_trace			},
+{		L"with-recent",	fn_with_recent		},
 
 /************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
