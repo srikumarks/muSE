@@ -54,6 +54,10 @@ typedef long long longlong_t;
 
 #define MUSE_PLATFORM_POSIX 1
 
+#  if defined(BSD) || __APPLE__ & __MACH__
+#      define MUSE_PLATFORM_BSD 1
+#  endif
+
 #endif
 
 #ifdef __cplusplus
@@ -68,7 +72,7 @@ typedef long long longlong_t;
 
 #ifdef MUSE_DEBUG_BUILD
 BEGIN_MUSE_C_FUNCTIONS
-	void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
+	MUSEAPI void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
 END_MUSE_C_FUNCTIONS
 #	define muse_assert( cond ) do { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); } while(0)
 #else

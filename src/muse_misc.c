@@ -14,10 +14,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <stdarg.h>
+#include <time.h>
 
 #ifdef MUSE_PLATFORM_WINDOWS
 #include <windows.h>
-#include <time.h>
 #else
 #include <sys/time.h>
 #endif
@@ -688,23 +689,6 @@ MUSEAPI size_t muse_sprintf( muse_env *env, muse_char *buffer, size_t maxlen, co
 	len = muse_vsprintf( env, buffer, maxlen, format, &args );
 	va_end( args );
 	return len;
-}
-
-static void muse_log( muse_env *env, const muse_char *message )
-{
-	static const wchar_t *logfile = L"c:\\muveeDebug\\Log.txt";
-	if ( _waccess( logfile, 02 ) == 0 )
-	{
-		FILE *f = _wfopen( logfile, L"at" );
-		if ( f != NULL )
-		{
-			enum { MAXLEN = 128 };
-			muse_char text[MAXLEN];
-			muse_sprintf( env, text, MAXLEN, L"\n==== muSE message (%@) ====\n" );
-			fwprintf( f, L"%s%s\n=========================\n", text, message );
-			fclose(f);
-		}
-	}
 }
 
 /**

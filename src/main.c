@@ -67,7 +67,6 @@ static int is_muSEexec( FILE *e, int *source_pos, int *source_size )
 	fread( signature, 1, MUSE_FOOTER_SIGNATURE_SIZE, e );
 	if ( strcmp( signature, k_footer_signature ) != 0 )
 	{
-		fclose(e);
 		return 0;
 	}
 	

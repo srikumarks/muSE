@@ -32,7 +32,11 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	include <unistd.h>
 #	include <signal.h>
 #	include <sys/socket.h>
-#	include <sys/filio.h>
+#	ifdef MUSE_PLATFORM_BSD
+#		include <sys/filio.h>
+#	else
+#		include <sys/ioctl.h>
+#	endif
 #	include <netdb.h>
 #	include <netinet/in.h>
 #	include <arpa/inet.h>
@@ -87,10 +91,14 @@ library! What a stupid thing to have to do! */
         WSACleanup();
 	}
 #else
-/** On MacosX, it looks like we have to use SO_REUSEPORT instead of 
- * SO_REUSEADDR to achieve the same effect.
+/** On *BSD (including MacosX), it looks like we have to use 
+ * SO_REUSEPORT instead of SO_REUSEADDR to achieve the same effect.
  */
-#	define MUSE_SO_REUSE SO_REUSEPORT
+#	ifdef MUSE_PLATFORM_BSD
+#		define MUSE_SO_REUSE SO_REUSEPORT
+#	else
+#		define MUSE_SO_REUSE SO_REUSEADDR
+#	endif
 
 /**
  * In the POSIX version, we initially setup to block the

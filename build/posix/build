@@ -1,5 +1,5 @@
 #!/bin/sh
 echo Building muSE ...
-gcc -o muse -O3 -DNDEBUG ../../src/*.c
+gcc -Wno-multichar -Wno-pointer-to-int-cast -o muse -lm -ldl -O3 -DNDEBUG ../../src/*.c
 echo ... done
 echo Output file - muse
