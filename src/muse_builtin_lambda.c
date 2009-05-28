@@ -267,7 +267,13 @@ static void crs_mark( muse_env *env, void *ptr )
 	captured_recent_scope_t *crs = (captured_recent_scope_t*)ptr;
 	int i = 0;
 	for ( i = 0; i < crs->count; ++i ) {
-		muse_mark( env, crs->scope[i].key );
+		/* Note that we only need to mark the value part.
+		The key part is not necessarily a muSE cell
+		and even if it is, it surely has a reference
+		elsewhere in the system. If the key doesn't
+		have a reference, it is not possible to refer
+		to the recent computation using a (the ..)
+		expression. */
 		muse_mark( env, crs->scope[i].value );
 	}
 	
