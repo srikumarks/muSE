@@ -61,13 +61,19 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 	port_init( env, (muse_port_base_t*)p );
 	
 	/* Open the file. */
+	while ( p->file == NULL )
 	{
 		p->file = muse_fopen( _text_contents(filename,NULL), (read_flag ? (write_flag ? L"rwb" : L"rb") : (write_flag ? L"wb" : L"rb")) );
 		if ( !p->file )
 		{
-			p->base.error = -1;
-			p->base.eof = -1;
-			return;
+			filename = muse_raise_error( env, _csymbol(L"error:open-file"), _cons(filename,MUSE_NIL) );
+			if ( _cellt(filename) == MUSE_TEXT_CELL )
+				continue;
+			else {
+				p->base.error = -1;
+				p->base.eof = -1;
+				return;
+			}
 		}
 		p->desc = fileno( p->file );
 		
@@ -307,6 +313,12 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
  *     (write f '(hello world))
  *     (close f))
  * @endcode
+ *
+ * If \c open-file fails, it raises the @code ('error:open-file <filename>) @endcode
+ * exception. You can resume the exception by 
+ *	-# continuing with a different filename,
+ *	-# continuing with () which will cause the port to be in eof state.
+ * You can also, of course, abort.
  *
  * Supports \ref fn_the "the"
  */
