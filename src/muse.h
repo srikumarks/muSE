@@ -407,6 +407,7 @@ MUSEAPI muse_cell	muse_get_prop( muse_env *env, muse_cell sym, muse_cell prop );
 MUSEAPI	muse_cell	muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_cell argv );
 MUSEAPI muse_cell	muse_put_prop( muse_env *env, muse_cell sym, muse_cell prop, muse_cell value );
 MUSEAPI	muse_cell	muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_cell argv );
+MUSEAPI	muse_cell	muse_put_many( muse_env *env, muse_cell obj, muse_cell argv );
 MUSEAPI muse_cell	muse_get_meta( muse_env *env, muse_cell fn );
 /*@}*/
 

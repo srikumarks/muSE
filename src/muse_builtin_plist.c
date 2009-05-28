@@ -79,6 +79,25 @@ MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_c
 }
 
 /**
+ * Multiple property setting.
+ * The argv is expected to be of the form @code ('key1 value1 'key2 value2 ...) @endcode.
+ * Returns \p obj.
+ */
+MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
+{
+	int sp = _spos();
+	while ( argv ) {
+		muse_cell c = _cons( _head(_tail(argv)), MUSE_NIL );
+		muse_put( env, obj, _head(argv), c );
+		_unwind(sp);
+		_returncell(c);
+		argv = _tail(_tail(argv));
+	}
+
+	return obj;
+}
+
+/**
  * (put symbol property value).
  * Sets the given property of the given symbol to the given value.
  * Subsequently, if you evaluate @code (get symbol property) @endcode,
@@ -89,6 +108,27 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 	muse_cell sym	= _evalnext(&args);
 	muse_cell prop	= _evalnext(&args);
 	return muse_put( env, sym, prop, muse_eval_list( env, args ) );
+}
+
+/**
+ * (put* obj prop1 value1 prop2 value2 ...)
+ *
+ * Sets many properties of the object in one go.
+ */
+muse_cell fn_put_many( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell obj	= _evalnext(&args);
+	int sp = _spos();
+	while ( args ) {
+		muse_cell key = _evalnext(&args);
+		muse_cell val = _evalnext(&args);
+		muse_cell c = _cons( val, MUSE_NIL );
+		muse_put( env, obj, key, c );
+		_unwind(sp);
+		_returncell(c);
+	}
+
+	return obj;
 }
 
 /**
