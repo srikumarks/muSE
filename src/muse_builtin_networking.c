@@ -34,6 +34,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	include <sys/socket.h>
 #	ifdef MUSE_PLATFORM_BSD
 #		include <sys/filio.h>
+#		include <sys/types.h>
 #	else
 #		include <sys/ioctl.h>
 #	endif
