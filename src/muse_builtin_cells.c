@@ -119,6 +119,18 @@ static void define_in_context( muse_env *env, muse_cell sym, muse_cell val )
 		meta_putname( env, val, sym );
 }
 
+static muse_cell gfn_get_case_expression( muse_env *env, muse_cell gfn )
+{
+	muse_cell body = _tail(gfn);
+	muse_cell h = _head(body);
+
+	while ( h < 0 ) {
+		h = _next(&body);
+	}
+
+	return h;
+}
+
 /**
  * Does normal definition as well as extensions and overrides.
  */
@@ -192,7 +204,7 @@ static muse_cell _defgen( muse_env *env, int option, muse_cell sym, muse_cell ge
 	muse_assert( _head(gen) < 0 ? _head(fn) < 0 : _head(fn) >= 0 );
 
 	{
-		muse_cell case_e = _head(_tail(gen));
+		muse_cell case_e = gfn_get_case_expression(env,gen);
 		muse_cell case_arg_e = _tail(case_e);
 
 		switch ( option )
