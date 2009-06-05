@@ -40,7 +40,7 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 				break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(+ ... >>arg<< ...)", L"v|??|", arg ) )
+					if ( !muse_expect( env, L"(+ ... >>arg<< ...)", L"v|??|", arg, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(+ ... >>arg<< ...)", 
 										L"[+] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", arg, arg );
@@ -78,7 +78,7 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 		case MUSE_FLOAT_CELL	: f += _ptr(c)->f; result_is_float = MUSE_TRUE; break;
 		default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c ) )
+					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(- ... >>arg<< ...)", 
 										L"[-] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
@@ -102,7 +102,7 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 			case MUSE_FLOAT_CELL	: f -= _ptr(c)->f; result_is_float = MUSE_TRUE; break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c ) )
+					if ( !muse_expect( env, L"(- ... >>arg<< ...)", L"v|??|", c, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(- ... >>arg<< ...)", 
 										L"[-] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
@@ -142,7 +142,7 @@ muse_cell fn_mul( muse_env *env, void *context, muse_cell args )
 				break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(* ... >>arg<< ...)", L"v|??|", arg ) )
+					if ( !muse_expect( env, L"(* ... >>arg<< ...)", L"v|??|", arg, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(* ... >>arg<< ...)", 
 										L"[*] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", arg, arg );
@@ -179,7 +179,7 @@ muse_cell fn_div( muse_env *env, void *context, muse_cell args )
 		case MUSE_FLOAT_CELL	: f = _ptr(c)->f; break;
 		default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c ) )
+					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(/ ... >>arg<< ...)", 
 										L"[/] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
@@ -198,7 +198,7 @@ muse_cell fn_div( muse_env *env, void *context, muse_cell args )
 			case MUSE_FLOAT_CELL	: f /= _ptr(c)->f; break;
 			default:
 				MUSE_DIAGNOSTICS({ 
-					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c ) )
+					if ( !muse_expect( env, L"(/ ... >>arg<< ...)", L"v|??|", c, MUSE_INT_CELL, MUSE_FLOAT_CELL ) )
 						muse_message( env,L"(/ ... >>arg<< ...)", 
 										L"[/] can only work with integers and floats.\n"
 										L"You gave [%m] which is of type [%t].", c, c );
