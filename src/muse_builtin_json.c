@@ -103,7 +103,7 @@ static void json_write_object( muse_port_t p, muse_cell obj );
  */
 muse_cell fn_json( muse_env *env, void *context, muse_cell args )
 {
-	return json_read_expr( muse_current_port( env, MUSE_STDIN_PORT, NULL ) );
+	return json_read_expr( muse_current_port( env, MUSE_INPUT_PORT, NULL ) );
 }
 
 /**

@@ -431,7 +431,7 @@ static void mickey_mode( muse_port_t in, muse_port_t out )
  */
 muse_cell fn_tab_syntax( muse_env *env, void *context, muse_cell args )
 {
-	muse_current_port( env, MUSE_STDIN_PORT, NULL )->mode |= MUSE_PORT_EZSCHEME;
+	muse_current_port( env, MUSE_INPUT_PORT, NULL )->mode |= MUSE_PORT_EZSCHEME;
 	return MUSE_NIL;
 }
 
@@ -442,6 +442,6 @@ muse_cell fn_tab_syntax( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_scheme_syntax( muse_env *env, void *context, muse_cell args )
 {
-	muse_current_port( env, MUSE_STDIN_PORT, NULL )->mode &= ~MUSE_PORT_EZSCHEME;
+	muse_current_port( env, MUSE_INPUT_PORT, NULL )->mode &= ~MUSE_PORT_EZSCHEME;
 	return MUSE_NIL;
 }

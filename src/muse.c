@@ -1502,6 +1502,7 @@ muse_process_frame_t *create_process( muse_env *env, int attention, muse_cell th
 		p->current_port[MUSE_STDIN_PORT] = muse_stdport( env, MUSE_STDIN_PORT );
 		p->current_port[MUSE_STDOUT_PORT] = muse_stdport( env, MUSE_STDOUT_PORT );
 		p->current_port[MUSE_STDERR_PORT] = muse_stdport( env, MUSE_STDERR_PORT );
+		p->current_port[MUSE_INPUT_PORT] = p->current_port[MUSE_STDIN_PORT];
 	}
 
 	return p;

@@ -1229,6 +1229,18 @@ static muse_cell read_special( muse_port_t f )
 muse_cell fn_expand_objc_expression( muse_env *env, void *context, muse_cell args );
 
 /**
+ * Evaluates the given s-expression, setting the "current port" to 
+ * the given f.
+ */
+static muse_cell peval( muse_env *env, muse_port_t f, muse_cell expr )
+{
+	muse_port_t prev = muse_current_port( env, MUSE_INPUT_PORT, f );
+	muse_cell result = _eval(expr);
+	muse_current_port( env, MUSE_INPUT_PORT, prev );
+	return result;
+}
+
+/**
  * Reads the next symbolic expression at the current
  * stream position, ignoring white space and comment
  * lines.
@@ -1295,7 +1307,7 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 										&& (c == '(' || c == '[')
 										&& is_macro_sexpr(env,sexpr))) )
 			{
-				return _eval(sexpr);
+				return peval(env,f,sexpr);
 			}
 			else if ( env->parameters[MUSE_ENABLE_OBJC] && (c == '[') ) {
 				/* 
@@ -1307,7 +1319,7 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 				call form. 
 				 */
 				if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && is_macro_sexpr(env,sexpr) )
-					sexpr = _eval(sexpr);
+					sexpr = peval(env,f,sexpr);
 #if __APPLE__
 				return fn_expand_objc_expression( env, NULL, sexpr );
 #else

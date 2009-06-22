@@ -38,25 +38,53 @@ static void fileport_init( muse_env *env, void *ptr, muse_cell args )
 {
 	fileport_t *p = (fileport_t*)ptr;
 
-	muse_boolean read_flag = MUSE_FALSE;
-	muse_boolean write_flag = MUSE_FALSE;
-	muse_boolean binary_flag = MUSE_FALSE;
+	muse_boolean read_flag		= MUSE_FALSE;
+	muse_boolean write_flag		= MUSE_FALSE;
+	muse_boolean binary_flag	= MUSE_FALSE;
+	muse_boolean expand_braces	= MUSE_FALSE;
+	muse_boolean detect_macros	= MUSE_FALSE;
+	muse_boolean tab_syntax		= MUSE_FALSE;
+
+	muse_cell sym_for_reading	= _csymbol(L"for-reading");
+	muse_cell sym_for_writing	= _csymbol(L"for-writing");
+	muse_cell sym_binary		= _csymbol(L"binary");
+	muse_cell sym_trust			= _csymbol(L"trust");
+	muse_cell sym_expand_braces = _csymbol(L"expand-braces");
+	muse_cell sym_detect_macros = _csymbol(L"detect-macros");
+	muse_cell sym_tab_syntax	= _csymbol(L"tab-syntax");
+
 	muse_cell filename = _evalnext(&args);
 
 	/* Get the read/write flags. */
 	while ( args )
 	{
 		muse_cell flag = _evalnext(&args);
-		if ( flag == _csymbol(L"for-reading") )
+		if ( flag == sym_for_reading )
 			read_flag = MUSE_TRUE;
-		else if ( flag == _csymbol(L"for-writing") )
+		else if ( flag == sym_for_writing )
 			write_flag = MUSE_TRUE;
-		else if ( flag == _csymbol(L"binary") )
+		else if ( flag == sym_binary )
 			binary_flag = MUSE_TRUE;
+		else if ( flag == sym_expand_braces )
+			expand_braces = MUSE_TRUE;
+		else if ( flag == sym_detect_macros )
+			detect_macros = MUSE_TRUE;
+		else if ( flag == sym_trust ) {
+			expand_braces = MUSE_TRUE;
+			detect_macros = MUSE_TRUE;
+		} else if ( flag == sym_tab_syntax ) 
+			tab_syntax = MUSE_TRUE;
 	}
 
 	if ( read_flag ) p->base.mode |= MUSE_PORT_READ;
 	if ( write_flag ) p->base.mode |= MUSE_PORT_WRITE;
+	if ( read_flag ) {
+		/* Macro and brace expansion is only applicable when reading a file. */
+		if ( expand_braces ) p->base.mode |= MUSE_PORT_READ_EXPAND_BRACES;
+		if ( detect_macros ) p->base.mode |= MUSE_PORT_READ_DETECT_MACROS;
+		if ( tab_syntax )
+			p->base.mode |= MUSE_PORT_EZSCHEME;
+	}
 
 	port_init( env, (muse_port_base_t*)p );
 	
@@ -299,13 +327,21 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
 }
 
 /**
- * (open-file "filename.txt" ['for-reading 'for-writing 'binary]).
+ * (open-file "filename.txt" ['for-reading 'for-writing 'binary 'expand-braces 'detect-macros 'trust 'tab-syntax]).
+ *
  * Returns a new file port for reading or writing to it.
  * Use \c read and \c write with the returned port and
  * when you're done with it, call \c close. If you use the 'binary
  * flag, then any header that might be present at the start of
  * the file won't be processed. Also, no such header will be written
  * out if you're opening the file for writing.
+ *
+ * You can allow brace expansion during reading by passing the 
+ * @code 'expand-braces @endcode and macro detection and expansion
+ * using the @code 'detect-macros @endcode flag. The @code 'trust @endcode
+ * flag is an abbreviation for setting both of them. If both are not
+ * set, the reader will not execute any code. These flags only affect
+ * the port when opened in read mode.
  *
  * For example -
  * @code
@@ -366,6 +402,7 @@ void muse_define_builtin_fileport(muse_env *env)
 	muse_current_port( env, MUSE_STDIN_PORT, env->stdports[0] );
 	muse_current_port( env, MUSE_STDOUT_PORT, env->stdports[1] );
 	muse_current_port( env, MUSE_STDERR_PORT, env->stdports[2] );
+	muse_current_port( env, MUSE_INPUT_PORT, env->stdports[0] );
 
 	/* Define the "open-file" function. This is the only file specific function needed.
 	After this the generic port functions take over. */
@@ -452,7 +489,7 @@ MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 	muse_port_t in = muse_assign_port(env, f, MUSE_PORT_TRUSTED_INPUT );
 	int sp = _spos();
 	muse_cell result = MUSE_NIL;
-	muse_port_t prevIn = muse_current_port( env, MUSE_STDIN_PORT, in );
+	muse_port_t prevIn = muse_current_port( env, MUSE_INPUT_PORT, in );
 	
 	while ( port_eof(in) == 0 )
 	{
@@ -472,7 +509,7 @@ MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 			break;
 	}
 	
-	muse_current_port( env, MUSE_STDIN_PORT, prevIn );
+	muse_current_port( env, MUSE_INPUT_PORT, prevIn );
 	muse_unassign_port(in);
 	return result;
 }

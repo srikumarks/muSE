@@ -235,7 +235,7 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  */
 muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
 {
-	return muse_quote( env, xml_read_tag( env, muse_current_port( env, MUSE_STDIN_PORT, NULL ) ) );
+	return muse_quote( env, xml_read_tag( env, muse_current_port( env, MUSE_INPUT_PORT, NULL ) ) );
 }
 
 

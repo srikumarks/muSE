@@ -241,7 +241,7 @@ typedef struct _muse_process_frame_t
 
 	muse_traceinfo_t traceinfo; ///< Holds a finite depth of stack trace information.
 
-	muse_port_t current_port[3]; ///< Per-process current input/output/error ports.
+	muse_port_t current_port[4]; ///< Per-process current input/output/error ports.
 
 	/** Each process has a "recent" list - a vector of 8
 	most recent calculations performed. The recent list is

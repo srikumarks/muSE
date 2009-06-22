@@ -596,7 +596,8 @@ typedef enum
 {
 	MUSE_STDIN_PORT,
 	MUSE_STDOUT_PORT,
-	MUSE_STDERR_PORT
+	MUSE_STDERR_PORT,
+	MUSE_INPUT_PORT /* The port from which expressions are being read in. */
 } muse_stdport_t;
 
 
