@@ -229,6 +229,7 @@ muse_cell fn_with_timeout_us( muse_env *env, void *context, muse_cell args );
 /*@{*/
 muse_cell fn_format( muse_env *env, void *context, muse_cell args ); 
 muse_cell fn_string_length( muse_env *env, void *context, muse_cell args );
+muse_cell fn_substring( muse_env *env, void *context, muse_cell args );
 muse_cell fn_time_taken_us( muse_env *env, void *context, muse_cell args );
 muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell args );
 muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args );

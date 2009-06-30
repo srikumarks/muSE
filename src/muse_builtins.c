@@ -187,6 +187,7 @@ static const struct _builtins
 /************** Miscellaneous **************/
 {		L"format",					fn_format					},
 {		L"string-length",			fn_string_length			},
+{		L"substring",				fn_substring				},
 {		L"time-taken-us",			fn_time_taken_us			},
 {		L"generate-documentation",	fn_generate_documentation	},
 {		L"load-plugin",				fn_load_plugin				},
@@ -933,6 +934,71 @@ muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
 	else
 	{
 		return MUSE_NIL;
+	}
+}
+
+/**
+ * (substring str start-index [count])
+ *
+ * Gives the substring of length \p count characters
+ * of the given string starting from \p start-index.
+ * If the \p start-index is considered to be modulo
+ * [0,length) ... which means you can get the last 
+ * 3 characters of a string like this -
+ * @code (substring str -3 3) @endcode
+ *
+ * If you request more characters than is available in
+ * the string, you get as much of the string as is avaiable.
+ *
+ * The count is optional. If omitted, the substring is
+ * considered up to the end of the string. You can use this
+ * to shorten the above example to -
+ * @code (substring str -3) @endcode
+ */
+muse_cell fn_substring( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell str = _evalnext(&args);
+	if ( _cellt(str) == MUSE_TEXT_CELL ) {
+		muse_cell start_index_c = _evalnext(&args);
+		if ( _cellt(start_index_c) == MUSE_INT_CELL ) {
+			int start_index = (int)_intvalue(start_index_c);
+			int count = 0, str_length = 0;
+			const muse_char *str_text = muse_text_contents( env, str, &str_length );
+
+			/* If count is not specified, get as many characters as available. */
+			if ( args ) {
+				muse_cell c = _evalnext(&args);
+				if ( _cellt(c) == MUSE_INT_CELL )
+					count = (int)_intvalue(c);
+				else {
+					muse_message( env, L"(substring str start-index >>count<<)", L"Expected an integer, got [%m]", c );
+					return muse_raise_error( env, _csymbol(L"error:integer-expected"), _cons(c,MUSE_NIL) );
+				}
+
+				/* If count is "-3", for instance, treat it as "str_length - 3". */
+				count = (count < 0) ? (str_length + (count % str_length)) : count;
+			} else {
+				count = str_length;
+			}
+
+			if ( str_length <= 0 )
+				return str;
+
+			/* Take modulo [0,length) */
+			start_index = ((start_index % str_length) + str_length) % str_length;
+
+			/* Limit count to number of available characters. */
+			if ( start_index + count > str_length )
+				count = str_length - start_index;
+
+			return muse_mk_text( env, str_text + start_index, str_text + start_index + count );
+		} else {
+			muse_message( env, L"(substring str >>start-index<< [count])", L"Expected an integer, got [%m]", start_index_c );
+			return muse_raise_error( env, _csymbol(L"error:integer-expected"), _cons(start_index_c,MUSE_NIL) );
+		}
+	} else {
+		muse_message( env, L"(substring >>str<< start-index [count])", L"Expected a string, got [%m]", str );
+		return muse_raise_error( env, _csymbol(L"error:string-expected"), _cons(str,MUSE_NIL) );
 	}
 }
 
