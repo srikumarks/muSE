@@ -117,8 +117,8 @@ static const struct _builtins
 	
 /************** Constructs ***************/
 {		L"if",			syntax_if			},
-{               L"when",                syntax_when                     },
-{               L"unless",              syntax_unless                   },
+{       L"when",        syntax_when         },
+{       L"unless",      syntax_unless       },
 {		L"cond",		syntax_cond			},
 {		L"do",			syntax_do			},
 {		L"while",		syntax_while		},
