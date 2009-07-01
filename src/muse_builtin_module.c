@@ -33,8 +33,7 @@
 enum { MODULE_SEP = '.' };
 
 typedef struct {
-	muse_cell short_name;
-	muse_cell full_name;
+	muse_cell name;
 	muse_cell value;
 } module_binding_t;
 	
@@ -45,23 +44,6 @@ typedef struct _module_t
 	module_binding_t *bindings;
 	muse_cell main;
 } module_t;
-
-static muse_cell qualified_name( muse_env *env, int prefix_length, const muse_char *prefix, muse_cell sym )
-{
-	muse_cell name = _symname(sym);
-	int len = 0;
-	const muse_char *text = _text_contents( name, &len );
-	muse_char *mem = (muse_char*)calloc( len + prefix_length + 1, sizeof(muse_char) );
-	memcpy( mem, prefix, prefix_length * sizeof(muse_char) );
-	memcpy( mem + prefix_length, text, len * sizeof(muse_char) );
-	mem[ prefix_length + len ] = 0;
-	
-	{
-		muse_cell qname = muse_symbol( env, mem, mem + prefix_length + len );
-		free(mem);
-		return qname;
-	}
-}
 
 static void module_init( muse_env *env, void *ptr, muse_cell args )
 {
@@ -88,13 +70,10 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 	/* Reset the definitions of exported values. */
 	{
 		int i = 0;
-		int prefix_length = 0;
-		muse_char *prefix = (muse_char*)_text_contents( _symname(mname), &prefix_length );
 		muse_cell e = exports;
 		
 		/* HACK: We mofiy the last NULL character in the text contents temporarily
 		to get the prefix string. This saves an allocation. */
-		prefix[prefix_length] = MODULE_SEP;
 		for ( ; i < m->length; ++i ) {
 			muse_cell sym = _next(&e);
 			module_binding_t *b = m->bindings + i;
@@ -103,13 +82,10 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 				muse_expect( env, L"(module name (.. >>export<< ..) ..)", L"v?", sym, MUSE_SYMBOL_CELL );
 			});
 			
-			b->short_name = sym;
-			b->full_name = qualified_name( env, prefix_length+1, prefix, sym );
-			b->value = b->full_name;
-			_pushdef( b->short_name, b->short_name );
-			_pushdef( b->full_name, b->full_name );
+			b->name = sym;
+			b->value = b->name;
+			_pushdef( b->name, b->name );
 		}
-		prefix[prefix_length] = '\0';
 	}
 
 	/* Make the "main" symbol local. */
@@ -134,24 +110,12 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 		int i = 0;
 		for ( ; i < m->length; ++i ) {
 			module_binding_t *b = m->bindings + i;
-			b->value = _symval(b->short_name);
+			b->value = _symval(b->name);
 		}
 	}
 	
 	/* Restore old definitions. */
 	_unwind_bindings(bsp);
-	
-	/* Introduce new global/local bindings. */
-	{
-		int i = 0;
-		for ( ; i < m->length; ++i ) {
-			module_binding_t *b = m->bindings + i;
-			if ( bsp == 0 )
-				_define( b->full_name, b->value );
-			else
-				_pushdef( b->full_name, b->value );
-		}
-	}
 }
 
 static void module_mark( muse_env *env, void *ptr )
@@ -193,7 +157,7 @@ static void module_write( muse_env *env, void *ptr, void *port )
 		for ( i = 0; i < m->length; ++i )
 		{
 			if ( i > 0 ) port_putc( ' ', p );
-			muse_pwrite( p, m->bindings[i].short_name );
+			muse_pwrite( p, m->bindings[i].name );
 		}
 	}
 	port_putc( ')', p );
@@ -204,7 +168,7 @@ static void introduce_module_local( muse_env *env, module_t *m )
 {
 	int i = 0;
 	for ( ; i < m->length; ++i ) {
-		_pushdef( m->bindings[i].short_name, m->bindings[i].value );
+		_pushdef( m->bindings[i].name, m->bindings[i].value );
 	}
 }
 
@@ -231,18 +195,73 @@ static void module_scope_end( muse_env *env, void *self, int bsp )
 	_unwind_bindings(bsp);
 }
 
-static muse_scope_view_t g_module_scope_view = 
+static muse_scope_view_t g_module_scope_view = {	module_scope_begin,	module_scope_end };
+
+static muse_cell module_get( muse_env *env, void *self, muse_cell key, muse_cell argv )
 {
-	module_scope_begin,
-	module_scope_end
-};
+	module_t *m = (module_t*)self;
+	int i = 0;
+	for ( i = 0; i < m->length; ++i ) {
+		module_binding_t *b = m->bindings + i;
+		if ( b->name == key ) {
+			if ( argv )
+				return muse_get( env, b->value, _head(argv), _tail(argv) );
+			else
+				return b->value;
+		}
+	}
+	
+	/* Raise an error and let the exception continue by supplying a value.
+	   The value can be obtained in the exception handler by choosing a
+	   different key to use in the same object, or by using some other
+	   default object. */
+	{
+		muse_cell value = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) );
+		if ( argv ) 
+			return muse_get( env, value, _head(argv), _tail(argv) );
+		else
+			return value;
+	}
+}
+
+static muse_cell module_put( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+	module_t *m = (module_t*)self;
+	int i = 0;
+	for ( i = 0; i < m->length; ++i ) {
+		module_binding_t *b = m->bindings + i;
+		if ( b->name == key ) {
+			if ( _tail(argv) )
+				return muse_put( env, b->value, _head(argv), _tail(argv) );
+			else
+				return (b->value = _head(argv));
+		}
+	}
+	
+	/* If the put operation needs to get something from this module and pass
+	   the put on to the value, then we just raise a "key not found" error
+	   with the same semantics as module_get. If it is the module's binding
+	   that needs to be modified and the key could not be located, we raise
+	   an "immutable key" error and let it continue by supplying a substitute
+	   key instead. */
+	if ( _tail(argv) ) 
+		return muse_get( env,
+						muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) ),
+						_head(argv), 
+						_tail(argv) );
+	else
+		return module_put( env, self, muse_raise_error( env, _csymbol(L"error:immutable-key"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) ), argv );
+}
+
+static muse_prop_view_t g_module_prop_view = { module_get, module_put };
 
 static void *module_view( muse_env *env, int id )
 {
-	if ( id == 'scop' )
-		return &g_module_scope_view;
-	else
-		return NULL;
+	switch (id) {
+		case 'prop':	return &g_module_prop_view;
+		case 'scop':	return &g_module_scope_view;
+		default:			return NULL;
+	}
 }
 
 /**
@@ -339,7 +358,7 @@ static void introduce_module_global( muse_env *env, module_t *m )
 {
 	int i = 0;
 	for ( ; i < m->length; ++i ) {
-		_define( m->bindings[i].short_name, m->bindings[i].value );
+		_define( m->bindings[i].name, m->bindings[i].value );
 	}
 }
 
@@ -385,10 +404,10 @@ static muse_scope_view_t g_import_scope_view = { import_scope_begin, import_scop
 
 static void *import_view( muse_env *env, int id )
 {
-	if ( id == 'scop' )
-		return &g_import_scope_view;
-	else
-		return NULL;
+	switch (id) {
+		case 'scop':	return &g_import_scope_view;
+		default:			return NULL;
+	}
 }
 
 /* When import is used within the body of a closure creation expression

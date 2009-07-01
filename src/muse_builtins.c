@@ -50,7 +50,7 @@ static const struct _builtins
 
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
-{		L"put",			fn_put				},
+{		L"prim:put",	fn_put				},
 {		L"assoc",		fn_assoc			},
 {		L"plist",		fn_plist			},
 {		L"symbol",		fn_symbol			},
@@ -212,7 +212,8 @@ void muse_load_builtin_fns(muse_env *env)
 		
 		++b;
 	}
-	
+		
+	muse_define_put_macro(env);
 	muse_define_builtin_local(env);
 	muse_math_load_common_unary_functions(env);
 	muse_define_builtin_type_vector(env);

@@ -237,6 +237,7 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args );
 muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args );
 muse_cell fn_split( muse_env *env, void *context, muse_cell args );
 void muse_load_builtin_fns( muse_env *env );
+void muse_define_put_macro( muse_env *env );
 /*@}*/
 
 /** 

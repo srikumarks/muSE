@@ -131,6 +131,36 @@ muse_cell fn_put_many( muse_env *env, void *context, muse_cell args )
 	return obj;
 }
 
+void muse_define_put_macro( muse_env *env )
+{
+	int sp = _spos();
+	
+	/*
+	 We define put as a macro that collapses nested (get ..)
+	 expressions so that you can use (put a.b.c "value") to
+	 mean (put a 'b 'c "value"). Since it is a macro, it has
+	 no runtime cost and the final expression is much simpler.
+	 
+	 (define put (fn '$args))
+	 (define put (fn '$args
+	 (case $args
+	 ((('get . $get*) . $put*) (apply put (join $get* $put*)))
+	 (_ (cons prim:put $args)))))
+	 */
+	muse_eval( env, muse_list( env, "SS(S'S)", L"define", L"put", L"fn", L"$args" ), MUSE_FALSE );
+	muse_eval( env, 
+			  muse_list( env, "SS(S'S(SS(c(SS(SSS)))(S(SSS))))",
+						L"define", L"put",
+						L"fn", L"$args", 
+						L"case", L"$args",
+						_cons(_cons(muse_quote(env,_csymbol(L"get")),_csymbol(L"$get*")),_csymbol(L"$put*")),
+						L"apply", L"put", L"join", L"$get*", L"$put*",
+						L"_", L"cons", L"prim:put", L"$args" ),
+			  MUSE_FALSE );
+	
+	_unwind(sp);
+}
+
 /**
  * (assoc plist key).
  * @see muse_assoc()

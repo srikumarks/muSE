@@ -850,6 +850,8 @@ static muse_boolean is_symbol_char( int c )
 		return MUSE_FALSE;
 }
 
+static muse_cell parse_dot_notation( muse_env *env, int mode, const char *s, const char *s_end );
+
 /**
  * Reads a symbol from the current stream position.
  * Only named symbols are possible to be read by this.
@@ -887,30 +889,6 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 	col = ez_skip_whitespace(f,0,col).col;
 	
 	c = port_getc(f);
-	
-	if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && c == '.' )
-	{
-		// Symbols beginning with '.' character
-		// are converted into the expression 
-		// (-> self 'sym)
-		//
-		// Checking for MUSE_PORT_READ_DETECT_MACROS allows
-		// us to avoid expasion of this notation within quoted 
-		// expressions - where we should preserve the form as is
-		// and treat the '.' as part of the symbol being read.
-		ez_result_t r;
-
-		// Prevent the '.' notation from being interpreted again
-		// w.r.t. the rest of the symbol.
-		int saved_mode = f->mode;
-		f->mode &= ~MUSE_PORT_READ_DETECT_MACROS;
-		r = _read_symbol( f, col+1 );
-		f->mode = saved_mode;
-
-		r.expr = muse_list( env, "SS'c", L"->", L"self", r.expr );
-		return r;
-	}
-
 	s = (char*)calloc( maxlen+1, 1 );
 
 	while ( is_symbol_char(c) )
@@ -930,7 +908,7 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 	
 	if ( pos > 0 )
 	{
-		muse_cell sym = muse_symbol_utf8( f->env, s, s + pos );
+		muse_cell sym = parse_dot_notation( f->env, f->mode, s, s + pos );
 		free(s);
 		return ez_result( sym, col, col + pos );
 	}
@@ -953,6 +931,84 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 		});
 
 		return ez_result( PARSE_ERROR_EXPECTED_SYMBOL, col, col + pos );
+	}
+}
+
+/**
+ * Converts a symbol of the form a.b.c to the expression (get a 'b 'c).
+ * If a symbol starts with '.' such as '.x', then it is interpreted
+ * to be the same as 'self.x'. If it ends with '.', the dot is
+ * stripped. Multiple dots are collapsed into a single one - i.e.
+ * 'x..y' is the same as 'x.y'.
+ */
+static muse_cell parse_dot_notation( muse_env *env, int mode, const char *s, const char *s_end )
+{
+	if ( mode & MUSE_PORT_READ_DETECT_MACROS ) {
+		const char *dot = NULL;
+		
+		dot = strchr(s, '.');
+		
+		/* Handle the regular non-dot symbol first. */
+		if ( dot == NULL )
+			return muse_symbol_utf8( env, s, s_end );
+		
+		/* Strip dot characters at the end. */
+		if ( dot+1 == s_end )
+			return muse_symbol_utf8( env, s, s_end-1 );
+		
+		{
+			muse_cell h = MUSE_NIL, t = MUSE_NIL;
+			int sp = _spos(), sp2 = sp;
+			
+			if ( dot == s ) {
+				/* Symbol starts with a dot, assume 'self' as the prefix. */
+				h = t = _cons( _builtin_symbol(MUSE_SELF), MUSE_NIL );
+				_unwind(sp);
+				_spush(h);
+				sp2 = _spos();
+			}
+			
+			while ( dot ) {
+				if ( dot > s ) {
+					/* Add the suffix/prefix to the accumulating list. */
+					muse_cell part = muse_symbol_utf8( env, s, dot );
+					if ( h ) {
+						muse_cell suffix = _cons( muse_quote(env, part), MUSE_NIL );
+						_sett( t, suffix );
+						t = suffix;
+						_unwind(sp2);
+					} else {
+						muse_cell prefix = _cons( part, MUSE_NIL );
+						h = t = prefix;
+						_unwind(sp);
+						_spush(h);
+						sp2 = _spos();
+					}
+				}
+					
+				s = dot+1;
+				if ( s >= s_end ) 
+					break;
+				else
+					dot = strchr( s, '.' );
+			}
+			
+			if ( s < s_end ) {
+				/* There's the last term. */
+				muse_cell suffix = _cons( muse_quote( env, muse_symbol_utf8( env, s, s_end ) ), MUSE_NIL );
+				muse_assert( h != MUSE_NIL );
+				_sett( t, suffix );
+				t = suffix;
+			}
+			
+			/* Prefix the "get" function. */
+			h = _cons( _csymbol(L"get"), h );
+			_unwind(sp);
+			_spush(h);
+			return h;
+		}
+	} else {
+		return muse_symbol_utf8( env, s, s_end );
 	}
 }
 

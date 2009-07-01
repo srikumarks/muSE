@@ -1386,6 +1386,7 @@ MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_obje
 {
 	muse_functional_object_t *obj = muse_create_object( env, type_info, init_args );
 	muse_cell fn = _mk_nativefn( obj->type_info->fn, obj );
+	obj->ref = fn;
 	add_special(env,fn);
 	return fn;
 }
