@@ -161,25 +161,48 @@ muse_cell fn_ge( muse_env *env, void *context, muse_cell args )
 	return fn_deep_compare( env, args ) >= 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (and e1 e2 .. eN)
+ *
+ * The conjunction of all the given values -
+ * i.e. evaluates to () if even one of them
+ * is () and if none of them is (), it evaluates
+ * to eN.
+ */
 muse_cell fn_and( muse_env *env, void *context, muse_cell args )
 {
+	muse_cell result = MUSE_NIL;
+	int sp = _spos();
+
 	while ( args )
 	{
-		muse_cell c = _evalnext(&args);
-		if ( !c )
+		_unwind(sp);
+		result = _evalnext(&args);
+		if ( !result )
 			return MUSE_NIL;
 	}
 	
-	return _t();
+	return result;
 }
 
+/**
+ * (or e1 e2 .. eN)
+ *
+ * Evaluates to the first of all the e1 e2 etc which
+ * is not (). If all of them are (), then the result
+ * is also ().
+ */
 muse_cell fn_or( muse_env *env, void *context, muse_cell args )
 {
+	int sp = _spos();
 	while ( args )
 	{
-		muse_cell c = _evalnext(&args);
-		if ( c )
-			return _t();
+		_unwind(sp);
+		{
+			muse_cell c = _evalnext(&args);
+			if ( c )
+				return c;
+		}
 	}
 	
 	return MUSE_NIL;
@@ -198,14 +221,19 @@ muse_cell fn_not( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_min( muse_env *env, void *context, muse_cell args )
 {
+	int sp = _spos();
 	muse_cell result = _evalnext(&args);
 
 	while ( args )
 	{
 		muse_cell candidate = _evalnext(&args);
 
-		if ( deep_compare( env, result, candidate ) > 0 )
+		if ( deep_compare( env, result, candidate ) > 0 ) 
+		{
 			result = candidate;
+			_unwind(sp);
+			_spush(result);
+		}
 	}
 
 	return result;
