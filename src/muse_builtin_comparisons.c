@@ -246,6 +246,7 @@ muse_cell fn_min( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_max( muse_env *env, void *context, muse_cell args )
 {
+	int sp = _spos();
 	muse_cell result = _evalnext(&args);
 
 	while ( args )
@@ -253,7 +254,11 @@ muse_cell fn_max( muse_env *env, void *context, muse_cell args )
 		muse_cell candidate = _evalnext(&args);
 
 		if ( deep_compare( env, result, candidate ) < 0 )
+		{
 			result = candidate;
+			_unwind(sp);
+			_spush(result);
+		}
 	}
 
 	return result;
