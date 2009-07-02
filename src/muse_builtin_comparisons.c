@@ -115,26 +115,47 @@ muse_cell fn_equal( muse_env *env, void *context, muse_cell args )
 	return fn_deep_compare( env, args ) == 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (!= x y).
+ * Evaluates to T if x and y are not the same (deep comparison)
+ * and to () if they are.
+ */
 muse_cell fn_ne( muse_env *env, void *context, muse_cell args )
 {
 	return fn_deep_compare( env, args ) != 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (< x y).
+ * T if x compares less than y and () otherwise.
+ */
 muse_cell fn_lt( muse_env *env, void *context, muse_cell args )
 {
 	return fn_deep_compare( env, args ) < 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (> x y)
+ * T if x compares greater than y and () otherwise.
+ */
 muse_cell fn_gt( muse_env *env, void *context, muse_cell args )
 {
 	return fn_deep_compare( env, args ) > 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (<= x y)
+ * T if x compares less than or equal to y and () otherwise.
+ */
 muse_cell fn_le( muse_env *env, void *context, muse_cell args )
 {
 	return fn_deep_compare( env, args ) <= 0 ? _t() : MUSE_NIL;
 }
 
+/**
+ * (>= x y)
+ * T if x compares greater than or equal to y and () otherwise.
+ */
 muse_cell fn_ge( muse_env *env, void *context, muse_cell args )
 {
 	return fn_deep_compare( env, args ) >= 0 ? _t() : MUSE_NIL;
