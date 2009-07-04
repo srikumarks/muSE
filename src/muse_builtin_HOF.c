@@ -154,10 +154,12 @@ muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 	muse_cell fn = _evalnext(&args);
 	muse_cell obj = _evalnext(&args);
 	
+	muse_push_recent_scope(env);
+
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
 		/* Map being done on a list. */
-		return muse_add_recent_item( env, (muse_int)fn_map, list_map( env, obj, fn, MUSE_NIL, MUSE_NIL ) );
+		return muse_pop_recent_scope( env, (muse_int)fn_map, list_map( env, obj, fn, MUSE_NIL, MUSE_NIL ) );
 	}
 	else
 	{
@@ -165,10 +167,10 @@ muse_cell fn_map( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return muse_add_recent_item( env, (muse_int)fn_map, monad->map( env, objptr, fn ) );
+			return muse_pop_recent_scope( env, (muse_int)fn_map, monad->map( env, objptr, fn ) );
 	}
 	
-	return MUSE_NIL;
+	return muse_pop_recent_scope( env, (muse_int)fn_map, MUSE_NIL );
 }
 
 struct list_append_generator_context_t
@@ -344,9 +346,11 @@ muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 	muse_cell predicate = _evalnext(&args);
 	muse_cell mapper = _evalnext(&args);
 	
+	muse_push_recent_scope(env);
+
 	if ( _cellt(obj) == MUSE_CONS_CELL )
 	{
-		return muse_add_recent_item( env, (muse_int)fn_collect, list_collect( env, obj, predicate, mapper, MUSE_NIL, MUSE_NIL ) );
+		return muse_pop_recent_scope( env, (muse_int)fn_collect, list_collect( env, obj, predicate, mapper, MUSE_NIL, MUSE_NIL ) );
 	}
 	else
 	{
@@ -354,10 +358,10 @@ muse_cell fn_collect( muse_env *env, void *context, muse_cell args )
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return muse_add_recent_item( env, (muse_int)fn_collect, monad->collect( env, objptr, predicate, mapper, _evalnext(&args) ) );
+			return muse_pop_recent_scope( env, (muse_int)fn_collect, monad->collect( env, objptr, predicate, mapper, _evalnext(&args) ) );
 	}
 
-	return MUSE_NIL;
+	return muse_pop_recent_scope( env, (muse_int)fn_collect, MUSE_NIL );
 }
 
 static muse_cell list_reduce( muse_env *env, muse_cell obj, muse_cell reduction_fn, muse_cell acc )
@@ -404,18 +408,20 @@ muse_cell fn_reduce( muse_env *env, void *context, muse_cell args )
 	muse_cell initial	= _evalnext(&args);
 	muse_cell obj		= _evalnext(&args);
 	
+	muse_push_recent_scope(env);
+
 	if ( _cellt(obj) == MUSE_CONS_CELL )
-		return muse_add_recent_item( env, (muse_int)fn_reduce, list_reduce( env, obj, fn, initial ) );
+		return muse_pop_recent_scope( env, (muse_int)fn_reduce, list_reduce( env, obj, fn, initial ) );
 	else
 	{
 		muse_functional_object_t *objptr = NULL;
 		muse_monad_view_t *monad = get_monad_view( env, obj, &objptr );
 		
 		if ( monad )
-			return muse_add_recent_item( env, (muse_int)fn_reduce, monad->reduce( env, objptr, fn, initial ) );
+			return muse_pop_recent_scope( env, (muse_int)fn_reduce, monad->reduce( env, objptr, fn, initial ) );
 	}
 	
-	return MUSE_NIL;
+	return muse_pop_recent_scope( env, (muse_int)fn_reduce, MUSE_NIL );
 }
 
 
@@ -459,17 +465,13 @@ muse_cell fn_find( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell object	= _evalnext(&args);
 	muse_cell coll		= _evalnext(&args);
-	muse_cell result	= MUSE_NIL;
 	
 	muse_functional_object_t *collObj	= NULL;
 	muse_iterator_t iter				= get_iterator_view( env, coll, &collObj );
 	
-	if ( iter )
-	{
-		result = muse_add_recent_item( env, (muse_int)fn_find, iter( env, collObj, finder, (void*)(size_t)object ) );
-	}
-	
-	return result;
+	muse_push_recent_scope(env);
+	return muse_pop_recent_scope( env, (muse_int)fn_find,
+									iter ? iter( env, collObj, finder, (void*)(size_t)object ) : MUSE_NIL );
 }
 
 typedef struct
@@ -520,12 +522,10 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
 	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
-	if ( iter )
-	{
-		return muse_add_recent_item( env, (muse_int)fn_andmap, iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t() );
-	}
-	
-	return MUSE_NIL;
+	muse_push_recent_scope(env);
+	return muse_pop_recent_scope( env, (muse_int)fn_andmap,
+									iter ? (iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t())
+										 : MUSE_NIL ); 
 }
 
 /**
@@ -550,12 +550,10 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
 	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
-	if ( iter )
-	{
-		return muse_add_recent_item( env, (muse_int)fn_ormap, iter( env, collObj, (muse_iterator_callback_t)ormapper, &info ) );
-	}
-	
-	return MUSE_NIL;
+	muse_push_recent_scope(env);
+	return muse_pop_recent_scope( env, (muse_int)fn_ormap,
+									iter ? iter( env, collObj, (muse_iterator_callback_t)ormapper, &info )
+									     : MUSE_NIL );
 }
 
  
@@ -578,12 +576,13 @@ muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 	mapinfo_t info = { fn, _cons(MUSE_NIL, MUSE_NIL) };
 	muse_functional_object_t *collObj = NULL;
 	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
-	if ( iter )
-	{
-		iter( env, collObj, (muse_iterator_callback_t)domapper, &info );
-	}
 	
-	return _evalnext(&args);
+	muse_push_copy_recent_scope(env);
+
+	if ( iter )
+		iter( env, collObj, (muse_iterator_callback_t)domapper, &info );
+
+	return muse_pop_recent_scope( env, (muse_int)fn_for_each, _evalnext(&args) );
 }
 
 /**
