@@ -585,6 +585,32 @@ muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 	return muse_pop_recent_scope( env, (muse_int)fn_for_each, _evalnext(&args) );
 }
 
+static muse_cell column_generator( muse_env *env, muse_cell *rows, int i, muse_boolean *eol )
+{
+	if ( *rows ) {
+		muse_cell c = muse_head(env,muse_head(env,*rows));
+		_seth( *rows, muse_tail(env,muse_head(env,*rows)) );
+		(*rows) = muse_tail(env,*rows);
+		(*eol) = MUSE_FALSE;
+		return c;
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell transpose_generator( muse_env *env, muse_cell *rows, int i, muse_boolean *eol )
+{
+	if ( _head(*rows) ) {
+		muse_cell row = *rows;
+		(*eol) = MUSE_FALSE;
+		return muse_generate_list( env, (muse_list_generator_t)column_generator, &row );
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
 /**
  * (transpose -lists-).
  * 
@@ -632,36 +658,10 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 	}
 	else
 	{
-		int rows = _list_length(matrix);
-		int cols = _list_length(_head(matrix));
-		int r, c;
-		
-		muse_cell *array = (muse_cell*)malloc( rows * cols * sizeof(muse_cell) );
-		muse_cell m = matrix;
-		
-		for ( r = 0; r < rows; ++r )
-		{
-			muse_list_extract( env, cols, _next(&m), 1, array + cols * r, 1 );
-		}
-		
-		{
-			muse_cell h, t, *m;
-			h = t = _cons( MUSE_NIL, MUSE_NIL );
-			m = array;
-			
-			_seth( t, muse_array_to_list( env, rows, m, cols ) );
-			
-			for ( c = cols-1, ++m; c > 0; --c, ++m )
-			{
-				muse_cell temp = _cons( muse_array_to_list( env, rows, m, cols ), MUSE_NIL );
-				_sett( t, temp );
-				t = temp;
-			}
-
-			_unwind(sp);
-			free(array);
-			return muse_add_recent_item( env, (muse_int)fn_transpose, _spush(h) );
-		}
+		return muse_add_recent_item( 
+					env, 
+					(muse_int)fn_transpose,
+					muse_generate_list( env, (muse_list_generator_t)transpose_generator, &matrix ) );
 	}
 }
 
