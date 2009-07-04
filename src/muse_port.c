@@ -1501,6 +1501,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 	{
 		int sp = _spos();
 		muse_boolean need_line_break = MUSE_FALSE;
+		int term_number = 0;
 
 		if ( _isquote( _head(l) ) )
 		{
@@ -1520,31 +1521,47 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 			_unwind(sp); /* We need this here in case the list that's
 							being printed out is being lazily generated. */
 
-			if ( need_line_break ) pretty_printer_indent(f);
+			if ( term_number > 0 ) 
+			{
+				if ( need_line_break || (term_number > 1 && (_cellt(h) == MUSE_CONS_CELL && h > 0 && !_isquote(_head(h)))) )
+				{
+					pretty_printer_line_break(f);
+					need_line_break = MUSE_TRUE;
+				}
+				pretty_printer_indent(f);
+			}
+
 			muse_print_q( f, h, quote );
-			if ( need_line_break ) pretty_printer_unindent(f);
-			
+
 			if ( l && _cellt(l) != MUSE_CONS_CELL )
 			{
 				port_write( " . ", 3, f );
 				pretty_printer_move(f,3);
-				muse_print_q( f, l, quote );
+				muse_print_q( f, l, quote );	
+
+				if ( term_number > 0 ) 
+				{
+					pretty_printer_unindent(f);
+				}
+
 				break;
 			}
 			
 			if ( l ) 
 			{
-				if ( need_line_break || (_cellt(h) == MUSE_CONS_CELL && h >= 0 && !_isquote(_head(h))) || _cellt(h) == MUSE_TEXT_CELL )
-				{
-					pretty_printer_line_break(f);
-					need_line_break = MUSE_TRUE;
-				}
-				else
+				if ( !need_line_break )
 				{
 					port_putc( ' ', f );
 					pretty_printer_move(f,1);
 				}
 			}
+
+			if ( term_number > 0 ) 
+			{
+				pretty_printer_unindent(f);
+			}
+
+			++term_number;
 		}
 		
 		port_putc( ')', f );
