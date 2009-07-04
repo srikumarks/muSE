@@ -538,10 +538,12 @@ muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args )
 	muse_cell length_arg	= _cons( _mk_int( length ), MUSE_NIL );
 	muse_cell vec			= _mk_functional_object( &g_vector_type, length_arg );
 	vector_t *v				= (vector_t*)_functional_object_data(vec,'vect');
+	int sp					= _spos();
 
 	for ( i = 0; i < length; ++i )
 	{
 		v->slots[i] = _evalnext(&args);
+		_unwind(sp);
 	}
 
 	return muse_add_recent_item( env, (muse_int)fn_vector_from_args, vec );
@@ -584,7 +586,13 @@ muse_cell fn_list_to_vector( muse_env *env, void *context, muse_cell args )
 
 		vector_init_with_length( v, length );
 
-		muse_list_extract( env, length, list, 1, v->slots, 1 );
+		{
+			muse_cell *slots = v->slots;
+			while ( list ) {
+				slots[0] = muse_head(env,list);
+				list = muse_tail(env,list);
+			}
+		}
 
 		return fv;
 	}

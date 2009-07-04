@@ -51,8 +51,11 @@ MUSEAPI muse_cell muse_head( muse_env *env, muse_cell cell )
 {
 	muse_cell h = _head(cell);
 
-	if ( _cellt(h) == MUSE_LAZY_CELL )
+	if ( _cellt(h) == MUSE_LAZY_CELL ) {
+		int sp = _spos();
 		_seth( cell, h = _force(h) );
+		_unwind(sp);
+	}
 
 	return h;
 }
@@ -71,8 +74,11 @@ MUSEAPI muse_cell muse_tail( muse_env *env, muse_cell cell )
 {
 	muse_cell t = _tail(cell);
 
-	if ( _cellt(t) == MUSE_LAZY_CELL )
+	if ( _cellt(t) == MUSE_LAZY_CELL ) {
+		int sp = _spos();
 		_sett( cell, t = _force(t) );
+		_unwind(sp);
+	}
 
 	return t;
 }
@@ -88,7 +94,7 @@ MUSEAPI muse_cell muse_tail( muse_env *env, muse_cell cell )
 MUSEAPI muse_cell muse_tail_n( muse_env *env, muse_cell cell, int n )
 {
 	while ( n-- > 0 )
-		cell = _tail(cell);
+		cell = muse_tail(env,cell);
 
 	return cell;
 }
