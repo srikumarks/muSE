@@ -672,6 +672,31 @@ muse_cell fn_hashtable_size( muse_env *env, void *context, muse_cell args )
 	return _mk_int( h->count );
 }
 
+typedef struct {
+	muse_cell list;
+	int count;
+} copy_list_data_t;
+
+static muse_cell list_items( muse_env *env, void *context, int i, muse_boolean *eol )
+{
+	copy_list_data_t *data = (copy_list_data_t*)context;
+	if ( data->list ) {
+		(*eol) = MUSE_FALSE;
+		data->count++;
+		return _next(&(data->list));
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell copy_list( muse_env *env, muse_cell list, int *count )
+{
+	copy_list_data_t data = { list, 0 };
+	muse_cell result = muse_generate_list( env, list_items, &data );
+	if ( count ) (*count) = data.count;
+	return result;
+}
 
 /**
  * (hashtable alist).
@@ -685,9 +710,7 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 	
 	muse_cell alist = _evalnext(&args);
 	int count = 0;
-	muse_cell *alistarr = muse_list_to_array( env, alist, &count );
-	muse_cell alist_copy = muse_array_to_list( env, count, alistarr, 1 );
-	free(alistarr);
+	muse_cell alist_copy = copy_list( env, alist, &count );
 
 	{
 		hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
@@ -698,6 +721,28 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args )
 	
 	return muse_add_recent_item( env, (muse_int)fn_alist_to_hashtable, ht );
 }
+
+typedef struct {
+	muse_cell intrabucket_iter;
+	muse_cell *buckets_iter;
+	muse_cell *buckets_end;
+} h2a_data_t;
+
+static muse_cell h2a_generator( muse_env *env, h2a_data_t *data, int i, muse_boolean *eol )
+{
+	if ( data->intrabucket_iter ) {
+		(*eol) = MUSE_FALSE;
+		return _next(&(data->intrabucket_iter));
+	} else if ( data->buckets_iter + 1 < data->buckets_end ) {
+		++(data->buckets_iter);
+		data->intrabucket_iter = *(data->buckets_iter);
+		return h2a_generator( env, data, i, eol );
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
 
 /**
  * (hashtable->alist ht).
@@ -713,34 +758,11 @@ muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args )
 	muse_assert( h && h->base.type_info->type_word == 'hash' );
 	
 	{
-		muse_cell *kvpairs		= (muse_cell*)malloc( sizeof(muse_cell) * h->count );
-		muse_cell *kvpairs_iter = kvpairs;
-		muse_cell *buckets_iter = h->buckets;
-		muse_cell *buckets_end	= buckets_iter + h->bucket_count;
-
-		/* Collect all kvpairs in the hash table into a single
-			array so that we can use array->list conversion. */
-		for ( ; buckets_iter < buckets_end; ++buckets_iter )
-		{
-			muse_cell alist = *buckets_iter;
-			
-			if ( alist )
-			{
-				int bucket_size = _list_length(alist);
-				
-				muse_list_extract( env, bucket_size, alist, 1, kvpairs_iter, 1 );
-				
-				kvpairs_iter += bucket_size;
-			}
-		}
-		
-		muse_assert( kvpairs_iter == kvpairs + h->count );
-		
-		result = muse_array_to_list( env, h->count, kvpairs, 1 );
-		free(kvpairs);
+		h2a_data_t data = { *(h->buckets), h->buckets, h->buckets + h->bucket_count };
+		return muse_add_recent_item( env, 
+									 (muse_int)fn_hashtable_to_alist, 
+									 muse_generate_list( env, (muse_list_generator_t)h2a_generator, &data ) );
 	}
-	
-	return result;
 }
 
 static const struct _defs 
