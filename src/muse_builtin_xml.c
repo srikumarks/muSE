@@ -328,9 +328,9 @@ static muse_boolean xml_skip_whitespace( muse_port_t p )
 static void ungetbuffer( char *c, size_t n, muse_port_t p )
 {
 	muse_int i;
-	for ( i = n-1; i >= 0; --i )
+	for ( i = n; i > 0; --i )
 	{
-		port_ungetc(c[i],p);
+		port_ungetc(c[i-1],p);
 	}
 }
 
@@ -699,7 +699,7 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 	/* Trim leading white space. */
 	while ( (*len) > 0 )
 	{
-		if ( isspace((*text)[0]) )
+		if ( isspace((unsigned char)((*text)[0])) )
 		{
 			(*len)--;
 			(*text)++;
@@ -711,7 +711,7 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 	/* Trim trailing white space. */
 	while ( (*len) > 0 )
 	{
-		if ( isspace((*text)[(*len)-1]) )
+		if ( isspace((unsigned char)((*text)[(*len)-1])) )
 		{
 			(*len)--;
 			(*text)[(*len)] = '\0';
