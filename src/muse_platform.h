@@ -74,25 +74,25 @@ typedef long long longlong_t;
 BEGIN_MUSE_C_FUNCTIONS
 	MUSEAPI void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
 END_MUSE_C_FUNCTIONS
-#	define muse_assert( cond ) do { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); } while(0)
+#	define muse_assert( cond ) { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); }
 #else
 #	define muse_assert( cond )
 #endif
 
 #if MUSE_DIAGNOSTICS_LEVEL > 0
-	#define MUSE_DIAGNOSTICS(statement) do { statement; } while (0)
+	#define MUSE_DIAGNOSTICS(statement) { statement; }
 #else
 	#define MUSE_DIAGNOSTICS(statement)
 #endif
 
 #if MUSE_DIAGNOSTICS_LEVEL > 1
-	#define MUSE_DIAGNOSTICS2(statement) do { statement; } while (0)
+	#define MUSE_DIAGNOSTICS2(statement) { statement; }
 #else
 	#define MUSE_DIAGNOSTICS2(statement)
 #endif	
 
 #if MUSE_DIAGNOSTICS_LEVEL > 2
-	#define MUSE_DIAGNOSTICS3(statement) do { statement; } while (0)
+	#define MUSE_DIAGNOSTICS3(statement) { statement; }
 #else
 	#define MUSE_DIAGNOSTICS3(statement)
 #endif
