@@ -1035,7 +1035,9 @@ muse_cell fn_top_level_handler( muse_env *env, void *context, muse_cell args )
 		}
 	}
 	
-	len = sprintf( msg, "\nException info available in symbol '_'.\n" );
+	len = sprintf( msg, "\nException info available in symbol '_'." );
+	port_write( msg, len, mstderr );
+	len = sprintf( msg, "\nTo continue with a substitute value, use (resume <value>).\n" );
 	port_write( msg, len, mstderr );
 	port_write( "ex> ", 4, mstderr );
 	port_flush( mstderr );
@@ -1056,11 +1058,11 @@ muse_cell fn_top_level_handler( muse_env *env, void *context, muse_cell args )
 muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args )
 {
 	muse_port_t p = muse_stdport(env,MUSE_STDERR_PORT);
-	muse_cell wrapped_expr = muse_list( env, "Sc(SS(cS))", 
+	muse_cell wrapped_expr = muse_list( env, "Sc(Sc(cS))", 
 										L"try",
 										_cons( fn, args ),
 										L"fn",
-										L"_",
+										_cons( _csymbol(L"resume"), _csymbol(L"_") ),
 										_mk_nativefn(fn_top_level_handler,NULL),
 										L"_"
 										);
