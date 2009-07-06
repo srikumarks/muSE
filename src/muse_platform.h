@@ -70,6 +70,10 @@ typedef long long longlong_t;
 
 #include <setjmp.h>
 
+#ifndef MUSEAPI
+#define MUSEAPI
+#endif
+
 #ifdef MUSE_DEBUG_BUILD
 BEGIN_MUSE_C_FUNCTIONS
 	MUSEAPI void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
@@ -95,10 +99,6 @@ END_MUSE_C_FUNCTIONS
 	#define MUSE_DIAGNOSTICS3(statement) { statement; }
 #else
 	#define MUSE_DIAGNOSTICS3(statement)
-#endif
-
-#ifndef MUSEAPI
-#define MUSEAPI
 #endif
 
 #endif /* __MUSE_PLATFORM_H__ */
