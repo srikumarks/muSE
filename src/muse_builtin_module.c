@@ -92,7 +92,23 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 	_pushdef( sym_main, sym_main );
 
 	/* Evaluate the body of the module. */
-	_force( muse_do( env, args ) );
+	if ( args ) {
+		/* This module's body has already been parsed. So evaluate it and gather the
+		 definitions. The limitation of this approach is that read-macros defined in
+		 the module cannot be used within the module. But you can export functions,
+		 objects, etc. .. and even unused macro definitions. */
+		_force( muse_do( env, args ) );
+	} else {
+		/* A empty body means "treat the rest of the current input as the module body.".
+		 This approach has the advantage that the module can define, use and export
+		 macros as well. */
+		muse_port_t p = muse_current_port( env, MUSE_INPUT_PORT, NULL );
+		int sp = _spos();
+		while ( !port_eof(p) ) {
+			_eval(muse_pread(p));
+			_unwind(sp);
+		}
+	}
 	
 	/* Keep around the definition of the "main" symbol. */
 	{
