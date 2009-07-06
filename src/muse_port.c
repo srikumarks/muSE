@@ -1206,24 +1206,20 @@ static muse_boolean is_macro_sexpr( muse_env *env, muse_cell sexpr )
 	{
 		muse_cell sym = _head(sexpr);
 
-		/* The head of the list must be a symbol. */
-		if ( _cellt(sym) != MUSE_SYMBOL_CELL )
-			return MUSE_FALSE;
-
-		{
-			muse_cell val = _symval(sym);
+		/* The head of the list must be a symbol or a macro. */
+		if ( _cellt(sym) == MUSE_SYMBOL_CELL )
+			sym = _symval(sym);
 			
-			/* The symbol's value must be a lambda function. */
-			if ( _cellt(val) != MUSE_LAMBDA_CELL )
-				return MUSE_FALSE;
-
-			/* The lambda function must be a macro. The head of the
-			lambda cons cell gives the formal arguments list, which
-			will be "quick-quoted" in the case of macros and hence will
-			be -ve. For normal functions, it'll be >= 0. */
-			if ( _head(val) < 0 )
-				return MUSE_TRUE;
-		}
+		/* The symbol's value must be a lambda function. */
+		if ( _cellt(sym) != MUSE_LAMBDA_CELL )
+			return MUSE_FALSE;
+		
+		/* The lambda function must be a macro. The head of the
+		 lambda cons cell gives the formal arguments list, which
+		 will be "quick-quoted" in the case of macros and hence will
+		 be -ve. For normal functions, it'll be >= 0. */
+		if ( _head(sym) < 0 )
+			return MUSE_TRUE;
 	}
 
 	return MUSE_FALSE;
