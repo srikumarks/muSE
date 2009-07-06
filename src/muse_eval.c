@@ -168,8 +168,11 @@ muse_cell muse_apply_nativefn( muse_env *env, muse_cell fn, muse_cell args )
  */
 MUSEAPI muse_boolean muse_bind_formals( muse_env *env, muse_cell formals, muse_cell args )
 {
-	if ( formals == args ) 
-		return MUSE_TRUE; /* Usually happens when formals == args == MUSE_NIL */
+	if ( formals == args ) {
+		if ( _cellt(formals) == MUSE_SYMBOL_CELL )
+			_pushdef(formals,formals);
+		return MUSE_TRUE;
+	}
 	
 	else if ( formals == MUSE_NIL )
 		return MUSE_FALSE;
