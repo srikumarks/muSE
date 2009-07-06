@@ -1297,6 +1297,18 @@ static muse_cell peval( muse_env *env, muse_port_t f, muse_cell expr )
 }
 
 /**
+ * For macro expansions, we should not evaluate the arguments before passing
+ * to the macro.
+ */
+static muse_cell peval_macro( muse_env *env, muse_port_t f, muse_cell expr )
+{
+	muse_port_t prev = muse_current_port( env, MUSE_INPUT_PORT, f );
+	muse_cell result = muse_apply( env, _eval(_head(expr)), _tail(expr), MUSE_TRUE, MUSE_FALSE );
+	muse_current_port( env, MUSE_INPUT_PORT, prev );
+	return result;	
+}
+
+/**
  * Reads the next symbolic expression at the current
  * stream position, ignoring white space and comment
  * lines.
@@ -1358,14 +1370,11 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 					asked to detect and expand macro expressions (braces
 					or parens) and the head of the list is a macro symbol. 
 			*/
-			if ( (f->mode & MUSE_PORT_READ_EXPAND_BRACES)
-					&& (c == '{' || ((f->mode & MUSE_PORT_READ_DETECT_MACROS)
-										&& (c == '(' || c == '[')
-										&& is_macro_sexpr(env,sexpr))) )
-			{
-				return peval(env,f,sexpr);
-			}
-			else if ( env->parameters[MUSE_ENABLE_OBJC] && (c == '[') ) {
+			if ( (f->mode & MUSE_PORT_READ_EXPAND_BRACES) && (c == '{') ) {
+				return peval( env, f, sexpr );
+			} else if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && (c == '(') && is_macro_sexpr(env, sexpr) ) {
+				return peval_macro( env, f, sexpr );
+			} else if ( env->parameters[MUSE_ENABLE_OBJC] && (c == '[') ) {
 				/* 
 				Objective C bridge:
 				 
