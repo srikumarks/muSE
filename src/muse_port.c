@@ -1010,7 +1010,7 @@ static muse_cell parse_dot_notation( muse_env *env, int mode, const char *s, con
 				if ( s >= s_end ) 
 					break;
 				else
-					dot = strchr( s, '.' );
+					dot = strchr_range( s, s_end, '.' );
 			}
 			
 			if ( s < s_end ) {
