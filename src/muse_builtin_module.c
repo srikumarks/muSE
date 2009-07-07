@@ -338,29 +338,28 @@ static muse_functional_object_type_t g_module_type =
  * from all scope when the module completes loading. Such local 
  * symbols' values can be usefully captured in closures however.
  *
- * You can forward reference an exported symbol within a module
- * just by using its qualified name. This is valid only if the
- * forward reference will not be immediately evaluated at usage
- * point. Such a forward reference can be used within
- * function bodies.
- * 
- * Example:
- * @code
- * (module Numbers (even odd)
- *   (define (even N)
- *     (case N
- *       (0 T)
- *       (_ (Numbers.odd (- N 1)))))
- *   (define (odd N)
- *     (case N
- *       (0 ())
- *       (_ (even (- N 1)))))
- * )
- * @endcode   
- *
  * The \c module expression defines the value of the \c MyMod symbol
  * to be a function of one argument. This function takes a symbol
  * and evaluates to its value in the context of the module.
+ *
+ * Another way to define a module is to place 
+ * @code (module MyMod (exportA exportB ...)) @endcode
+ * at the start of a module file. In this case, the rest of
+ * the file will be considered to be the module definition
+ * and will be read in. The advantage of this approach over
+ * the top approach is that using the top approach you cannot
+ * define macros for local use within the module. Whereas
+ * in the above approach you have all the facilities normally
+ * available via \ref fn_load "load".
+ *
+ * Modules are values. Therefore you are free to define functions
+ * that return modules, etc. Modules may export other modules as well,
+ * which can be accessed using the dot notation - for example: m1.m2.m3.val 
+ *
+ * Module exports are mutable. You can use the generic \ref fn_get "get"
+ * and \ref fn_put "put" functions to fetch and modify the exports of
+ * a module. You cannot, however, add new exports or remove exports 
+ * from a module.
  */
 muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 {

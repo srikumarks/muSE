@@ -87,16 +87,19 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_StructuringCode Structuring code
  *	- \ref fn_define "define", \ref syntax_let "let", \ref syntax_do "do"
  * 	- \ref syntax_lambda "fn", \ref syntax_block "fn:"
- *	- \ref syntax_while "while", \ref syntax_for "for"
  * 	- \ref syntax_case "case"
  *	- \ref syntax_if "if", \ref syntax_cond "cond"
  *	- \ref syntax_try "try", \ref fn_raise "raise", \ref fn_retry "retry", \ref syntax_finally "finally"
  *	- \ref fn_the "the and it"
+ *	- \ref fn_callcc "call/cc"
  * 
  * @subsection ML_MathOps Mathematical operators
  *	- Binary operators 
  *		- \ref fn_add "+", \ref fn_sub "-", \ref fn_mul "*", \ref fn_div "/"
  *		- \ref fn_mod "%", \ref fn_idiv "i/", \ref fn_pow "pow"
+ *	- Comparisons and boolean operations
+ *		- \ref fn_eq "eq?", \ref fn_equal "=", \ref fn_lt "<", \ref fn_gt ">", \ref fn_le "<=", \ref fn_ge ">=", \ref fn_ne "!="
+ *		- \ref fn_and "and", \ref fn_or "or, \ref fn_not "not"
  *	- Unary operators
  *		- \ref fn_trunc "trunc"
  *		- sqrt, log, log10, exp
@@ -105,7 +108,8 @@ BEGIN_MUSE_C_FUNCTIONS
  *		- fabs, floor, ceil
  *	- Other functions
  *		- \ref fn_rand "rand"
- *
+ *		- \ref fn_min "min", \ref fn_max "max"
+ * 
  * @subsection ML_DataStructures Data structures
  *	- \ref fn_cons "cons", \ref fn_first "first", \ref fn_rest "rest"
  *	- \ref fn_lcons "lcons", \ref fn_lazy "lazy"
@@ -114,22 +118,38 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref ByteArray "byte arrays"
  *	- \ref Boxes "boxes"
  *
+ * @subsection ML_ListOps List operations
+ *	- \ref fn_list "list", \ref fn_first "first", \ref fn_rest "rest"
+ *	- \ref fn_take "take", \ref fn_drop "drop", \ref fn_nth "nth"
+ *	- \ref fn_sort "sort", \ref fn_sort_inplace "sort!", \ref fn_reverse "reverse", \ref fn_reverse_inplace "reverse!"
+ *
+ * @subsection ML_HOFs Higher order and/or polymorphic functions
+ *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_transpose "transpose"
+ *	- \ref fn_get "get" and \ref fn_put "put" can work across a multitude of key-value objects
+ *	  such as hashtables, vectors, modules and objects.
+ *
  * @subsection ML_ObjectSystem Object system
- * 	- \ref fn_class "class"
- * 	- \ref fn_new "new"
- * 	- \ref fn_send "<-" (send message to object)
- * 	- \ref fn_obj_pty "->" (get object property)
+ * 	- \ref fn_new "new" (or \ref fn_new "object", which is a synonym)
+ *	- Property access and setting is via the generic \ref fn_get "get" and \ref fn_put "put" functions.
+ *	- Method invocation is by using the object in the function position with the 
+ *	  method name symbol as the first argument, followed by other arguments.
+ *	- \ref fn_supers "supers", \ref fn_super_invoke "super-invoke", \ref fn_super_invoke_explicit "super-invoke*"
+ *	- \ref fn_isa_p "isa?"
+ *
+ * @subsection ML_Modules Module system
+ *	- \ref fn_module "module", \ref fn_import "import"
  * 
  * @subsection ML_IO Input and output
  *	- \ref PortIO
  *	- \ref fn_open_file "open-file", \ref fn_memport "memport"
- * 	- \ref fn_print "print", \ref fn_write "write"
- * 	- \ref fn_read "read"
- *	- \ref fn_close "close"
+ * 	- \ref fn_print "print", \ref fn_write "write", \ref fn_read "read", \ref fn_close "close"
+ *	- \ref fn_json "json", \ref fn_read_json "read-json" and \ref fn_write_json "write-json"
+ *	- \ref fn_xml "xml", \ref fn_read_xml "read-xml" and \ref fn_write_xml "write-xml"
  *
  * @subsection ML_Processes Processes
  *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic", \ref fn_post "post"
  *	- \ref fn_run "run", \ref fn_this_process "this-process", \ref fn_process_p "process?"
+ *	- \ref fn_with_timeout_us "with-timeout-us"
  */
  
 /**
