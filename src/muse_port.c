@@ -935,6 +935,21 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 }
 
 /**
+ * Similar to strchr, except it doesn't require the string to
+ * be null-terminated and therefore accepts a range.
+ */
+static const char *strchr_range( const char *s, const char *s_end, int c )
+{
+	for ( ; s < s_end; ++s ) {
+		if ( (*s) == c ) {
+			return s;
+		}
+	}
+
+	return NULL;
+}
+
+/**
  * Converts a symbol of the form a.b.c to the expression (get a 'b 'c).
  * If a symbol starts with '.' such as '.x', then it is interpreted
  * to be the same as 'self.x'. If it ends with '.', the dot is
@@ -945,8 +960,13 @@ static muse_cell parse_dot_notation( muse_env *env, int mode, const char *s, con
 {
 	if ( mode & MUSE_PORT_READ_DETECT_MACROS ) {
 		const char *dot = NULL;
-		
-		dot = strchr(s, '.');
+
+		/* Locate the first period character in the given range.
+		   dot will be set to NULL if no period character is
+		   found, othewise it will point to the period character.
+		   This behaviour is similar to strchr except that it
+		   doesn't require the string range to be null-terminated. */
+		dot = strchr_range( s, s_end, '.' );
 		
 		/* Handle the regular non-dot symbol first. */
 		if ( dot == NULL )
