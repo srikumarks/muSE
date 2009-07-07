@@ -309,13 +309,13 @@ static fileport_type_t g_port_type_stdout =
 
 static fileport_t g_muse_stdports[3] =
 {
-	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdin },
+	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdin, MUSE_NIL },
 		MUSE_STDIN_PORT, NULL, 0
 	},
-	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdout },
+	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdout, MUSE_NIL },
 		MUSE_STDOUT_PORT, NULL, 0
 	},
-	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdout },
+	{	{ 'muSE', (muse_functional_object_type_t*)&g_port_type_stdout, MUSE_NIL },
 		MUSE_STDERR_PORT, NULL, 0
 	}
 };
@@ -363,35 +363,26 @@ muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
 	return muse_add_recent_item( env, (muse_int)fn_open_file, _mk_functional_object( (muse_functional_object_type_t*)&g_fileport_type, args ) );
 }
 
-/**
- * The destructor that will be called at environment destruction time
- * to free up the standard ports.
- */
-static muse_cell fn_destroy_stdports( muse_env *env, void *context, muse_cell args )
-{
-	int i;
-	for ( i = MUSE_STDIN_PORT; i <= MUSE_STDERR_PORT; ++i )
-	{
-		if ( i != MUSE_STDIN_PORT )
-			port_flush( env->stdports[i] );
-
-		port_destroy( env->stdports[i] );
-		free(env->stdports[i]);
-		env->stdports[i] = NULL;
-	}
-
-	return MUSE_NIL;
-}
-
 void muse_define_builtin_fileport(muse_env *env)
 {
+	int sp = _spos();
+
 	{
 		int i;
+		const muse_char *stdnames[] = { L"*stdin*", L"*stdout*", L"*stderr*" };
 		for ( i = 0; i < 3; ++i )
 		{
 			env->stdports[i] = malloc(sizeof(fileport_t));
 			memcpy( env->stdports[i], &g_muse_stdports[i], sizeof(fileport_t) );
 			port_init( env, env->stdports[i] );
+
+			/* Define *stdin*, *stdout* and *stderr* to the respective ports. */
+			{
+				muse_cell ref = _mk_destructor( (muse_nativefn_t)NULL, env->stdports[i] );
+				env->stdports[i]->base.ref = ref;
+				_define( _csymbol(stdnames[i]), ref );
+				_unwind(sp);
+			}
 		}
 	}
 
@@ -407,13 +398,6 @@ void muse_define_builtin_fileport(muse_env *env)
 	/* Define the "open-file" function. This is the only file specific function needed.
 	After this the generic port functions take over. */
 	_define( _csymbol(L"open-file"), _mk_nativefn( fn_open_file, NULL ) );
-
-	/* We add a destructor for the standard ports and set the value of an internal symbol
-	to the destructor. We do this so that the destructor will be invoked only at environment
-	destruction time. If we don't assign it to a symbol, the destructor will be invoked
-	the next time garbage collection kicks in, since there will be no active reference to
-	the destructor. */
-	_define( _csymbol(L"{(##standard-ports##)}"), _mk_destructor( fn_destroy_stdports, NULL ) );
 }
 
 
