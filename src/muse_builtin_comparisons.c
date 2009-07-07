@@ -62,14 +62,15 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 			return compare_text(env,lhs,rhs);
 		case MUSE_CONS_CELL		:
 		{
-			int c = deep_compare( env, _head(lhs), _head(rhs) );
+			int c = deep_compare( env, muse_head( env, lhs ), muse_head( env, rhs ) );
 			if ( c != 0 )
 				return c;
 			else
-				return deep_compare( env, _tail(lhs), _tail(rhs) );
+				return deep_compare( env, muse_tail( env, lhs ), muse_tail( env, rhs ) );
 		}
 		case MUSE_SYMBOL_CELL	:
 		{
+			/* Compare the string form of the symbols. */
 			muse_cell lt = _tail(_head(_tail(lhs)));
 			muse_cell rt = _tail(_head(_tail(rhs)));
 			
@@ -78,6 +79,9 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 			else
 				return deep_compare( env, lt, rt );
 		}
+		case MUSE_LAZY_CELL		:
+			return deep_compare( env, _force(lhs), _force(rhs) );
+
 		default					:
 			return lhs - rhs;
 	}	

@@ -103,8 +103,8 @@ static muse_cell lazy_mapper( muse_env *env, void *context, muse_cell args )
 	list = _quq(_head(args));
 	
 	if ( list ) {
-		muse_cell h = muse_head(env,list);
-		_seth( args, _tail(list) );
+		muse_cell h = muse_head( env, list );
+		_seth( args, muse_tail( env, list ) );
 		return _cons( _apply( fn, _cons( h, MUSE_NIL ), MUSE_TRUE ), 
 		             _setcellt( _cons( me, orig ), MUSE_LAZY_CELL ) );
 	} else {

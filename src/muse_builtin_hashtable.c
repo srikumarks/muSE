@@ -288,7 +288,7 @@ static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key, m
 
 	if ( *kvpair ) {
 		muse_cell val = _tail( _head( *kvpair ) );
-		return argv ? muse_get( env, muse_add_recent_item( env, key, val ), _head(argv), _tail(argv) ) : val;
+		return argv ? muse_get( env, muse_add_recent_item( env, key, val ), muse_head( env, argv ), muse_tail( env, argv ) ) : val;
 	} else {
 		/* key doesn't exist. Try to compute using the func spec. */
 		muse_cell value = MUSE_NIL;
@@ -301,7 +301,7 @@ static muse_cell hashtable_get_prop( muse_env *env, void *self, muse_cell key, m
 		if ( value )
 			hashtable_add( env, h, key, value, &hash );
 
-		return argv ? muse_get( env, muse_add_recent_item( env, key, value ), _head(argv), _tail(argv) ) 
+		return argv ? muse_get( env, muse_add_recent_item( env, key, value ), muse_head( env, argv ), muse_tail( env, argv ) ) 
 					: muse_add_recent_item( env, key, value );
 	}
 }

@@ -28,11 +28,11 @@ static int pty_compare( const void *cell1, const void *cell2 )
 static muse_cell listiter( muse_env *env, muse_cell *listptr, int i, muse_boolean *eol )
 {
 	muse_cell c = *listptr;
-	muse_cell result = _head(c);
+	muse_cell result = muse_head( env, c );
 
 	(*eol) = c ? MUSE_FALSE : MUSE_TRUE;
 
-	(*listptr) = _tail(c);
+	(*listptr) = muse_tail( env, c );
 	return result;
 }
 
@@ -47,9 +47,8 @@ static muse_cell propiter( muse_env *env, propmapper_t *prop, int i, muse_boolea
 {
 	if ( prop->domain )
 	{
-		_seth( prop->argcell, _head(prop->domain) );
+		_seth( prop->argcell, _next(&(prop->domain)) );
 		(*eol) = MUSE_FALSE;
-		prop->domain = _tail(prop->domain);
 		return _apply( prop->propertyFn, prop->argcell, MUSE_TRUE );
 	}
 	else
@@ -113,10 +112,10 @@ static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_c
 		compare the cell contents. */
 		int			i = 0;
 		muse_cell	c = list; 
-		for ( ; i < length; ++i, c = _tail(c) )
+		for ( ; i < length; ++i, c = muse_tail(env,c) )
 		{
 			vec[i].env = env;
-			vec[i].cell	= vec[i].pty = _head(c);
+			vec[i].cell	= vec[i].pty = muse_head(env,c);
 		}
 	}
 	
@@ -128,6 +127,8 @@ static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_c
 		int			i = 0;
 		muse_cell	c = list;
 		
+		/* We can use _tail(c) here because the list has already
+		   been eagerly evaluated (i.e. is not lazy). */
 		for ( ; i < length; ++i, c = _tail(c) )
 		{
 			_seth( c, vec[i].cell );
@@ -221,7 +222,7 @@ muse_cell fn_reverse_inplace( muse_env *env, void *context, muse_cell args )
 
 	while ( list )
 	{
-		muse_cell next = _tail(list);
+		muse_cell next = muse_tail( env, list );
 		_sett( list, result );
 		result = list;
 		list = next;
