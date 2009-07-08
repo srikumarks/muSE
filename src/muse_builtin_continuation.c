@@ -262,7 +262,7 @@ static muse_functional_object_type_t g_continuation_type =
 };
 
 /**
- * (call/cc (fn (k) --- (k result) ---)).
+ * @code (call/cc (fn (k) ... (k result) ...)) @endcode
  *
  * Abbreviation for "call with current continuation", call/cc is an
  * implementation of the scheme recommendation for continuation support.
@@ -926,7 +926,7 @@ muse_cell fn_retry( muse_env *env, void *context, muse_cell args )
 muse_cell fn_with_recent( muse_env *env, void *context, muse_cell args );
 
 /**
- * (finally ...block...)
+ * @code (finally ...block...) @endcode
  *
  * Installs a finalizer for the current trap state.
  * A finally block's body will be captured in a closure

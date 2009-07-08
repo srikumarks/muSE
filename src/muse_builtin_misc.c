@@ -63,7 +63,7 @@ static muse_cell generate_files( muse_env *env, filesearchinfo_t *info, int i, m
 }
 
 /**
- * (list-files [pattern]).
+ * @code (list-files [pattern]) @endcode
  * Returns a list of files that patch the given pattern. 
  * For example:
  * @code
@@ -155,7 +155,7 @@ static int copy_with_space_escapes( int N, char *buffer, const muse_char *str )
 }
 
 /**
- * (list-files [pattern]).
+ * @code (list-files [pattern]) @endcode
  * Returns a list of files that patch the given pattern. 
  * For example:
  * @code
@@ -276,8 +276,8 @@ muse_cell fieldgen( muse_env *env, void *context, int i, muse_boolean *eol )
 
 
 /**
- * (split "one;two;;three;" ";") -> ("one" "two" "" "three" "")
- * (split "one=1;two=2;three=3" "=;") -> ("one" "1" "two" "2" "three" "3")
+ * @code (split "one;two;;three;" ";") -> ("one" "two" "" "three" "") @endcode
+ * @code (split "one=1;two=2;three=3" "=;") -> ("one" "1" "two" "2" "three" "3") @endcode
  *
  * The first argument is the string to split and the second 
  * argument is a character separator. 

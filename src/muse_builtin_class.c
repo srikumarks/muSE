@@ -136,9 +136,11 @@ static muse_functional_object_type_t g_object_type =
 
 
 /**
+ * @code 
  * (new supers-list prop1 value1 prop2 value2 ...)
- * (new supers-list)
+ * (new supers-list) @endcode
  * (new)
+ * @endcode
  *
  * Creates an "object" that you can use for OOP.
  * \ref fn_get "get" gets properties of the object
@@ -196,11 +198,11 @@ muse_cell fn_new( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (supers object)
+ * @code (supers object) @endcode
  *
  * Gets the object's supers list. 
  *
- * (supers object supers-list)
+ * @code (supers object supers-list) @endcode
  *
  * Sets the object's supers list to the one given. If you
  * modify the list returned by (supers object), do call (supers object supers-list)
@@ -360,7 +362,7 @@ static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, 
 }
 
 /**
- * (super-invoke obj 'method-name . args)
+ * @code (super-invoke obj 'method-name . args) @endcode
  *
  * Invokes a method definition searching the super list
  * without searching the object's own property list.
@@ -390,7 +392,7 @@ muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (super-invoke* obj supers-list 'method-name . args)
+ * @code (super-invoke* obj supers-list 'method-name . args) @endcode
  *
  * Invokes a method definition searching the *given* super list
  * without searching the object's own property list.
@@ -442,7 +444,7 @@ static muse_cell is_parent_of( muse_env *env, muse_cell type, muse_cell x, muse_
 }
 
 /**
- * (isa? type x)
+ * @code (isa? type x) @endcode
  *
  * Compares types. If type and x are of the same non object type,
  * it returns x. If type and x are objects and they both have one

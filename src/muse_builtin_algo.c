@@ -143,7 +143,8 @@ static muse_cell sort_by_property_inplace( muse_env *env, muse_cell list, muse_c
 }
 
 /**
- * (sort! list [propertyFn]).
+ * @code (sort! list [propertyFn]) @endcode
+ *
  * Sorts a list in place according to an optional property function.
  * The first argument is the list of objects to sort. The cells
  * in the list are replaced with the same objects in sorted order.
@@ -187,7 +188,7 @@ muse_cell fn_sort( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (reverse list)
+ * @code (reverse list) @endcode
  *
  * Evaluates to a list with items in the reverse order of the given
  * list. The given list is not modified.
@@ -206,7 +207,7 @@ muse_cell fn_reverse( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (reverse! list)
+ * @code (reverse! list) @endcode
  *
  * Evaluates to a list with items in the reverse order of the given
  * list. The given list is reversed in-place to conserve memory, 

@@ -21,7 +21,7 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
 
 /**
- * (write-xml [port] xml-node [flags]).
+ * @code (write-xml [port] xml-node [flags]) @endcode
  * Converts an s-expr representation of an XML node (a tag, not
  * an arbitrary node such as attribute nodes) into XML form
  * and writes it out to the given port. The XML node representation
@@ -240,7 +240,7 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (read-xml port)
+ * @code (read-xml [port]) @endcode
  *
  * Reads one xml node (a simple subset of xml) and returns it in the 
  * canonical form.

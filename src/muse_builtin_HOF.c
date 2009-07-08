@@ -63,7 +63,7 @@ static muse_monad_view_t *get_monad_view( muse_env *env, muse_cell obj, muse_fun
 }
 
 /**
- * (size obj) or (length obj)
+ * @code (size obj) or (length obj) @endcode
  *
  * Returns the size of the given list (i.e. its length) or vector
  * (same as vector-length) or hashtable (same as hashtable-size).
@@ -126,7 +126,7 @@ static muse_cell list_map( muse_env *env, muse_cell list, muse_cell fn, muse_cel
 }
 
 /**
- * (map fn obj).
+ * @code (map fn obj) @endcode
  * The object can be a list, vector or hashtable and the return value will
  * be of the corresponding type. When the object is a list, the function
  * is expected to take a single argument and provide a mapped value
@@ -206,7 +206,7 @@ static muse_cell list_join( muse_env *env, muse_cell lists )
 }
 
 /**
- * (join [reduction-fn] obj1 obj2 ...)
+ * @code (join [reduction-fn] obj1 obj2 ...) @endcode
  *
  * Joins the given objects, all of which must be of the same type.
  * Objects can be lists, vectors or hashtables. 
@@ -309,7 +309,7 @@ static muse_cell list_collect( muse_env *env, muse_cell list, muse_cell predicat
 }
 
 /**
- * (collect obj predicate mapper [reduction-fn])
+ * @code (collect obj predicate mapper [reduction-fn]) @endcode
  * EXPERIMENTAL
  * Intended for more general iteration over the collection objects.
  * The \p obj is either a list or a vector or a hashtable.
@@ -385,7 +385,7 @@ static muse_cell list_reduce( muse_env *env, muse_cell obj, muse_cell reduction_
 }
 
 /**
- * (reduce fn initial obj)
+ * @code (reduce fn initial obj) @endcode
  *
  * Reduces the values of the given collection \p obj using the given
  * reduction function and the \p initial value. You can use it with
@@ -431,7 +431,7 @@ static muse_boolean finder( muse_env *env, void *self, void *what, muse_cell thi
 }
 
 /**
- * (find item collection) -> reference.
+ * @code (find item collection) -> reference @endcode
  *
  * \c find can be used to locate an object in a list, vector or hashtable.
  * It uses muse_equal() to determine whether an object is present in the
@@ -500,7 +500,7 @@ static muse_boolean ormapper( muse_env *env, void *self, mapinfo_t *info, muse_c
 }
 
 /**
- * (andmap predicate collection).
+ * @code (andmap predicate collection) @endcode
  *
  * Evaluates the predicate on each element of the collection.
  * The collection can be a list, vector or a hashtable.
@@ -529,7 +529,7 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (ormap predicate collection).
+ * @code (ormap predicate collection) @endcode
  *
  * Evaluates the predicate on each element of the collection.
  * The collection can be a list, vector or a hashtable.
@@ -558,7 +558,7 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 
  
 /**
- * (for-each collection fn [result]).
+ * @code (for-each collection fn [result]) @endcode
  *
  * Same as fn_map(), but doesn't collect results.
  * The collection can be a list, vector or a hashtable.
@@ -612,7 +612,7 @@ static muse_cell transpose_generator( muse_env *env, muse_cell *rows, int i, mus
 }
 
 /**
- * (transpose -lists-).
+ * @code (transpose ...lists...) @endcode
  * 
  * Treats the given lists like the rows of a matrix, transposes
  * the lists and returns a list of the rows of the transposed
@@ -666,7 +666,7 @@ muse_cell fn_transpose( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (datafn [vector|hashtable] (fn ([key|index]) ...))
+ * @code (datafn [vector|hashtable] (fn ([key|index]) ...body...)) @endcode
  *
  * Establishes that the entries in the vector or the hashtable should
  * be determined by the given function. The function is only computed

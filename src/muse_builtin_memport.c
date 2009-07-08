@@ -206,7 +206,7 @@ MUSEAPI muse_port_t muse_create_memport( muse_env *env )
 }
 
 /**
- * (memport)
+ * @code (memport) @endcode
  *
  * Creates a new memory port for processing streams of data
  * in memory. You can write data to a memory port using the

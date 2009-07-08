@@ -317,8 +317,8 @@ static muse_port_type_t g_socket_type =
 };
 
 /**
- * (open "server.somewhere.com" port)
- * (open "231.41.59.26" 31415)
+ * @code (open "server.somewhere.com" port)
+ * (open "231.41.59.26" 31415) @endcode
  *
  * Opens a TCP connection to the given server on the given port
  * and returns a port object using which you can communicate with
@@ -424,7 +424,7 @@ typedef struct muse_server_stream_socket__
 } muse_server_stream_socket_t;
 
 /**
- * (with-incoming-connections-to-port port-number service-fn).
+ * @code (with-incoming-connections-to-port port-number service-fn) @endcode
  * Listens for connections to the given port and invokes the
  * service function with the connection information..
  * @code
@@ -807,7 +807,7 @@ static muse_port_type_t g_multicast_socket_type =
 };
 
 /**
- * (multicast-group [address] [port]).
+ * @code (multicast-group [address] [port]) @endcode
  * Creates a port that represents a multicast group. You can
  * send messages to the group by writing to the port and you
  * can receive messages to the group by reading from the port.
@@ -833,7 +833,7 @@ muse_cell fn_multicast_group( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (multicast-group? p).
+ * @code (multicast-group? p) @endcode
  * Returns \c p if it is a multicast port and MUSE_NIL if it isn't.
  */
 muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args )
@@ -847,7 +847,7 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (reply port).
+ * @code (reply port) @endcode
  *
  * Immediately after a multicast read succeeds, you have the chance
  * to reply specifically to that client. This is possible because the
@@ -879,7 +879,7 @@ muse_cell fn_reply( muse_env *env, void *context, muse_cell args )
 /*@}*/
 
 /**
- * (wait-for-input network-port [timeout-microseconds]).
+ * @code (wait-for-input network-port [timeout-microseconds]) @endcode
  * Returns T if input is available and 'timeout if the wait timed out.
  * Returns () upon error. Works only for network ports. It won't
  * wait for file-based ports.

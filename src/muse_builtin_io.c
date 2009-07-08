@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 /**
- * (port? p).
+ * @code (port? p) @endcode
  * Returns p if it is a port indeed, and () otherwise.
  */
 muse_cell fn_port_p( muse_env *env, void *context, muse_cell args )
@@ -72,7 +72,7 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 }
 
 /**
- * (print -expressions-).
+ * @code (print ...expressions...) @endcode
  * Prints each expression to the standard output in sequence.
  * Strings are printed without the quotes, so \c print can be
  * used to print out messages for the user.
@@ -83,7 +83,7 @@ muse_cell fn_print( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (write -expressions-).
+ * @code (write ...expressions...) @endcode
  * Writes the s-expressions to the standard output in sequence.
  * Tries to write an s-expression such that it can be read 
  * back in using \ref fn_read "read", meaning strings will be enclosed
@@ -95,7 +95,7 @@ muse_cell fn_write( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (read [port]) 
+ * @code (read [port]) @endcode
  *
  * Reads a single sexpr from the standard input stream.
  * 
@@ -120,7 +120,7 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (close port).
+ * @code (close port) @endcode
  * Closes the given port.
  */
 muse_cell fn_close( muse_env *env, void *context, muse_cell args )
@@ -136,7 +136,7 @@ muse_cell fn_close( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (eof? port).
+ * @code (eof? port) @endcode
  * Returns T if the port has reached end of stream.
  * Returns () if it hasn't reached end of stream.
  */
@@ -151,7 +151,7 @@ muse_cell fn_eof_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (flush [port]).
+ * @code (flush [port]) @endcode
  * Flushes the accumulated output on the given port.
  * If no port is given, flushes stdout.
  */
@@ -168,7 +168,7 @@ muse_cell fn_flush( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (load "file.lisp")
+ * @code (load "file.lisp") @endcode
  *
  * Reads and evaluates all expressions in the given file
  * and returns the value of the last expression.
@@ -220,7 +220,7 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (mickey inport outport)
+ * @code (mickey inport outport) @endcode
  *
  * Reads in the stream from the input port, expands all 
  * mickey expressions and outputs to the output port.

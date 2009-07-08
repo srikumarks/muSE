@@ -133,7 +133,7 @@ MUSEAPI muse_cell muse_box_set( muse_env *env, muse_cell box, muse_cell contents
 }
 
 /**
- * (box [contents]).
+ * @code (box [contents]) @endcode
  *
  * Creates a new box with the given contents. If contents is
  * not given, a new box with () as the contents will be created.

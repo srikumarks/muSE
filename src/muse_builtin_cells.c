@@ -244,7 +244,7 @@ static void forward_declare( muse_env *env, muse_cell sym )
 }
 
 /**
- * (define symbol value).
+ * @code (define symbol value) @endcode
  * Sets the current value of the symbol. \c symbol is not evaluated, \c value is
  * evaluated.
  * 
@@ -396,7 +396,7 @@ muse_cell fn_define( muse_env *env, void *context, muse_cell args )
 /*@{*/
 
 /**
- * (define-extension generic-fn-symbol fn-extension)
+ * @code (define-extension generic-fn-symbol fn-extension) @endcode
  *
  * Obeys the same syntax as \ref fn_define "define", except that
  * the symbol for extension is expected to be bound to a 
@@ -420,7 +420,7 @@ muse_cell fn_define_extension( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (define-override generic-fn-symbol fn-override)
+ * @code (define-override generic-fn-symbol fn-override) @endcode
  *
  * Obeys the same syntax as \ref fn_define "define", except that
  * the symbol for extension is expected to be bound to a 
@@ -442,7 +442,7 @@ muse_cell fn_define_override( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (local symbol1 symbol2 -etc-)
+ * @code (local symbol1 symbol2 ...) @endcode
  *
  * The local declaration is used to introduce symbols that are, well,
  * local to a particular context. What it says is that "from this point
@@ -542,7 +542,7 @@ void muse_define_builtin_local(muse_env *env)
 /*@}*/
 
 /**
- * (set! symbol value).
+ * @code (set! symbol value) @endcode
  *
  * Inside a function body or let or case block, it changes the value of the
  * given locally declared symbol. Cannot in general be used to set the value of 
@@ -562,7 +562,7 @@ muse_cell fn_set_M( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (setf! cell value).
+ * @code (setf! cell value) @endcode
  *
  * Sets the head of the given cons cell to the given value.
  */
@@ -575,7 +575,7 @@ muse_cell fn_setf_M( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (setr! cell value).
+ * @code (setr! cell value) @endcode
  *
  * Sets the tail of the given cons cell to the given value.
  */
@@ -588,7 +588,7 @@ muse_cell fn_setr_M( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (first list).
+ * @code (first list)  @endcode
  * Gets the \c head of the list, which is the first element.
  */
 muse_cell fn_first( muse_env *env, void *context, muse_cell args )
@@ -597,7 +597,7 @@ muse_cell fn_first( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (rest list).
+ * @code (rest list) @endcode
  * 
  * Gets the tail of the list. This is intended to be read as 
  * "rest of the list".
@@ -608,7 +608,7 @@ muse_cell fn_rest( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (nth n list).
+ * @code (nth n list) @endcode
  * Gets the n-th element of a list.
  * 
  * n is zero based. Returns item at index n in the list.
@@ -626,7 +626,7 @@ muse_cell fn_nth( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (take N ls).
+ * @code (take N ls) @endcode
  * 
  * Returns a new list consisting of a maximum of N items of
  * the given list "ls".
@@ -662,7 +662,7 @@ muse_cell fn_take( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (drop N list).
+ * @code (drop N list) @endcode
  *
  * Literally does that - drops N items from the given list
  * and returns a list of the remaining items. 
@@ -685,7 +685,7 @@ muse_cell fn_drop( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (dup arg).
+ * @code (dup arg) @endcode
  *
  * Creates a structural duplicate of the given argument.
  */
@@ -695,7 +695,7 @@ muse_cell fn_dup( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (list a1 a2 ... )
+ * @code (list a1 a2 ...) @endcode
  * Returns a list of the given items - the list of items is a
  * copy, though the items refer to the same objects.
  *
@@ -707,7 +707,7 @@ muse_cell fn_list( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (append! list1 list2 -so-on- listN).
+ * @code (append! list1 list2 ... listN) @endcode
  * Modifies the tail of list1 to point to list2, tail of list2 to list3 etc.
  * All except listN are modified.
  * 

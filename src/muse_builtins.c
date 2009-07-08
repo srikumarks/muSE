@@ -255,7 +255,7 @@ muse_cell fn_cons( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (eval s-expr).
+ * @code (eval s-expr) @endcode
  * Evaluates the given single s-expression and returns the result.
  * For example, @code (eval '(+ 2 3)) @endcode will result in
  * \c 5. In this sense, \c eval is the counter part of \c quote.
@@ -266,7 +266,7 @@ muse_cell fn_eval( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (if cond-expr then-expr else-expr).
+ * @code (if cond-expr then-expr else-expr) @endcode
  * Evaluate the \c cond-expr first. If the \c cond-expr evaluates
  * to something that's not \c (), the \c if expression evaluates
  * to the result of the \c then-expr. If an \c else-expr is
@@ -324,7 +324,7 @@ muse_cell guarded_do( muse_env *env, muse_cell expr )
 }
 
 /**
- * (when cond ---body---)
+ * @code (when cond ...body...) @endcode
  *
  * Evaluates \p cond first. If condition evaluated to non-NIL value, then
  * the body is evaluated just like \p do and the value of the last expression
@@ -340,7 +340,7 @@ muse_cell syntax_when( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (unless cond ---body---)
+ * @code (unless cond ...body...) @endcode
  *
  * Evaluates \p cond first. If condition evaluated to \c (), then the body 
  * is evaluated just like \c do and  the value of the last expression is
@@ -412,7 +412,7 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (do <expressions>).
+ * @code (do ...expressions...) @endcode
  * Defines an expression block. The result of the do block is the
  * result of the last expression in the block, after evaluating all
  * the expressions in the block in sequence.
@@ -423,7 +423,7 @@ muse_cell syntax_do( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (while bool-expr <body>).
+ * @code (while bool-expr <body>) @endcode
  * Repeatedly evaluates the body statements as long as
  * the \c bool-expr expression evaluates to something non-nil.
  */
@@ -450,7 +450,7 @@ muse_cell syntax_while( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (for init-expr cond-expr step-expr body [result-expr]).
+ * @code (for init-expr cond-expr step-expr body [result-expr]) @endcode
  * For-loop must be obvious to all ye C-fans.
  * ex:
  * @code
@@ -504,7 +504,7 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (stats).
+ * @code (stats) @endcode
  *
  * Evaluates to a triplet @code (free-cells stack-size num-symbols) @endcode.
  */
@@ -524,7 +524,7 @@ muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
 /************************ Type checks ***********************/
 
 /**
- * (int? x).
+ * @code (int? x) @endcode
  * Evaluates to x if x is an integer cell and to () if its not.
  */
 muse_cell fn_int_p( muse_env *env, void *context, muse_cell args )
@@ -535,7 +535,7 @@ muse_cell fn_int_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (float? x).
+ * @code (float? x) @endcode
  * Evaluates to x if x is a float cell and to () if it is not.
  */
 muse_cell fn_float_p( muse_env *env, void *context, muse_cell args )
@@ -546,7 +546,7 @@ muse_cell fn_float_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (number? x).
+ * @code (number? x) @endcode
  * Evaluates to x if x is either an integer or a float cell. 
  * Otherwise evaluates to ().
  */
@@ -558,7 +558,7 @@ muse_cell fn_number_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (cons? x).
+ * @code (cons? x) @endcode
  * Evaluates to x if x is a cons cell - i.e. a portion of a list
  * or a pair created by \c cons. If not, it evaluates to ().
  * 
@@ -573,7 +573,7 @@ muse_cell fn_cons_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (fn? x).
+ * @code (fn? x) @endcode
  * Evaluates to x if x is a lambda function or a c-native function.
  * Evaluates to () if it is not.
  * @see syntax_lambda
@@ -587,7 +587,7 @@ muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (symbol? x).
+ * @code (symbol? x) @endcode
  * Evaluates to x if x is a symbol (named or anonymous) and evaluates
  * to () if it isn't.
  */
@@ -599,7 +599,7 @@ muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (string? x).
+ * @code (string? x) @endcode
  * Evaluates to x if x is a text cell and to () if it isn't.
  */
 muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
@@ -610,7 +610,7 @@ muse_cell fn_string_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (int thing)
+ * @code (int thing) @endcode
  *
  * Converts the given thing to an integer or returns () if
  * it cannot. Integers, floats and strings containing integers
@@ -639,7 +639,7 @@ muse_cell fn_int( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (float thing)
+ * @code (float thing) @endcode
  *
  * Converts the given thing to a floating point number or returns () if
  * it cannot. Integers, floats and strings containing floats
@@ -668,7 +668,7 @@ muse_cell fn_float( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (number thing)
+ * @code (number thing) @endcode
  *
  * Returns a number - either int or float. If thing is a string,
  * it is parsed to determine whether it is an int or float.
@@ -705,7 +705,7 @@ muse_cell fn_number( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (time-taken-us <block>).
+ * @code (time-taken-us ...block...) @endcode
  * Returns the time taken to execute the block,
  * in microseconds.
  */
@@ -717,7 +717,7 @@ muse_cell fn_time_taken_us( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (exit).
+ * @code (exit) @endcode
  * Exits the process.
  */
 muse_cell fn_exit( muse_env *env, void *context, muse_cell args )
@@ -792,7 +792,7 @@ static void gendoc_for_symbol( muse_env *env, muse_cell symbol, muse_port_t p )
 }
 
 /**
- * (generate-documentation output-file-name).
+ * @code (generate-documentation output-file-name) @endcode
  */
 muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell args )
 {
@@ -840,7 +840,7 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 }
 
 /**
- * (format --args-- ).
+ * @code (format ...args...) @endcode
  * Converts each arg to a string, concatenates all the strings
  * and returns the result as a single string.
  */
@@ -922,7 +922,7 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (string-length s).
+ * @code (string-length s) @endcode
  * Returns the number of characters in the string or () if s is not a string.
  */
 muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
@@ -940,7 +940,7 @@ muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (substring str start-index [count])
+ * @code (substring str start-index [count]) @endcode
  *
  * Gives the substring of length \p count characters
  * of the given string starting from \p start-index.
@@ -1015,7 +1015,7 @@ muse_cell fn_substring( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (load-plugin dll-filename).
+ * @code (load-plugin dll-filename) @endcode
  * Loads and dynamically links the given plugin. 
  * Returns the result of invoking the plugin's entry point function.
  */
@@ -1026,7 +1026,7 @@ muse_cell fn_load_plugin( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (this-process)
+ * @code (this-process) @endcode
  *
  * Evaluates to the pid of the process in which it is evaluated.
  */
@@ -1036,7 +1036,7 @@ muse_cell fn_this_process( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (spawn (fn () [body]) [attention]) -> pid
+ * @code (spawn (fn () [body]) [attention]) -> pid @endcode
  *
  * Spawns a new process which will evaluate the given thunk.
  * The (optional) attention value is a positive integer
@@ -1063,7 +1063,7 @@ muse_cell fn_spawn( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (atomic [body])
+ * @code (atomic ...body...) @endcode
  *
  * Behaves like \ref syntax_do "do", but evaluates the entire body atomically,
  * i.e. without switching to another process, as long as you don't use the
@@ -1079,7 +1079,7 @@ muse_cell syntax_atomic( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (receive [pid] [timeout-us])
+ * @code (receive [pid] [timeout-us]) @endcode
  *
  * Waits for and returns the next message in the process' mailbox.
  * It has four forms -
@@ -1178,7 +1178,7 @@ muse_cell fn_receive( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (run [duration-us])
+ * @code (run [duration-us]) @endcode
  *
  * If the duration argument is omitted, the expression never terminates
  * and the process becomes blocked. If a duration is given (in microseconds),
@@ -1221,7 +1221,7 @@ static muse_cell is_pid( muse_env *env, muse_cell pid )
 }
 
 /**
- * (post msg [pid])
+ * @code (post msg [pid]) @endcode
  *
  * Allows you to post an arbitrary sexpr as a message to the current process.
  * The difference between using post and \ref fn_pid "pid" (as a function)
@@ -1272,7 +1272,7 @@ muse_cell fn_post( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (process? pid)
+ * @code (process? pid) @endcode
  *
  * Evaluates to \p pid if it is a valid process id and to <tt>()</tt> if it isn't.
  */
@@ -1282,7 +1282,7 @@ muse_cell fn_process_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (with-timeout-us 'id us body...)
+ * @code (with-timeout-us 'id us ...body...) @endcode
  *
  * Evaluates body like a \c do statement does, but imposes the
  * given timeout for it. If the timeout expires during the
@@ -1309,7 +1309,7 @@ muse_cell fn_with_timeout_us( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (the recent-key)
+ * @code (the recent-key) @endcode
  *
  * Looks up the given recent-key to access the result of a recently
  * done computation. Some builtin functions add their results to the
@@ -1409,7 +1409,7 @@ muse_cell fn_the( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (trace on) or (trace off)
+ * @code (trace on) or (trace off) @endcode
  */
 muse_cell fn_trace( muse_env *env, void *context, muse_cell args )
 {

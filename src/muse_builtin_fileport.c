@@ -327,7 +327,7 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
 }
 
 /**
- * (open-file "filename.txt" ['for-reading 'for-writing 'binary 'expand-braces 'detect-macros 'trust 'tab-syntax]).
+ * @code (open-file "filename.txt" ['for-reading 'for-writing 'binary 'expand-braces 'detect-macros 'trust 'tab-syntax]) @endcode
  *
  * Returns a new file port for reading or writing to it.
  * Use \c read and \c write with the returned port and

@@ -280,7 +280,7 @@ static void *module_view( muse_env *env, int id )
 }
 
 /**
- * (MyMod ...)
+ * @code(MyMod ...body...)@endcode
  *
  * Behaves exactly like \c do under all circumstances,
  * except that the symbols in the body part are interpreted
@@ -320,11 +320,7 @@ static muse_functional_object_type_t g_module_type =
 };
 
 /**
- * @code
- * (module MyMod (exportA exportB ...)
- *   ...definitions...
- * )
- * @endcode
+ * @code (module MyMod (exportA exportB ...) ...body... ) @endcode
  *
  * Such a module expression introduces global symbols
  * MyMod.exportA, MyMod.exportB, etc. with the appropriate
@@ -388,7 +384,7 @@ static void introduce_module_global( muse_env *env, module_t *m )
 }
 
 /**
- * (import ModA ModB ..)
+ * @code (import ModA ModB ...) @endcode
  *
  * Introduces symbols in all the named modules into the current
  * context, in their short forms. Useful in two places -

@@ -134,7 +134,7 @@ static void com_get_details( muse_env *env, com_object_t *obj )
 }
 
 /**
- * (com-release obj)
+ * @code (com-release obj) @endcode
  *
  * Releases the object and marks it as usable as an output value.
  */
@@ -239,9 +239,9 @@ static void com_destroy( muse_env *env, void *p )
 }
 
 /**
- * (com-create "progid")
+ * @code (com-create "progid") @endcode
  *	and
- * (com-create 'progid)
+ * @code (com-create 'progid) @endcode
  *	are both acceptable.
  *
  * If you don't give a progid, you can use the result object
@@ -554,8 +554,8 @@ static DISPID com_dispid( muse_env *env, com_object_t *obj, muse_cell name )
 }
 
 /**
- * (get COMOBJECT 'property)
- * (get COMOBJECT 'arrayprop index)
+ * @code (get COMOBJECT 'property) @endcode
+ * @code (get COMOBJECT 'arrayprop index) @endcode
  */
 static muse_cell com_get_prop( muse_env *env, void *self, muse_cell key, muse_cell argv )
 {
@@ -603,8 +603,8 @@ static muse_cell com_get_prop( muse_env *env, void *self, muse_cell key, muse_ce
 }
 
 /**
- * (put COMOBJECT 'property value)
- * (put COMOBJECT 'arrayprop index value)
+ * @code (put COMOBJECT 'property value) @endcode
+ * @code (put COMOBJECT 'arrayprop index value) @endcode
  */
 static muse_cell com_put_prop( muse_env *env, void *self, muse_cell key, muse_cell argv )
 {
@@ -640,7 +640,7 @@ static muse_cell com_put_prop( muse_env *env, void *self, muse_cell key, muse_ce
 }
 
 /**
- * (COMOBJECT 'method args...)
+ * @code (COMOBJECT 'method ...args...) @endcode
  */
 muse_cell fn_com_object( muse_env *env, com_object_t *obj, muse_cell args )
 {
@@ -711,7 +711,7 @@ muse_cell fn_com_create( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (com-release COMOBJECT)
+ * @code (com-release COMOBJECT) @endcode
  *
  * Releases COMOBJECT and makes it available for use as an outval.
  */

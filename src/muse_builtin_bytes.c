@@ -278,7 +278,7 @@ static void put_long_LE( unsigned char *bytes, muse_int i )
 }
 
 /**
- * (bytes-object byte-offset field-type [value])
+ * @code (bytes-object byte-offset field-type [value]) @endcode
  *
  * Retrieves or modifies the data contents of the byte array
  * according to a specified data type spec.
@@ -446,7 +446,7 @@ muse_functional_object_type_t g_bytes_type =
 };
 
 /**
- * (bytes? bytes)
+ * @code (bytes? bytes) @endcode
  *
  * Evaluates to \p bytes if it is a valid byte data object and
  * to () if it isn't one.
@@ -460,7 +460,7 @@ muse_cell fn_bytes_p( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (bytes-size bytes) -> int
+ * @code (bytes-size bytes) -> int @endcode
  */
 muse_cell fn_bytes_size( muse_env *env, void *context, muse_cell args )
 {
@@ -495,7 +495,7 @@ size_t port_write_force( muse_env *env, unsigned char *buffer, size_t size, muse
 }
 
 /**
- * (write-bytes [port] bytes [start-offset] [num-bytes])
+ * @code (write-bytes [port] bytes [start-offset] [num-bytes]) @endcode
  *
  * Write the raw byte sequence to the port. If port is omitted,
  * the data goes to stdout. Optional start offset and size
@@ -566,7 +566,7 @@ static size_t port_read_force( muse_env *env, unsigned char *buffer, size_t size
 }
 
 /**
- * (read-bytes [port] [bytes]) -> bytes
+ * @code (read-bytes [port] [bytes]) -> bytes @endcode
  *
  * Reads raw bytes from the given port or stdin. If a bytes
  * object is given, it attempts to fill it. If no bytes object
@@ -665,7 +665,7 @@ muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (bytes size)
+ * @code (bytes size) @endcode
  *
  * Creates a new uninitialized byte array of the given size.
  */
@@ -682,7 +682,7 @@ muse_cell fn_bytes( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (copy-bytes size src src-offset dest dest-offset)
+ * @code (copy-bytes size src src-offset dest dest-offset) @endcode
  *
  * Copies \p size bytes from \p src starting at \p src-offset
  * to the \p dest buffer starting at \p dest-offset.

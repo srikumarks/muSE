@@ -36,7 +36,7 @@ MUSEAPI muse_cell muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_ce
 }
 
 /**
- * (get thing key).
+ * @code (get thing key) @endcode
  * Looks up the value for the given \p key in the given \p thing.
  * The \p thing can be any key-value association, including
  * objects, hashtables, modules and vectors. Except for vectors
@@ -97,7 +97,7 @@ MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_c
 }
 
 /**
- * (put* thing key1 value1 key2 value2 -- keyN valueN).
+ * @code (put* thing key1 value1 key2 value2 ... keyN valueN) @endcode
  * Multiple property setting.
  * @see \ref fn_put_many "put*"
  */
@@ -116,7 +116,7 @@ MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
 }
 
 /**
- * (put thing key value).
+ * @code (put thing key value) @endcode
  * Sets the value for the given \p key in the given \p thing to the given \p value.
  * \p thing can be anything that \ref fn_get "get" supports and \p key
  * also has the same restrictions as for \ref fn_get "get".
@@ -144,7 +144,7 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 }
 
 /**
- * (put* obj key1 value1 key2 value2 -- keyN valueN).
+ * @code (put* obj key1 value1 key2 value2 ... keyN valueN) @endcode
  *
  * Sets many properties of the object in one go.
  * @see \ref fn_put "put"
@@ -197,7 +197,7 @@ void muse_define_put_macro( muse_env *env )
 }
 
 /**
- * (assoc plist key).
+ * @code (assoc plist key) @endcode
  * @see muse_assoc()
  */
 muse_cell fn_assoc( muse_env *env, void *context, muse_cell args)
@@ -208,7 +208,7 @@ muse_cell fn_assoc( muse_env *env, void *context, muse_cell args)
 }
 
 /**
- * (plist symbol).
+ * @code (plist symbol) @endcode
  * @see muse_symbol_plist()
  */ 
 muse_cell fn_plist( muse_env *env, void *context, muse_cell args)
@@ -217,7 +217,7 @@ muse_cell fn_plist( muse_env *env, void *context, muse_cell args)
 }
 
 /**
- * (symbol "symbol-name").
+ * @code (symbol "symbol-name") @endcode
  * Interns the symbol of the given textual name and returns a unique symbol
  * cell.
  */
@@ -230,7 +230,7 @@ muse_cell fn_symbol( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (name sym).
+ * @code (name sym) @endcode
  * Returns the text name of the given symbol or () if the
  * given thing is not a symbol or doesn't have a name.
  */

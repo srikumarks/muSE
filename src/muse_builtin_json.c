@@ -107,8 +107,7 @@ muse_cell fn_json( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (write-json port thing)
- * (write-json thing)
+ * @code (write-json [port] thing) @endcode
  *
  * thing is either a number, string, vector or a hashtable.
  * Writes the object in JSON format to the given port, or to
@@ -131,8 +130,7 @@ muse_cell fn_write_json( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (read-json port)
- * (read-json)
+ * @code (read-json [port]) @endcode
  *
  * Reads and returns a JSON compatible object - which is
  * either a number, a string, a vector or a hashtable.

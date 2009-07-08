@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 /**
- * (+ <numbers>).
+ * @code (+ ...numbers...) @endcode
  * add sums up all of its arguments and returns the result.
  * The result will be an integer if all of its arguments
  * are integers. Otherwise it'll be float.
@@ -55,7 +55,7 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (- <numbers>).
+ * @code (- ...numbers...) @code
  * Takes 1 or more arguments.
  * 	- <tt>(- m)</tt> gives <tt>-m</tt>
  * 	- <tt>(- m n)</tt> gives <tt>(m-n)</tt>
@@ -117,7 +117,7 @@ muse_cell fn_sub( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (* <numbers>).
+ * @code (* ...numbers...) @endcode
  * Multiplies all arguments. Result is float if
  * at least one of the arguments is float. Otherwise
  * it is an integer.
@@ -158,7 +158,7 @@ muse_cell fn_mul( muse_env *env, void *context, muse_cell args )
 
 
 /**
- * (/ <numbers>).
+ * @code (/ ...numbers...) @endcode
  * Takes 1 or more arguments.
  * 	- <tt>(/ m)</tt> gives <tt>1/m</tt>
  * 	- <tt>(/ m n)</tt> gives <tt>(m/n)</tt>
@@ -210,7 +210,7 @@ muse_cell fn_div( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (i/ numerator denominator).
+ * @code (i/ numerator denominator) @endcode
  * Takes 2 arguments. Divides first by the second and returns
  * the quotient. Arguments must be integers.
  */
@@ -225,7 +225,7 @@ muse_cell fn_idiv( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (% numerator denominator).
+ * @code (% numerator denominator) @endcode
  * Takes 2 arguments and returns the floating point or
  * integer remainder on dividing first by the second.
  * It does a proper modulo operation unlike C/C++
@@ -246,7 +246,7 @@ muse_cell fn_mod( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (++ c).
+ * @code (++ c) @endcode
  *
  * Increments the integer contents of the given cell.
  */
@@ -258,7 +258,7 @@ muse_cell fn_inc( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (-- c).
+ * @code (-- c) @endcode
  *
  * Decrements the integer contents of the given cell.
  */
@@ -270,7 +270,7 @@ muse_cell fn_dec( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (trunc float-value).
+ * @code (trunc float-value) @endcode
  * Converts a float to int. If given an integer argument.
  * returns it as is.
  */
@@ -285,7 +285,7 @@ muse_cell fn_trunc( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (rand M [N]).
+ * @code (rand M [N]) @endcode
  * Generates a random number.
  * 	- <tt>(rand N)</tt> returns an integer random number in the range [0,N)
  * 	- <tt>(rand M N)</tt> returns an integer random number in the range [M,N)
@@ -330,7 +330,7 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (pow base exponent).
+ * @code (pow base exponent) @endcode
  * Computes base ^ exponent.
  * The result is always a float.
  */

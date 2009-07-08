@@ -97,7 +97,7 @@ int fn_deep_compare( muse_env *env, muse_cell args )
 }
 
 /**
- * (eq? x y ).
+ * @code (eq? x y) @endcode
  * Compares x and y for referential equality. Additionally x and y
  * will be equal even if their references are different, but
  * they have the same integer values.
@@ -110,7 +110,7 @@ muse_cell fn_eq( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (= x y).
+ * @code (= x y) @endcode
  * Compares x and y for value equality. Compound structures
  * such as lists are deep compared.
  */
@@ -120,7 +120,7 @@ muse_cell fn_equal( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (!= x y).
+ * @code (!= x y) @endcode
  * Evaluates to T if x and y are not the same (deep comparison)
  * and to () if they are.
  */
@@ -130,7 +130,7 @@ muse_cell fn_ne( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (< x y).
+ * @code (< x y) @endcode
  * T if x compares less than y and () otherwise.
  */
 muse_cell fn_lt( muse_env *env, void *context, muse_cell args )
@@ -139,7 +139,7 @@ muse_cell fn_lt( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (> x y)
+ * @code (> x y) @endcode
  * T if x compares greater than y and () otherwise.
  */
 muse_cell fn_gt( muse_env *env, void *context, muse_cell args )
@@ -148,7 +148,7 @@ muse_cell fn_gt( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (<= x y)
+ * @code (<= x y) @endcode
  * T if x compares less than or equal to y and () otherwise.
  */
 muse_cell fn_le( muse_env *env, void *context, muse_cell args )
@@ -157,7 +157,7 @@ muse_cell fn_le( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (>= x y)
+ * @code (>= x y) @endcode
  * T if x compares greater than or equal to y and () otherwise.
  */
 muse_cell fn_ge( muse_env *env, void *context, muse_cell args )
@@ -166,7 +166,7 @@ muse_cell fn_ge( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (and e1 e2 .. eN)
+ * @code (and e1 e2 .. eN) @endcode
  *
  * The conjunction of all the given values -
  * i.e. evaluates to () if even one of them
@@ -190,7 +190,7 @@ muse_cell fn_and( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (or e1 e2 .. eN)
+ * @code (or e1 e2 .. eN) @endcode
  *
  * Evaluates to the first of all the e1 e2 etc which
  * is not (). If all of them are (), then the result
@@ -213,7 +213,7 @@ muse_cell fn_or( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (not x)
+ * @code (not x) @endcode
  *
  * Evaluates to T if x is () and to () if x is anything else.
  */
@@ -224,7 +224,7 @@ muse_cell fn_not( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (min x0 ... xn)
+ * @code (min x0 ... xn) @endcode
  * Returns the minimum element x,
  * where x <= x0 <= ... <= xn
  */
@@ -249,7 +249,7 @@ muse_cell fn_min( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (max x0 ... xn)
+ * @code (max x0 ... xn) @endcode
  * Returns the maximum element x,
  * where x0 <= ... <= xn <= x
  */
