@@ -216,9 +216,8 @@
 ; Handy function to open a file, read the first xml node in it
 ; and close the file.
 (define (read-xml-file file)
-  (open-file file 'for-reading)
-  (read-xml (the open-file))
-  (close it)
+  (read-xml (open-file file 'for-reading))
+  (close (the open-file))
   (the read-xml))
 
 (print "(XML library loaded)")                    
