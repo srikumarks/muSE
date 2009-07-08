@@ -212,6 +212,11 @@ muse_cell fn_or( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+/**
+ * (not x)
+ *
+ * Evaluates to T if x is () and to () if x is anything else.
+ */
 muse_cell fn_not( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell c = _evalnext(&args);
