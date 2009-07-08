@@ -205,6 +205,12 @@ muse_cell fn_new( muse_env *env, void *context, muse_cell args )
  * Sets the object's supers list to the one given. If you
  * modify the list returned by (supers object), do call (supers object supers-list)
  * to tell the object that its supers list has changed.
+ *
+ * @exception error:object-expected
+ *	Handler format: @code (fn (resume 'error:object-expected obj) ...) @endcode
+ *	Raised if the given thing is not an object. 
+ *	The given "object" is passed to the handler in \p obj.
+ *	You can resume by resolving the correct object in the handler.
  */
 muse_cell fn_supers( muse_env *env, void *context, muse_cell args )
 {
@@ -222,7 +228,10 @@ muse_cell fn_supers( muse_env *env, void *context, muse_cell args )
 
 		return it->supers;
 	} else {
-		return muse_raise_error( env, _csymbol(L"supers:object-expected"), orig_args );
+		return fn_supers( 
+					env, 
+					NULL, 
+					_cons( muse_raise_error( env, _csymbol(L"error:object-expected"), _cons( obj, MUSE_NIL ) ), args ) );
 	}
 }
 
@@ -347,7 +356,7 @@ static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, 
 		} 
 	}
 
-	return muse_raise_error( env, _csymbol(L"super-invoke:method-not-found"), methodkey );
+	return muse_raise_error( env, _csymbol(L"error:method-not-found"), _cons( self->base.ref, _cons( methodkey, MUSE_NIL ) ) );
 }
 
 /**
@@ -355,16 +364,28 @@ static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, 
  *
  * Invokes a method definition searching the super list
  * without searching the object's own property list.
+ *
+ * @exception error:method-not-found 
+ *	Handler format: @code (fn (resume 'error:method-not-found obj methodkey) ...) @endcode
+ *	Raised when the given method is not found in the super tree.
+ *	The sole argument is the original method key given. You can
+ *	resume by passing the expected result of the invocation.
+ *
+ * @exception error:object-expected
+ *	Handler format: @code (fn (resume 'error:object-expected obj) ...) @endcode
+ *	Raised if the given thing is not an object. 
+ *	The given "object" is passed to the handler in \p obj.
+ *	You can resume by resolving the correct object in the handler.
  */
 muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj = _evalnext(&args);
-	muse_cell methodkey = _evalnext(&args);
 	object_t *it = (object_t*)muse_functional_object_data( env, obj, 'mobj' );
 	if ( it ) {
+		muse_cell methodkey = _evalnext(&args);
 		return super_invoke( env, it, it->supers, methodkey, args );
 	} else {
-		return muse_raise_error( env, _csymbol(L"super-invoke:object-expected"), obj );
+		return fn_super_invoke( env, NULL, _cons( muse_raise_error( env, _csymbol(L"error:object-expected"), _cons( obj, MUSE_NIL ) ), args ) );
 	}
 }
 
@@ -375,6 +396,18 @@ muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args )
  * without searching the object's own property list.
  * @code (super-invoke obj methodkey . args) @endcode is equivalent to
  * @code (super-invoke* obj (supers obj) methodkey . args) @endcode
+ *
+ * @exception error:method-not-found 
+ *	Handler format: @code (fn (resume 'error:method-not-found obj methodkey) ...) @endcode
+ *	Raised when the given method is not found in the super tree.
+ *	The sole argument is the original method key given. You can
+ *	resume by passing the expected result of the invocation.
+ *
+ * @exception error:object-expected
+ *	Handler format: @code (fn (resume 'error:object-expected obj) ...) @endcode
+ *	Raised if the given thing is not an object. 
+ *	The given "object" is passed to the handler in \p obj.
+ *	You can resume by resolving the correct object in the handler.
  */
 muse_cell fn_super_invoke_explicit( muse_env *env, void *context, muse_cell args )
 {
@@ -385,7 +418,7 @@ muse_cell fn_super_invoke_explicit( muse_env *env, void *context, muse_cell args
 		muse_cell methodkey = _evalnext(&args);
 		return super_invoke( env, it, supers, methodkey, args );
 	} else {
-		return muse_raise_error( env, _csymbol(L"super-invoke:object-expected"), obj );
+		return fn_super_invoke_explicit( env, NULL, _cons( muse_raise_error( env, _csymbol(L"error:object-expected"), _cons( obj, MUSE_NIL ) ), args ) );
 	}
 }
 
