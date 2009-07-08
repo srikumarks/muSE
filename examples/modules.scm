@@ -30,33 +30,29 @@
       (T (raise 'NotANumberEx x))))    
   
   ; Implementation of Complex class' methods.
-  (put Complex 'add 
-       (fn (self value)
-	   (cons
-	    ((number? value) (complex (+ self.real value) self.imag))
-	    ((complex? value) (complex (+ self.real value.real) 
-				       (+ self.image value.imag)))
-	    (T (self 'add (raise 'NotANumberEx value))))))
+  (put* Complex
+	'add  (fn (self value)
+		  (cons
+		   ((number? value) (complex (+ self.real value) self.imag))
+		   ((complex? value) (complex (+ self.real value.real) 
+					      (+ self.image value.imag)))
+		   (T (self 'add (raise 'NotANumberEx value)))))
+        'mul (fn (self value)
+		 (cond
+		  ((number? value) (complex (* self.real value) (* self.imag value)))
+		  ((complex? value) (let ((x1 self.real) 
+					  (y1 self.imag) 
+					  (x2 value.real) 
+					  (y2 value.imag))
+				      (complex (- (* x1 x2) (* y1 y2)) (+ (* x1 y2) (* x2 y2)))))
+		  (T (self 'mul (raise 'NotANumberEx value)))
+					; We allow the value to be replaced in case of an exception.
+		  ))
+	'neg (fn (self)
+		 (complex (- self.real) (- self.imag)))
 
-  (put Complex 'mul
-       (fn (self value)
-           (cond
-	    ((number? value) (complex (* self.real value) (* self.imag value)))
-	    ((complex? value) (let ((x1 self.real) 
-				    (y1 self.imag) 
-				    (x2 value.real) 
-				    (y2 value.imag))
-				(complex (- (* x1 x2) (* y1 y2)) (+ (* x1 y2) (* x2 y2)))))
-	    (T (self 'mul (raise 'NotANumberEx value)))  ; We allow the value to be replaced in case of an exception.
-	    )))
-    
-  (put Complex 'neg
-       (fn (self)
-	   (complex (- self.real) (- self.imag))))
-
-  (put Complex 'show
-       (fn (self)
-	   (print (format self.real "+" self.imag "i"))))
+	'show (fn (self)
+		  (print (format self.real "+" self.imag "i"))))
   
   )
 
