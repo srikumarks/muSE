@@ -246,16 +246,19 @@ static void crs_init( muse_env *env, void *ptr, muse_cell args )
 	if ( n > MUSE_MAX_RECENT_ITEMS )
 		n = MUSE_MAX_RECENT_ITEMS;
 	while ( n > 0 && k < MUSE_MAX_RECENT_ITEMS ) {		
-		crs->scope[k] = r->entries.vec[i];
-		--n;
-		++k;
+		/* i is pointing to the slot into which
+		 the next recent item will be placed.
+		 So we need to rewind by one item 
+		 before we copy. */
 		--d;
-		if ( d == 0 )
-			i = c->base;
-		else if ( d > 0 )
+		if ( d >= 0 ) 
 			i = c->base + d % MUSE_MAX_RECENT_ITEMS;
 		else
 			--i;
+		
+		crs->scope[k] = r->entries.vec[i];
+		--n;
+		++k;
 	}
 	crs->count = k;
 		 

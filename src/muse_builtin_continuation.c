@@ -959,7 +959,6 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 		muse_cell finalizer = fn_with_recent( env, NULL, argv );
 		trap->finalizers = _cons( finalizer, trap->finalizers );	
 		_returncell(argv);
-		_returncell(fn);
 		return finalizer;
 	}
 	else
