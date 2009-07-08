@@ -956,6 +956,16 @@ muse_cell fn_string_length( muse_env *env, void *context, muse_cell args )
  * considered up to the end of the string. You can use this
  * to shorten the above example to -
  * @code (substring str -3) @endcode
+ *
+ * @exception error:integer-expected
+ * Handler format: @code (fn (resume 'error:integer-expected value) ...) @endcode
+ * Raised when an integer was expected and a different value was given.
+ * No point resuming since this is a grave programming error.
+ *
+ * @exception error:string-expected
+ * Handler format: @code (fn (resume 'error:string-expected value) ...) @endcode
+ * Raised when a string was expected and a different value was given.
+ * No point resuming since this is a grave programming error.
  */
 muse_cell fn_substring( muse_env *env, void *context, muse_cell args )
 {

@@ -258,15 +258,14 @@ static muse_cell module_put( muse_env *env, void *self, muse_cell key, muse_cell
 	   the put on to the value, then we just raise a "key not found" error
 	   with the same semantics as module_get. If it is the module's binding
 	   that needs to be modified and the key could not be located, we raise
-	   an "immutable key" error and let it continue by supplying a substitute
-	   key instead. */
+	   an "immutable key" error and let it resume by supplying a put result. */
 	if ( _tail(argv) ) 
 		return muse_get( env,
 						muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) ),
 						_head(argv), 
 						_tail(argv) );
 	else
-		return module_put( env, self, muse_raise_error( env, _csymbol(L"error:immutable-key"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) ), argv );
+		return muse_raise_error( env, _csymbol(L"error:immutable-key"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) );
 }
 
 static muse_prop_view_t g_module_prop_view = { module_get, module_put };
@@ -360,6 +359,17 @@ static muse_functional_object_type_t g_module_type =
  * and \ref fn_put "put" functions to fetch and modify the exports of
  * a module. You cannot, however, add new exports or remove exports 
  * from a module.
+ *
+ * @exception error:key-not-found
+ * Handler format: @code (fn (resume 'error:key-not-found obj key) ...) @endcode
+ * Raised when the given key cannot be found in the given module during a lookup.
+ * You can resume by resolving the intended value.
+ *
+ * @exception error:immutable-key
+ * Handler format: @code (fn (resume 'error:immutable-key module key) ...) @endcode
+ * Raised if the module doesn't export the given key. Only exported keys can
+ * be modified using put. You can resume with the intended result of the put
+ * operation.
  */
 muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 {
