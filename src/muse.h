@@ -125,7 +125,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *
  * @subsection ML_HOFs Higher order and/or polymorphic functions
  *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_transpose "transpose"
- *	- \ref fn_get "get" and \ref fn_put "put" can work across a multitude of key-value objects
+ *	- \ref fn_get "get", \ref fn_put "put" and \ref fn_put_many "put*" can work across a multitude of key-value objects
  *	  such as hashtables, vectors, modules and objects.
  *
  * @subsection ML_ObjectSystem Object system
