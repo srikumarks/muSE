@@ -173,10 +173,14 @@ muse_cell fn_flush( muse_env *env, void *context, muse_cell args )
  * Reads and evaluates all expressions in the given file
  * and returns the value of the last expression.
  *
+ * @exception error:load
+ * Handler format: @code (fn (resume 'error:load path) ...) @endcode
  * If the file is not found or could not be opened for
- * some reason, it raises the @code (error:load <filename>) @endcode
- * exception. Resuming the exception with another file name
- * will cause \ref fn_load "load" to load that file instead.
+ * some reason, this exception is raised. Resuming the 
+ * exception with another file name will cause \ref fn_load "load" 
+ * to load that file instead. This exception is similar to
+ * <tt>error:open-file</tt> but is named differently because
+ * it deals with code as opposed to data.
  */
 muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 {

@@ -357,6 +357,11 @@ MUSEAPI muse_port_t muse_stdport( muse_env *env, muse_stdport_t descriptor )
  * You can also, of course, abort.
  *
  * Supports \ref fn_the "the"
+ *
+ * @exception error:open-file
+ * Handler format: @code (fn (resume 'error:open-file path) ...) @endcode
+ * Raised when, for some reason, the given path couldn't be opened as a file.
+ * The handler can resume by resolving the correct path to use.
  */
 muse_cell fn_open_file( muse_env *env, void *context, muse_cell args )
 {
