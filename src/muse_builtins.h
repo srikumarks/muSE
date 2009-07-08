@@ -54,6 +54,7 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args );
 /*@{*/
 muse_cell fn_get( muse_env *env, void *context, muse_cell args);
 muse_cell fn_put( muse_env *env, void *context, muse_cell args);
+muse_cell fn_put_many( muse_env *env, void *context, muse_cell args);
 muse_cell fn_assoc( muse_env *env, void *context, muse_cell args);
 muse_cell fn_plist( muse_env *env, void *context, muse_cell args);
 muse_cell fn_symbol( muse_env *env, void *context, muse_cell args );

@@ -51,6 +51,7 @@ static const struct _builtins
 /************** Property list and alist functions ***************/
 {		L"get",			fn_get				},
 {		L"prim:put",	fn_put				},
+{		L"put*",		fn_put_many			},
 {		L"assoc",		fn_assoc			},
 {		L"plist",		fn_plist			},
 {		L"symbol",		fn_symbol			},
