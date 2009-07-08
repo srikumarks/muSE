@@ -36,10 +36,28 @@ MUSEAPI muse_cell muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_ce
 }
 
 /**
- * (get symbol property).
- * Looks up the given property for the given symbol.
- * If found, it yields the @code (property . value) @endcode pair,
- * and if not found, it evaluates to ().
+ * (get thing key).
+ * Looks up the value for the given \p key in the given \p thing.
+ * The \p thing can be any key-value association, including
+ * objects, hashtables, modules and vectors. Except for vectors
+ * which take integer keys, the others are expected to use symbols
+ * as keys.
+ *
+ * \c get supports deep lookup.
+ * @code
+ * (get thing key1 key2 ... keyN).
+ * @endcode
+ * is equivalent to -
+ * @code
+ * (get ... (get (get thing key1) key2) ... keyN)
+ * @endcode
+ *
+ * If \p thing is a value that is being held in a variable,
+ * then the notation <tt>thing.key1.key2</tt> is equivalent to
+ * @code
+ * (get thing 'key1 'key2)
+ * @endcode.
+ * 
  * @see fn_put()
  */
 muse_cell fn_get( muse_env *env, void *context, muse_cell args)
@@ -50,13 +68,13 @@ muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 }
 
 /**
- * Nested property put. \c argv has to have at least one element
- * in it, giving the value to set the property \c prop of object \c obj.
- * It takes much mroe English to describe this function than to
- * just refer to the code, so read it and understand it. Clue - its
- * the counterpart of \c muse_get.
+ * Deeply nested value setting support. 
+ *	# If the \p argv has a single element, then that becomes the
+ *	  value of the \p prop key of the \p obj.
+ *	# If the \p argv has more than one element, then the call recurses
+ *	  into the object that is the \p prop of \p obj.
  *
- * @see muse_get();
+ * @see muse_get()
  */
 MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_cell argv )
 {
@@ -79,9 +97,10 @@ MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_c
 }
 
 /**
+ * (put* thing key1 value1 key2 value2 -- keyN valueN).
  * Multiple property setting.
- * The argv is expected to be of the form @code ('key1 value1 'key2 value2 ...) @endcode.
- * Returns \p obj.
+ * @see fn_put_many()
+ * @see fn_put()
  */
 MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
 {
@@ -98,10 +117,25 @@ MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
 }
 
 /**
- * (put symbol property value).
- * Sets the given property of the given symbol to the given value.
- * Subsequently, if you evaluate @code (get symbol property) @endcode,
- * you'll get @code (property . value) @endcode as the result.
+ * (put thing key value).
+ * Sets the value for the given \p key in the given \p thing to the given \p value.
+ * \p thing can be anything that \ref fn_get "get" supports and \p key
+ * also has the same restrictions as for \ref fn_get "get".
+ *
+ * \c put also supports deep nesting just like \c get.
+ * @code
+ * (put thing key1 key2 ... keyN value)
+ * @endcode
+ * is equivalent to
+ * @code
+ * (put (get thing key1 key2 ... keyN-1) keyN value)
+ * @endcode
+ *
+ * \c put supports the dot notation too. For example, @code (put thing.key value) @endcode
+ * is equivalent to @code (put thing 'key value) @endcode. (\c put is actually a macro
+ * that expands to this form at read time.)
+ *
+ * @see fn_get()
  */
 muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 {
@@ -111,9 +145,11 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 }
 
 /**
- * (put* obj prop1 value1 prop2 value2 ...)
+ * (put* obj key1 value1 key2 value2 -- keyN valueN).
  *
  * Sets many properties of the object in one go.
+ * @see fn_put()
+ * @see fn_get()
  */
 muse_cell fn_put_many( muse_env *env, void *context, muse_cell args )
 {

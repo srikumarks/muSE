@@ -22,7 +22,7 @@
  * @defgroup Modules
  *
  * A module is a value that contains a set of variable bindings
- * you can refer to. You define a module using the \ref syntax_module "module"
+ * you can refer to. You define a module using the \ref fn_module "module"
  * syntax which creates a module value. Symbols exported from a module
  * are accessed using the long form notation @code ModuleName.exportSymbol @endcode.
  * If you want to use a module's exports just by their short names,

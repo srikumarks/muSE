@@ -742,7 +742,7 @@ static int bind_keys( muse_env *env, muse_cell kvpairs, muse_boolean args_alread
  * Note that although it makes sense to specify all arguments without exception,
  * the behaviour is such that arguments which are unspecified take on
  * the value of the symbol at invocation time. This means you can introduce
- * "default" values using \ref fn_let "let" blocks. For example -
+ * "default" values using \ref syntax_let "let" blocks. For example -
  * @code
  * (let ((x 15)) (call/keywords f 'y 30))
  * @endcode
