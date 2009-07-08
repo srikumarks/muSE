@@ -92,8 +92,17 @@ static void object_write( muse_env *env, void *_self, void *_port )
 			port_putc( '\'', port );
 			muse_pwrite( port, _head(kv) );
 			port_putc( ' ', port );
-			port_putc( '\'', port );
-			muse_pwrite( port, _tail(kv) );
+			{
+				muse_cell t = _tail(kv);
+				if ( _cellt(t) == MUSE_LAMBDA_CELL ) {
+					port_write( "(fn ", 4, port );
+					muse_pwrite( port, _head(t) );
+					port_putc( ')', port );
+				} else {
+					port_putc( '\'', port );
+					muse_pwrite( port, t );
+				}
+			}
 		}
 	}
 	port_putc( '}', port );
