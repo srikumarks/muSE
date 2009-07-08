@@ -87,8 +87,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_StructuringCode Structuring code
  *	- \ref fn_define "define", \ref syntax_let "let", \ref syntax_do "do"
  * 	- \ref syntax_lambda "fn", \ref syntax_block "fn:"
- * 	- \ref syntax_case "case"
- *	- \ref syntax_if "if", \ref syntax_cond "cond"
+ *	- \ref syntax_if "if", \ref syntax_cond "cond", \ref syntax_case "case"
  *	- \ref syntax_try "try", \ref fn_raise "raise", \ref fn_retry "retry", \ref syntax_finally "finally"
  *	- \ref fn_the "the and it"
  *	- \ref fn_callcc "call/cc"
@@ -111,7 +110,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *		- \ref fn_min "min", \ref fn_max "max"
  * 
  * @subsection ML_DataStructures Data structures
- *	- \ref fn_cons "cons", \ref fn_first "first", \ref fn_rest "rest"
+ *	- \ref fn_cons "cons", \ref fn_first "first", \ref fn_rest "rest", \ref fn_length "length"
  *	- \ref fn_lcons "lcons", \ref fn_lazy "lazy"
  *	- \ref Vectors "vectors"
  *	- \ref Hashtables "hashtables"
@@ -124,7 +123,8 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref fn_sort "sort", \ref fn_sort_inplace "sort!", \ref fn_reverse "reverse", \ref fn_reverse_inplace "reverse!"
  *
  * @subsection ML_HOFs Higher order and/or polymorphic functions
- *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_transpose "transpose"
+ *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_transpose "transpose", \ref fn_join "join", \ref fn_length "length"
+ *	- \ref fn_andmap "andmap", \ref fn_ormap "ormap", \ref fn_for_each "for-each"
  *	- \ref fn_get "get", \ref fn_put "put" and \ref fn_put_many "put*" can work across a multitude of key-value objects
  *	  such as hashtables, vectors, modules and objects.
  *
@@ -141,7 +141,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * 
  * @subsection ML_IO Input and output
  *	- \ref PortIO
- *	- \ref fn_open_file "open-file", \ref fn_memport "memport"
+ *	- \ref fn_open_file "open-file", \ref fn_memport "memport", \ref fn_close "close"
  * 	- \ref fn_print "print", \ref fn_write "write", \ref fn_read "read", \ref fn_close "close"
  *	- \ref fn_json "json", \ref fn_read_json "read-json" and \ref fn_write_json "write-json"
  *	- \ref fn_xml "xml", \ref fn_read_xml "read-xml" and \ref fn_write_xml "write-xml"
@@ -271,27 +271,27 @@ typedef muse_cell (*muse_nativefn_t)( muse_env *env, void *context, muse_cell ar
  */
 typedef enum
 {
-	MUSE_NIL,
-	MUSE_T,
-	MUSE_QUOTE,
-	MUSE_CLASS,
-	MUSE_SELF,
-	MUSE_SUPER,
-	MUSE_DOC,
-	MUSE_CODE,
-	MUSE_SIGNATURE,
-	MUSE_USAGE,
-	MUSE_BRIEF,
-	MUSE_DESCR,
-	MUSE_TIMEOUT,
-	MUSE_DEFINE,
-	MUSE_TRAP_POINT,
-	MUSE_DEFAULT_EXCEPTION_HANDLER,
-	MUSE_CLOSURE,
-	MUSE_NAME,
-	MUSE_IT,
-	MUSE_THE,
-	MUSE_TIMEOUTVAR,
+	MUSE_NIL,							/**< () */
+	MUSE_T,								/**< T */
+	MUSE_QUOTE,							/**< quote */
+	MUSE_CLASS,							/**< class */
+	MUSE_SELF,							/**< self */							
+	MUSE_SUPER,							/**< super */
+	MUSE_DOC,							/**< doc */
+	MUSE_CODE,							/**< code */
+	MUSE_SIGNATURE,						/**< signature */
+	MUSE_USAGE,							/**< usage */
+	MUSE_BRIEF,							/**< brief */
+	MUSE_DESCR,							/**< descr */
+	MUSE_TIMEOUT,						/**< timeout */
+	MUSE_DEFINE,						/**< define */
+	MUSE_TRAP_POINT,					/**< [internal] */
+	MUSE_DEFAULT_EXCEPTION_HANDLER,		/**< [internal] */
+	MUSE_CLOSURE,						/**< closure */
+	MUSE_NAME,							/**< name */
+	MUSE_IT,							/**< it */
+	MUSE_THE,							/**< the */
+	MUSE_TIMEOUTVAR,					/**< [internal] */
 	
 	MUSE_NUM_BUILTIN_SYMBOLS /**< Not a symbol. */
 } muse_builtin_symbol_t;
