@@ -99,7 +99,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *		- \ref fn_mod "%", \ref fn_idiv "i/", \ref fn_pow "pow"
  *	- Comparisons and boolean operations
  *		- \ref fn_eq "eq?", \ref fn_equal "=", \ref fn_lt "<", \ref fn_gt ">", \ref fn_le "<=", \ref fn_ge ">=", \ref fn_ne "!="
- *		- \ref fn_and "and", \ref fn_or "or, \ref fn_not "not"
+ *		- \ref fn_and "and", \ref fn_or "or", \ref fn_not "not"
  *	- Unary operators
  *		- \ref fn_trunc "trunc"
  *		- sqrt, log, log10, exp
