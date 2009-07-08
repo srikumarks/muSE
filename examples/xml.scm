@@ -1,5 +1,11 @@
 ; xml-v271.scm
-;
+
+(module XML (tag= attr= body= 
+	     :tag :attr :attrs 
+	     :select :and :any :or :not
+	     :child :path :descendant
+	     read-xml-file))
+
 ; In v271, a native function called read-xml was added to muSE
 ; to read an xml node from a port and return it as an equivalent
 ; list structure - which is the same as what is accepted by 
@@ -83,7 +89,7 @@
 ; Usage - (:attr firstname (= firstname "Kumar"))
 (define :attr
   (fn '($sym $expr)
-      (let (($pred (eval (list fn: (list 'this $sym) $expr))))
+      (let (($pred (eval (list fn (list 'this $sym) $expr))))
         (fn (node)
             (case node
               ((tag attrs . body) (case (assoc attrs $sym)
@@ -96,15 +102,15 @@
 ; and the expr can mention any of them.
 (define :attrs
   (fn '($syms $expr)
-      (let (($pred (eval (list fn: (list 'this $syms) $expr))))
+      (let (($pred (eval (list fn (list 'this $syms) $expr))))
         (fn (node)
             (case node
               ((tag attrs . body) (try
-                                   (if ($pred node (map (fn: (sym) 
-                                                             (case (assoc attrs sym)
-                                                               ((a . v) v)
-                                                               (() (raise 'AttrAbsent))))
-                                                        $syms))
+                                   (if ($pred node (map (fn (sym) 
+							     (case (assoc attrs sym)
+							       ((a . v) v)
+							       (() (raise 'AttrAbsent))))
+							$syms))
                                        (list node)
                                        ())
                                    ()))
@@ -134,7 +140,7 @@
 (define :and
   (fn preds
       (fn (node)
-          (if (andmap (fn: (p) (p node)) preds)
+          (if (andmap (fn (p) (p node)) preds)
               (list node)
               ()))))
 
@@ -143,7 +149,7 @@
 (define :any
   (fn preds
       (fn (node)
-          (apply join (map (fn: (p) (p node)) preds)))))
+          (apply join (map (fn (p) (p node)) preds)))))
 
 ; (:or ..predicates..)
 ; Evalutes to a predicate that will succeed on a node if any of
@@ -151,7 +157,7 @@
 (define :or
   (fn preds
       (fn (node)
-          (if (ormap (fn: (p) (p node)) preds)
+          (if (ormap (fn (p) (p node)) preds)
               (list node)
               ()))))
   
@@ -200,20 +206,19 @@
                   (if next
                       (self self pred (join result (apply join (map pred next))) (apply join (map body= next)))
                       result))))
-  (fn (pred)
-      (fn (node)
-          (case node
-            ((tag attrs . body) (desc desc pred (pred node) body))
-            (_ ()))))))
+    (fn (pred)
+	(fn (node)
+	    (case node
+	      ((tag attrs . body) (desc desc pred (pred node) body))
+	      (_ ()))))))
 
 ; (read-xml-file filename)
 ; Handy function to open a file, read the first xml node in it
 ; and close the file.
-(define read-xml-file
-  (fn (file)
-      (let ((f (open-file file 'for-reading))
-	    (tl (read-xml f)))
-	(close f)
-	tl)))
+(define (read-xml-file file)
+  (open-file file 'for-reading)
+  (read-xml (the open-file))
+  (close it)
+  (the read-xml))
 
 (print "(XML library loaded)")                    
