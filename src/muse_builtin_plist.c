@@ -58,7 +58,7 @@ MUSEAPI muse_cell muse_get( muse_env *env, muse_cell obj, muse_cell key, muse_ce
  * (get thing 'key1 'key2)
  * @endcode.
  * 
- * @see fn_put()
+ * @see \ref fn_put "put"
  */
 muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 {
@@ -99,8 +99,7 @@ MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_c
 /**
  * (put* thing key1 value1 key2 value2 -- keyN valueN).
  * Multiple property setting.
- * @see fn_put_many()
- * @see fn_put()
+ * @see \ref fn_put_many "put*"
  */
 MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
 {
@@ -135,7 +134,7 @@ MUSEAPI	muse_cell muse_put_many( muse_env *env, muse_cell obj, muse_cell argv )
  * is equivalent to @code (put thing 'key value) @endcode. (\c put is actually a macro
  * that expands to this form at read time.)
  *
- * @see fn_get()
+ * @see \ref fn_get "get"
  */
 muse_cell fn_put( muse_env *env, void *context, muse_cell args)
 {
@@ -148,8 +147,8 @@ muse_cell fn_put( muse_env *env, void *context, muse_cell args)
  * (put* obj key1 value1 key2 value2 -- keyN valueN).
  *
  * Sets many properties of the object in one go.
- * @see fn_put()
- * @see fn_get()
+ * @see \ref fn_put "put"
+ * @see \ref fn_get "get"
  */
 muse_cell fn_put_many( muse_env *env, void *context, muse_cell args )
 {
