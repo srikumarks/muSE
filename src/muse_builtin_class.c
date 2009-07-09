@@ -138,7 +138,7 @@ static muse_functional_object_type_t g_object_type =
 /**
  * @code 
  * (new supers-list prop1 value1 prop2 value2 ...)
- * (new supers-list) @endcode
+ * (new supers-list)
  * (new)
  * @endcode
  *
