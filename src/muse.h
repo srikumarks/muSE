@@ -32,7 +32,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * 	- Small code foot-print
  * 	- Simple garbage collector (< 1ms for 60000 cells)
  * 	- Simple C integration API for compute-intensive algorithms
- *  - Ability to add C/C++ based native functionality in the form of plugin DLLs.
+ * 	- Ability to add C/C++ based native functionality in the form of plugin DLLs.
  *	- A simple native object system for adding new native object types.
  *
  * Language features include -
