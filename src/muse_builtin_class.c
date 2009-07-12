@@ -45,6 +45,11 @@ static void object_init( muse_env *env, void *ptr, muse_cell args )
 
 	obj->supers = _evalnext(&args);
 	obj->plist = MUSE_NIL;
+	
+	/* Support passing a single object as the super. */
+	if ( _cellt(obj->supers) != MUSE_CONS_CELL ) {
+		obj->supers = _cons( obj->supers, MUSE_NIL );
+	}
 
 	while ( args ) {
 		int sp = _spos();
