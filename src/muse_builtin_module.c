@@ -232,7 +232,7 @@ static muse_cell module_get( muse_env *env, void *self, muse_cell key, muse_cell
 	   different key to use in the same object, or by using some other
 	   default object. */
 	{
-		muse_cell value = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) );
+		muse_cell value = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.self, _cons( key, MUSE_NIL ) ) );
 		if ( argv ) 
 			return muse_get( env, value, _head(argv), _tail(argv) );
 		else
@@ -261,11 +261,11 @@ static muse_cell module_put( muse_env *env, void *self, muse_cell key, muse_cell
 	   an "immutable key" error and let it resume by supplying a put result. */
 	if ( _tail(argv) ) 
 		return muse_get( env,
-						muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) ),
+						muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( m->base.self, _cons( key, MUSE_NIL ) ) ),
 						_head(argv), 
 						_tail(argv) );
 	else
-		return muse_raise_error( env, _csymbol(L"error:immutable-key"), _cons( m->base.ref, _cons( key, MUSE_NIL ) ) );
+		return muse_raise_error( env, _csymbol(L"error:immutable-key"), _cons( m->base.self, _cons( key, MUSE_NIL ) ) );
 }
 
 static muse_prop_view_t g_module_prop_view = { module_get, module_put };

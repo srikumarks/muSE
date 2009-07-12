@@ -25,7 +25,6 @@ enum {
 typedef struct 
 {
 	muse_functional_object_t base;
-	muse_cell self;
 	muse_cell supers;
 	muse_cell plist;
 	assoc_t cache[ASSOC_CACHE_SIZE];
@@ -123,7 +122,7 @@ static muse_cell fn_object_fn( muse_env *env, object_t *obj, muse_cell args )
 	muse_cell key = _evalnext(&args);
 	muse_cell method = object_get_prop( env, obj, key, MUSE_NIL );
 
-	return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->self, args ), MUSE_FALSE, MUSE_FALSE ) );
+	return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->base.self, args ), MUSE_FALSE, MUSE_FALSE ) );
 }
 
 static muse_functional_object_type_t g_object_type =
@@ -198,7 +197,6 @@ static muse_functional_object_type_t g_object_type =
 muse_cell fn_new( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell obj = _mk_functional_object( &g_object_type, args );
-	((object_t*)_fnobjdata(obj))->self = obj;
 	return muse_add_recent_item( env, (muse_int)fn_new, obj );
 }
 
@@ -358,12 +356,12 @@ static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, 
 			return muse_add_recent_item( 
 						env, 
 						methodkey,
-						muse_apply( env, method, _cons( self->self, args ), MUSE_FALSE, MUSE_FALSE ) );
+						muse_apply( env, method, _cons( self->base.self, args ), MUSE_FALSE, MUSE_FALSE ) );
 
 		} 
 	}
 
-	return muse_raise_error( env, _csymbol(L"error:method-not-found"), _cons( self->base.ref, _cons( methodkey, MUSE_NIL ) ) );
+	return muse_raise_error( env, _csymbol(L"error:method-not-found"), _cons( self->base.self, _cons( methodkey, MUSE_NIL ) ) );
 }
 
 /**

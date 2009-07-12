@@ -384,7 +384,7 @@ void muse_define_builtin_fileport(muse_env *env)
 			/* Define *stdin*, *stdout* and *stderr* to the respective ports. */
 			{
 				muse_cell ref = _mk_destructor( (muse_nativefn_t)NULL, env->stdports[i] );
-				env->stdports[i]->base.ref = ref;
+				env->stdports[i]->base.self = ref;
 				_define( _csymbol(stdnames[i]), ref );
 				_unwind(sp);
 			}

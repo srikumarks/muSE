@@ -590,7 +590,7 @@ typedef struct
 {
 	int magic_word; /**< Will always be 'muSE'. */
 	muse_functional_object_type_t *type_info; /**< Type information that's constant for all instances. */
-	muse_cell ref;
+	muse_cell self;
 } muse_functional_object_t;
 
 MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
