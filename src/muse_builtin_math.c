@@ -311,7 +311,11 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 			muse_int m = 0;
 			if ( M )
 				m = _ptr(M)->i;
-			return _mk_int( m + rand() % (_ptr(N)->i - m) );
+
+			{
+				muse_int dn = _ptr(N)->i - m;
+				return _mk_int( m + (muse_int)(rand() * dn / (1.0+RAND_MAX)) );
+			}
 		}
 		break;
 			
@@ -320,7 +324,7 @@ muse_cell fn_rand( muse_env *env, void *context, muse_cell args )
 			muse_float m = 0.0;
 			if ( M )
 				m = _ptr(M)->f;
-			return _mk_float( m + rand() * (_ptr(N)->f - m) / RAND_MAX );
+			return _mk_float( m + rand() * (_ptr(N)->f - m) / (1.0+RAND_MAX) );
 		}
 		break;
 			
