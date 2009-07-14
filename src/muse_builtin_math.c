@@ -55,7 +55,7 @@ muse_cell fn_add( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * @code (- ...numbers...) @code
+ * @code (- ...numbers...) @endcode
  * Takes 1 or more arguments.
  * 	- <tt>(- m)</tt> gives <tt>-m</tt>
  * 	- <tt>(- m n)</tt> gives <tt>(m-n)</tt>
