@@ -50,6 +50,10 @@ extern int errno;
 #else
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
+#	include <wininet.h>
+#	include <shlwapi.h>
+#	pragma comment(lib,"wininet")
+#	pragma comment(lib,"shlwapi")
 #	pragma comment(lib, "ws2_32")
 	typedef long suseconds_t;
 	typedef int socklen_t;
@@ -917,6 +921,258 @@ muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
 		return _t();
 }
 
+#ifdef MUSE_PLATFORM_WINDOWS
+static muse_cell destroy_internet_handle( muse_env *env, void *net, muse_cell args )
+{
+	if ( muse_doing_gc(env) )
+		InternetCloseHandle( (HINTERNET)net );
+	return MUSE_NIL;
+}
+
+static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, const muse_char *mimePattern )
+{
+	HINTERNET net = 0;
+	HINTERNET huri = 0;
+	muse_char mimeType[256];
+	muse_char ext[10];
+	DWORD mimeType_size = 256;
+	muse_char localfile[MAX_PATH+1];
+	
+	int uri_len = 0;
+	const muse_char *uri_str = muse_text_contents( env, uri, &uri_len );
+
+	if ( UrlIsW( uri_str, URLIS_URL ) == TRUE  )
+	{
+		if ( cached )
+		{
+			// Check for cached version of URL.
+			INTERNET_CACHE_ENTRY_INFO entry;
+			DWORD size = sizeof(entry);
+			if ( GetUrlCacheEntryInfoW( uri_str, &entry, &size ) == TRUE )
+			{
+				// Cache hit.
+				// Note: Doesn't seem to happen at all, though it should.
+				return muse_mk_ctext( env, entry.lpszLocalFileName );
+			}
+			else
+			{
+				// Cache miss.
+			}
+		}
+
+		// Get the internet handle.
+		{
+			muse_cell netsym = _csymbol(L"{{wininet}}");
+			if ( _symval(netsym) == netsym ) {
+				// Not initialized yet. Do it.
+				net = InternetOpen( L"muSE", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0 );
+				// If initialization fails, allow replacement of uri with a default file.
+				if ( net == NULL )
+					return muse_raise_error( env, _csymbol(L"fetch-uri:network-error"), MUSE_NIL );
+				_define( netsym, _mk_destructor( destroy_internet_handle, (void*)net ) );
+			} else {
+				net = (HINTERNET)muse_nativefn_context( env, _symval(netsym), NULL );
+			}
+		}
+
+		huri = InternetOpenUrlW( net, uri_str, NULL, 0, INTERNET_FLAG_NEED_FILE | (cached ? 0 : INTERNET_FLAG_RESYNCHRONIZE), (DWORD_PTR)NULL );
+
+		// If opening the uri failed, allow replacement of the uri
+		// with a default uri or file.
+		if ( huri == NULL )	
+		{
+			return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern );
+		}
+
+		// Find out type of uri.
+		if ( HttpQueryInfoW( huri, HTTP_QUERY_CONTENT_TYPE, (LPVOID)mimeType, &mimeType_size, 0 ) == TRUE )
+		{
+			ext[0] = '\0';
+
+			if ( wcslen(uri_str) < MAX_PATH )
+			{
+				const wchar_t *uriext = PathFindExtensionW(uri_str);
+
+				if ( uriext[0] == '.' && wcslen(uriext) <= 5 )
+				{
+					// Valid extension found.
+					wcscpy( ext, uriext+1 );
+				}
+			}
+
+
+			if ( mimePattern != NULL )
+			{
+				if ( wcsstr( mimeType, mimePattern ) != NULL )
+				{
+					// MIME pattern matched.
+				}
+				else
+				{
+					// Not of the appropriate mime type. Allow replacement of the uri
+					// with a default uri or file
+					InternetCloseHandle(huri);
+					return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern );
+				}
+			}
+
+			if ( wcsstr( mimeType, L"text" ) != NULL )
+			{
+				// Text content.
+				wcscpy( ext, L"txt" );
+			}
+			else if ( wcsstr( mimeType, L"xml" ) != NULL )
+			{
+				// XML content
+				wcscpy( ext, L"xml" );
+			}
+			else if ( wcsstr( mimeType, L"image/jpeg" ) != NULL )
+			{
+				// JPG file.
+				wcscpy( ext, L"jpg" );
+			}
+			else if ( wcsstr( mimeType, L"image/png" ) != NULL )
+			{
+				// PNG file.
+				wcscpy( ext, L"png" );
+			}
+			else if ( wcsstr( mimeType, L"image/gif" ) != NULL )
+			{
+				// GIF file.
+				wcscpy( ext, L"gif" );
+			}
+			else if ( ext[0] == '\0' )
+			{
+				// No extension found in uri itself. General binary file.
+				wcscpy( ext, L"bin" );
+			}
+			else
+			{
+				// Leave the extension as found from the uri itself.
+				muse_assert( ext[0] != '\0' );
+			}
+		}
+		else
+		{
+			// Not a Http request I guess. Get the extension from the URL itself.
+			const wchar_t *cext = PathFindExtensionW( uri_str );
+			if ( cext[0] == '.' )
+				wcscpy( ext, cext+1 );
+			else
+			{
+				// Not a supported file. Use the generic ".bin" extension.
+				wcscpy( ext, L"bin" );
+			}
+		}
+
+		if ( CreateUrlCacheEntryW( uri_str, 0, ext, localfile, 0 )  == TRUE )
+		{
+			FILE *f = _wfopen( localfile, L"wb" );
+
+			// If _wfopen failed, allow replacement of uri with a default file path.
+			if ( f )
+			{
+				BYTE buffer[4096];
+				DWORD bytesRead = 0;
+				while ( InternetReadFile( huri, buffer, 4096, &bytesRead ) == FALSE || bytesRead > 0 )
+				{
+					fwrite( buffer, 1, bytesRead, f );
+				}
+				fclose(f);
+
+				InternetCloseHandle( huri );
+
+				// Cache the URL.
+				{
+					FILETIME expireTime = {0,0}, modifiedTime = {0,0};
+
+					if ( CommitUrlCacheEntryW( uri_str, localfile, expireTime, modifiedTime, NORMAL_CACHE_ENTRY, NULL, 0, NULL, uri_str ) == TRUE )
+					{
+						// Commit succeeded.
+						return muse_mk_ctext( env, localfile );
+					}
+					else
+					{
+						// Commit failed.
+						return muse_raise_error( env, muse_csymbol( env, L"fetch-uri:cache-failure" ), uri );
+					}
+				}
+			}
+			else
+			{
+				InternetCloseHandle( huri );
+				return muse_raise_error( env, muse_csymbol( env, L"fetch-uri:cache-failure" ), uri );
+			}
+		}
+		else
+		{
+			// Failed.
+			InternetCloseHandle( huri );
+			return muse_raise_error( env, muse_csymbol( env, L"fetch-uri:cache-failure" ), uri );
+		}
+	}
+	else
+	{
+		return uri;
+	}
+}
+#endif
+
+/**
+ * Usage: (fetch-uri uri ['refresh])
+ *
+ * Evaluates to the cached local file path for the uri.
+ * If 'refresh is passed, then it downloads the uri again if it
+ * is out of date, even if it is already in the cache.
+ *
+ * muSE exceptions:
+ *
+ *	'fetch-uri:network-error uri
+ *		Indicates a fundamental problem with connecting to the net.
+ *		Allows you to replace the uri with a default file path.
+ *
+ *	'fetch-uri:bad-resource uri
+ *		Indicates that the uri is either badly formatted or is
+ *		referring to an invalid resource. In this case, you can
+ *		continue by replacing the uri with either a file or a default
+ *		uri that's known to work.
+ *
+ *	'fetch-uri:unsupported uri
+ *		Indicates that the uri is not a http uri or of a type
+ *		that can't be supported. In this case, you are allowed to 
+ *		replace the uri with a file.
+ *
+ *	'fetch-uri:cache-failure uri
+ *		Indicates a problem downloading the uri and storing it in
+ *		the system cache. In this case, you're allowed to replace it with
+ *		a file.
+ */
+muse_cell fn_fetch_uri( muse_env *env, void *context, muse_cell args )
+{
+#ifdef MUSE_PLATFORM_WINDOWS
+	muse_trace_push( env, L"fetch-uri", MUSE_NIL, args );
+	{
+		muse_cell uri = muse_evalnext( env, &args );
+		muse_boolean cached = MUSE_TRUE;
+		if ( args ) {
+			muse_cell flag = muse_evalnext(env, &args);
+			if ( flag == muse_csymbol( env, L"refresh" ) ) {
+				cached = MUSE_FALSE;
+			}
+		}
+		
+
+		{
+			muse_cell result = fetch_uri( env, uri, cached, NULL );
+			muse_trace_pop(env);
+			return result;
+		}
+	}
+#else
+	return muse_raise_error( env, _csymbol(L"error:not-implemented"), _cons( _csymbol(L"fetch-uri"), MUSE_NIL ) );
+#endif
+}
+
 /**
  * Shutsdown the socket API. No need to call this as its called
  * at GC time when the muse environment is destroyed.
@@ -941,6 +1197,7 @@ void muse_define_builtin_networking(muse_env *env)
 		{		L"multicast-group",						fn_multicast_group						},
 		{		L"reply",								fn_reply								},
 		{		L"multicast-group?",					fn_multicast_group_p					},
+		{		L"fetch-uri",							fn_fetch_uri							},
 		{		NULL,									NULL									}
 	};
 
