@@ -358,39 +358,48 @@ MUSEAPI void muse_destroy_env( muse_env *env )
 	free( env );
 }
 
-muse_int *muse_alloc_slot( muse_env *env )
+/**
+ * The environment maintains a fixed number of "slots"
+ * which are memory locations of size muse_int that are
+ * addressed using a four-character int id. The int in
+ * the location can be used for any purpose and is 
+ * intended for use by plugins to store and manage 
+ * sub-system state. The returned pointer to muse_int
+ * is valid for the lifetime of the environment and
+ * can always be retrieved given the slotid.
+ */
+MUSEAPI muse_int *muse_slot( muse_env *env, int slotid )
 {
 	/* If no slots have been allocated, do that. */
 	if ( env->slot_capacity == 0 ) {
-		env->slot_capacity = 4;
-		env->slots = (muse_int*)calloc( env->slot_capacity, sizeof(muse_int) );
+		env->slot_capacity = MUSE_MAX_SLOTS;
 		env->num_slots = 0;
+		env->slots = (muse_slot_t*)calloc( env->slot_capacity, sizeof(muse_slot_t) );
 	}
 
-	/* If we've run out of slots, grow the slot array. */
-	if ( env->num_slots == env->slot_capacity ) {
-		int new_capacity = env->slot_capacity * 2;
-		env->slots = (muse_int*)realloc( env->slots, new_capacity * sizeof(muse_int) );
-		env->slot_capacity = new_capacity;
+	/* Search the slots for an id match. */
+	{
+		int i = 0, N = env->num_slots;
+		for ( ; i < N; ++i ) {
+			if ( env->slots[i].id == slotid )
+				return &(env->slots[i].value);
+		}
 	}
 
-	/* Allocate the next slot. */
-	return (env->slots + (env->num_slots++));
+	/* No such slot allocated. Allocate a new one. */
+	if ( env->num_slots >= env->slot_capacity ) {
+		/* No more space! */
+		muse_raise_error( env, _csymbol(L"fatal-error:no-slots-available"), MUSE_NIL );
+		return NULL;
+	}
+
+	/* Add a new slot. */
+	{
+		int ix = env->num_slots++;
+		env->slots[ix].id = slotid;
+		return &(env->slots[ix].value);
+	}
 }
-
-/**
- * Modifies the context pointer of the given nativefn to
- * the given slot pointer and returns the modified nativefn.
- */
-muse_cell muse_set_slot( muse_env *env, muse_cell nativefn, muse_int *slot )
-{
-	muse_assert( _cellt(nativefn) == MUSE_NATIVEFN_CELL );
-	muse_assert( _ptr(nativefn)->fn.context == NULL );
-
-	_ptr(nativefn)->fn.context = (void*)slot;
-	return nativefn;
-}
-
 
 /**
  * Allocates a new cons cell with the given head 

@@ -253,6 +253,14 @@ typedef struct _muse_process_frame_t
 	int			num_eval_timeouts;
 } muse_process_frame_t;
 
+typedef struct
+{
+	int id;
+	muse_int value;
+} muse_slot_t;
+
+enum { MUSE_MAX_SLOTS = 16 };
+
 /**
  * The muse environment contains all info relevant to
  * evaluation of expressions in muSE.
@@ -277,12 +285,11 @@ struct _muse_env
 	void				*objc_pool;
 
 	/* Slots are for storing custom information about anything
-	a native function might need. Functions with assigned slots
-	get passed the muse_int * as their "context" parameters. 
-	Using muse_int lets you store pointers as well as integers
-	in your "slot".*/
+	a sub-system of muSE might need. A slot pointer
+	is valid for the lifetime of an environment and there are only
+	a fixed number slots available, given by MUSE_MAX_SLOTS. */
 	int					num_slots, slot_capacity;
-	muse_int			*slots;
+	muse_slot_t			*slots;
 };
 
 extern const char *g_muse_typenames[];
@@ -292,22 +299,6 @@ extern const char *g_muse_typenames[];
  * if no other object is available to represent it.
  */
 #define _t() env->builtin_symbols[MUSE_T]
-
-/**
- * Allocates a custom "slot" for use by native functions.
- * The native function is responsible for releasing
- * whatever it stores into this slot. The slots are themselves
- * released when the environment is destroyed.
- * Once allocated, a slot cannot be deallocated until
- * end of the environment.
- */
-muse_int *muse_alloc_slot( muse_env *env );
-
-/**
- * Modifies the context pointer of the given nativefn to
- * the given slot pointer and returns the modified nativefn.
- */
-muse_cell muse_set_slot( muse_env *env, muse_cell nativefn, muse_int *slot );
 
 /**
  * Initializes the scoped recent calculations data structure.

@@ -356,6 +356,7 @@ MUSEAPI size_t		muse_trace_report( muse_env *env, size_t numchars, muse_char *bu
 MUSEAPI void		muse_gc( muse_env *env, int free_cells_needed );
 MUSEAPI void		muse_mark( muse_env *env, muse_cell cell );
 MUSEAPI muse_boolean muse_doing_gc( muse_env *env );
+MUSEAPI muse_int*	muse_slot( muse_env *env, int slotid );
 /*@}*/
 
 /** @name Cell access */
