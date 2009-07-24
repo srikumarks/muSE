@@ -100,10 +100,13 @@ static void json_write_object( muse_port_t p, muse_cell obj );
  * of a JSON object will end up being shared with other JSON objects. 
  * You need to be aware of this only if you want to modify the JSON objects 
  * you create.
+ *
+ * @note Supports \ref fn_the "the"
  */
 muse_cell fn_json( muse_env *env, void *context, muse_cell args )
 {
-	return json_read_expr( muse_current_port( env, MUSE_INPUT_PORT, NULL ) );
+	muse_push_recent_scope(env);
+	return muse_pop_recent_scope( env, (muse_int)fn_json, json_read_expr( muse_current_port( env, MUSE_INPUT_PORT, NULL ) ) );
 }
 
 /**
@@ -147,6 +150,8 @@ muse_cell fn_write_json( muse_env *env, void *context, muse_cell args )
  *   > (get j 'message 4)
  *   11
  * @endcode
+ *
+ * @note Supports \ref fn_the "the"
  */
 muse_cell fn_read_json( muse_env *env, void *context, muse_cell args )
 {
@@ -157,7 +162,8 @@ muse_cell fn_read_json( muse_env *env, void *context, muse_cell args )
 		p = muse_current_port( env, MUSE_STDIN_PORT, NULL );
 	}
 
-	return json_read(p);
+	muse_push_recent_scope( env );
+	return muse_pop_recent_scope( env, (muse_int)fn_read_json, json_read(p) );
 }
 
 static buffer_t *buffer_alloc()
@@ -185,7 +191,7 @@ static void buffer_putc( buffer_t *b, muse_char c )
 {
 	if ( b->frags[b->N-1]->len >= MAXFRAGLEN ) {
 		b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
-		b->frags[b->N]->len = 0;
+		b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
 		b->N++;
 	}
 
@@ -335,9 +341,9 @@ static int hexdigit( muse_char c )
 
 static int hexchar( muse_char hex4[4] )
 {
-	return (hexdigit(hex4[0]) << 24) +
-			(hexdigit(hex4[1]) << 16) +
-			(hexdigit(hex4[2]) << 8) +
+	return (hexdigit(hex4[0]) << 12) +
+			(hexdigit(hex4[1]) << 8) +
+			(hexdigit(hex4[2]) << 4) +
 			hexdigit(hex4[3]);
 }
 
