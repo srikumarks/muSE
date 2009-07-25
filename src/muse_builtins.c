@@ -506,19 +506,21 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
 /**
  * @code (stats) @endcode
  *
- * Evaluates to a triplet @code (free-cells stack-size num-symbols) @endcode.
+ * Evaluates to an object whose properties describe the
+ * current internal state of the muSE interpreter.
  */
 muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
 {
 	int free_cell_count		= env->heap.free_cell_count;
-	int stack_size			= (int)(_stack()->top - _stack()->bottom);
-	return _cons( 
-					 _mk_int(free_cell_count),
-					 _cons(
-							   _mk_int( stack_size ),
-							   _cons(
-										 _mk_int( env->num_symbols ),
-										 MUSE_NIL)));
+	int sp					= _spos();
+	
+	muse_cell obj = fn_new(env,NULL,MUSE_NIL);
+	return muse_put_many( env, obj, 
+						 muse_list( env, "SiSiSiSi",
+								   L"free-cells", free_cell_count,
+								   L"stack-size", sp,
+								   L"symbol-count", env->num_symbols,
+								   L"bindings-depth", _bspos()/2 ) );
 }
 
 /************************ Type checks ***********************/
