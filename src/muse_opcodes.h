@@ -102,7 +102,7 @@ typedef struct
  */
 typedef struct
 {
-	int					size_cells;	/**< The heap size given in number of cells. */
+	long int				size_cells;	/**< The heap size given in number of cells. */
 	muse_cell_data		*cells;		/**< Pointer to the heap of cells. */
 	unsigned char		*marks;		/**< An array of marks that is used to keep track
 										of cell references during garbage collection.
@@ -110,7 +110,7 @@ typedef struct
 										hence the size of the marks array is 1/8 of the
 										total number of cells in the heap. */
 	muse_cell			free_cells;		/**< A reference to the first cell in the free list. */
-	int					free_cell_count; /**< The number of free cells. This is used nearly
+	long int				free_cell_count; /**< The number of free cells. This is used nearly
 											only for diagnostic purposes. May be removed in the
 											future for efficiency reasons. */
 	unsigned char		*keep;		/**< The keep vector is a set of marks for cells that

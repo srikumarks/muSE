@@ -493,6 +493,8 @@ muse_cell muse_objc_msgSend( muse_env *env, id obj, compiled_sel_t *sel, muse_ce
 	return MUSE_NIL;
 }
 
+muse_cell resolve_objc_class( muse_env *env, muse_cell className );
+
 muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 {
 	if ( muse_doing_gc(env) )

@@ -246,7 +246,7 @@ typedef struct _muse_env		muse_env;	/**< Identifies a particular muse instance. 
 typedef wchar_t				muse_char;	/**< Unicode character type used throughout muse. */
 typedef longlong_t			muse_int;	/**< 64-bit signed integer type. */
 typedef double				muse_float;	/**< 64-bit double precision floating point type. */
-typedef int					muse_cell;	/**< A cell is referred using a single 32-bit signed integer. */
+typedef long int				muse_cell;	/**< A cell is referred using a single 32-bit signed integer. */
 typedef enum { MUSE_FALSE, MUSE_TRUE } muse_boolean; /**< Ask George Boole. */
 
 /**
