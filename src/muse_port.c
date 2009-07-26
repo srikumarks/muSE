@@ -1526,6 +1526,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 	{
 		int sp = _spos();
 		muse_boolean need_line_break = MUSE_FALSE;
+		muse_boolean first_term_is_cons = MUSE_FALSE;
 		int term_number = 0;
 
 		if ( _isquote( _head(l) ) )
@@ -1546,9 +1547,12 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 			_unwind(sp); /* We need this here in case the list that's
 							being printed out is being lazily generated. */
 
+			if ( term_number == 0 )
+				first_term_is_cons = (_cellt(h) == MUSE_CONS_CELL ? MUSE_TRUE : MUSE_FALSE);
+			
 			if ( term_number > 0 ) 
 			{
-				if ( need_line_break || (term_number > 1 && (_cellt(h) == MUSE_CONS_CELL && h > 0 && !_isquote(_head(h)))) )
+				if ( need_line_break || (term_number > 1 && (_cellt(h) == MUSE_CONS_CELL && h > 0 && !_isquote(_head(h)))) || first_term_is_cons )
 				{
 					pretty_printer_line_break(f);
 					need_line_break = MUSE_TRUE;
@@ -1574,7 +1578,7 @@ static void muse_print_list( muse_port_t f, muse_cell l, muse_boolean quote )
 			
 			if ( l ) 
 			{
-				if ( !need_line_break )
+				if ( !need_line_break && !first_term_is_cons )
 				{
 					port_putc( ' ', f );
 					pretty_printer_move(f,1);
