@@ -164,6 +164,7 @@ static void module_write( muse_env *env, void *ptr, void *port )
 	module_t *m = (module_t*)ptr;
 	muse_port_t p = (muse_port_t)port;
 	
+	pretty_printer_indent(p);
 	port_putc( '{', p );
 	port_write( "module ", 7, p );	
 	
@@ -178,6 +179,7 @@ static void module_write( muse_env *env, void *ptr, void *port )
 	}
 	port_putc( ')', p );
 	port_write( " ...}", 5, p );
+	pretty_printer_unindent(p);
 }
 
 static void introduce_module_local( muse_env *env, module_t *m )

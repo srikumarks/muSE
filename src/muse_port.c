@@ -399,7 +399,7 @@ static void pretty_printer_reset( muse_port_t p )
 	p->pp_align_cols[p->pp_align_level] = 0;
 }
 
-static void pretty_printer_indent( muse_port_t p )
+void pretty_printer_indent( muse_port_t p )
 {
 	if ( p->pretty_print )
 	{
@@ -414,7 +414,7 @@ static void pretty_printer_indent( muse_port_t p )
 	}
 }
 
-static void pretty_printer_unindent( muse_port_t p )
+void pretty_printer_unindent( muse_port_t p )
 {
 	if ( p->pretty_print )
 	{
@@ -424,7 +424,7 @@ static void pretty_printer_unindent( muse_port_t p )
 	}
 }
 
-static void pretty_printer_line_break( muse_port_t f )
+void pretty_printer_line_break( muse_port_t f )
 {
 	if ( f->pretty_print )
 	{
@@ -438,7 +438,7 @@ static void pretty_printer_line_break( muse_port_t f )
 	}
 }
 
-static void pretty_printer_move( muse_port_t p, int numc )
+void pretty_printer_move( muse_port_t p, int numc )
 {
 	if ( p->pretty_print )
 		p->pp_align_cols[p->pp_align_level] += numc;

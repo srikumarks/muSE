@@ -129,6 +129,14 @@ size_t	port_write( void *buffer, size_t nbytes, muse_port_base_t *port );
 int		port_flush( muse_port_base_t *port );
 /*@}*/
 
+/** @name Pretty printing */
+/*@{*/
+void pretty_printer_indent( muse_port_t p );
+void pretty_printer_unindent( muse_port_t p );
+void pretty_printer_line_break( muse_port_t f );
+void pretty_printer_move( muse_port_t p, int numc );
+/*@}*/
+ 
 /*@}*/
 /*@]*/
 

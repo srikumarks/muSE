@@ -37,12 +37,14 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 	muse_cell arg1 = _evalnext(&args);
 	
 	port = _port(arg1);
-	if ( !port )
-	{
+	if ( !port )	{
 		port = _stdport(MUSE_STDOUT_PORT);
+		pretty_printer_indent(port);
 		writer( port, arg1 );
 		if ( args )
 			port_putc( ' ', port );
+	} else {
+		pretty_printer_indent(port);
 	}
 	
 	while ( args )
@@ -59,6 +61,7 @@ static muse_cell fn_output( muse_env *env, muse_cell args, void (*writer)( muse_
 	mother-of-all white space characters - the newline - to indicate the
 	end of a term. */
 	port_putc( '\n', port );
+	pretty_printer_unindent(port);
 
 	/* If there is a write error, return () and clear the error code. */
 	if ( port->error )
