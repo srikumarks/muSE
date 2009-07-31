@@ -4,7 +4,7 @@
 	     :tag :attr :attrs 
 	     :select :and :any :or :not
 	     :child :path :descendant
-             :pipe :map :reduce :const :apply :filter :if :attr= :attr=*
+             :pipe :map : :* :reduce :apply :filter :attr= :attr=*
 	     read-xml-file))
 
 ; In v271, a native function called read-xml was added to muSE
@@ -235,7 +235,7 @@
 ;   (:pipe (:child (:tag div)) 
 ;          (:map body= length) 
 ;          (:filter (> ? 10)) 
-;          (:map (:const 1)) 
+;          (:* 1)) 
 ;          (:reduce + 0))
 ; will process all "div" children and calculate the total number of div
 ; sections with more than 10 children. "body=" extracts the body part of 
@@ -252,34 +252,38 @@
 ; Aside: In the above example, you can collapse :filter and :const
 ; into the :map step as follows -
 ;   (:pipe (:child (:tag div))
-;          (:map body= length (:if (> ? 10) 1 0))
+;          (:map body= length (: if (> ? 10) 1 0))
 ;          (:apply +))
 ;
 ; Another example - extract all the href URLs from an xhtml structure -
 ;   (:pipe (:descendant (:tag a))
-;          (:map (:attr= href)))
+;          (:map (:attr= 'href)))
 ; which is equivalent to -
 ;   (:pipe (:descendant (:tag a))
-;          (:attr=* href))				 
-;          
+;          (:*attr= 'href))
+; 
+; You can use the ':' macro to turn any expression involving a '?' into
+; a function of one argument. For example -
+;    (: * ? ?) = (fn (x) (* x x))
+;    (: if (> ? 10) "big" "small") = (fn (x) (if (> x 10) "big" "small"))
+;    (: 3) = (fn (x) 3)
+; The ':*' macro is similar to ':' except that it also lifts the function
+; to apply on collections using ':map'.
+;    (:* ...) = (:map (: ...))
 (define (:map . fs) (let ((combined-fs (apply :pipe fs)))
 		      (fn (xs)
 			  (map combined-fs xs))))
-(define ((:reduce f initial) xs) (reduce f initial xs))
-(define ((:const k) xs) k)
-(define ((:apply f) xs) (apply f xs))
+(define : (fn '$argv
+              (list fn (list '?) $argv)))
+(define :* (fn '$argv
+               (list :map (list fn (list '?) $argv))))
+(define (:reduce f initial) (: reduce f initial ?))
+(define (:apply f) (: apply f ?))
 (define :filter (fn '($expr) 
-		    (let (($newsym (gensym)))
-		      (list fn (list $newsym)
-			    (list collect $newsym (list fn (list '?) $expr))))))
-(define :if (fn '($expr $then $else)
-		(list fn (list '?) (list if $expr $then $else))))
-(define :attr= (fn '($sym)
-		   (fn (node)
-		       (attr= node $sym))))
-(define :attr=* (fn '($sym)
-		    (fn (nodes)
-			(map (fn (node) (attr= node $sym)) nodes))))
+                    (list fn (list '$?)
+                          (list collect '$? (list fn (list '?) $expr)))))
+(define (:attr= sym)(: attr= ? sym))
+(define (:*attr= sym) (:map (:attr= sym))) 
       
  
 ; (read-xml-file filename)
