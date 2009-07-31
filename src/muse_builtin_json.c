@@ -128,7 +128,9 @@ muse_cell fn_write_json( muse_env *env, void *context, muse_cell args )
 		p = muse_current_port( env, MUSE_STDOUT_PORT, NULL );
 	}
 
+	muse_push_recent_scope(env);
 	json_write(p,arg);
+	muse_pop_recent_scope(env,0,MUSE_NIL);
 	return _builtin_symbol(MUSE_T);
 }
 
