@@ -929,7 +929,50 @@ static muse_cell destroy_internet_handle( muse_env *env, void *net, muse_cell ar
 	return MUSE_NIL;
 }
 
-static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, const muse_char *mimePattern )
+static size_t format_http_headers( muse_env *env, muse_char *buffer, size_t sz, muse_cell headers )
+{
+	size_t n = 0;
+
+	while ( headers && n+1 < sz )
+	{
+		muse_cell header = muse_head( env, headers );
+
+		{
+			int sp = muse_stack_pos(env);
+			while ( muse_cell_type(header) != MUSE_TEXT_CELL )
+			{
+				header = muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-header" ), muse_cons( env, header, MUSE_NIL ) );
+				muse_set_head( env, headers, header );
+				muse_stack_unwind( env, sp );
+			}
+		}
+
+		{
+			int len = 0;
+			const muse_char *line = muse_text_contents( env, header, &len );
+			if ( n + len + 3 > sz )
+			{
+				muse_raise_error( env, muse_csymbol( env, L"fetch-uri:unused-headers" ), muse_cons( env, headers, MUSE_NIL ) );
+				buffer[n] = '\0';
+				return n;
+			}
+			else
+			{
+				wcscpy_s( buffer + n, sz-n, line );
+				n += len;
+				buffer[n++] = '\x0d';
+				buffer[n++] = '\x0a';
+			}
+		}
+
+		headers = muse_tail( env, headers );
+	}
+
+	buffer[n] = '\0';
+	return n;
+}
+
+static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, const muse_char *mimePattern, muse_cell headers )
 {
 	HINTERNET net = 0;
 	HINTERNET huri = 0;
@@ -975,13 +1018,17 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 			}
 		}
 
-		huri = InternetOpenUrlW( net, uri_str, NULL, 0, INTERNET_FLAG_NEED_FILE | (cached ? 0 : INTERNET_FLAG_RESYNCHRONIZE), (DWORD_PTR)NULL );
+		{
+			muse_char headerText[1024];
+			size_t len = format_http_headers( env, headerText, 1024, headers );
+			huri = InternetOpenUrlW( net, uri_str, (len > 0 ? headerText : NULL), (DWORD)len, INTERNET_FLAG_NEED_FILE | (cached ? 0 : INTERNET_FLAG_RESYNCHRONIZE), (DWORD_PTR)NULL );
+		}
 
 		// If opening the uri failed, allow replacement of the uri
 		// with a default uri or file.
 		if ( huri == NULL )	
 		{
-			return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern );
+			return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern, headers );
 		}
 
 		// Find out type of uri.
@@ -1012,7 +1059,7 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 					// Not of the appropriate mime type. Allow replacement of the uri
 					// with a default uri or file
 					InternetCloseHandle(huri);
-					return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern );
+					return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern, headers );
 				}
 			}
 
@@ -1119,11 +1166,14 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 #endif
 
 /**
- * Usage: (fetch-uri uri ['refresh])
+ * Usage: (fetch-uri uri ['refresh] [headers])
  *
  * Evaluates to the cached local file path for the uri.
  * If 'refresh is passed, then it downloads the uri again if it
  * is out of date, even if it is already in the cache.
+ * \p headers is a list of strings, each expected to contain
+ * one line of the extra HTTP header to be passed to the request.
+ * The header strings should not end with CRLF.
  *
  * muSE exceptions:
  *
@@ -1154,16 +1204,20 @@ muse_cell fn_fetch_uri( muse_env *env, void *context, muse_cell args )
 	{
 		muse_cell uri = muse_evalnext( env, &args );
 		muse_boolean cached = MUSE_TRUE;
-		if ( args ) {
+		muse_cell headers = MUSE_NIL;
+		muse_cell sym_refresh = muse_csymbol( env, L"refresh" );
+		while ( args ) {
 			muse_cell flag = muse_evalnext(env, &args);
-			if ( flag == muse_csymbol( env, L"refresh" ) ) {
+			if ( flag == sym_refresh ) {
 				cached = MUSE_FALSE;
+			} else if ( muse_cell_type(flag) == MUSE_CONS_CELL ) {
+				headers = flag;
 			}
 		}
 		
 
 		{
-			muse_cell result = fetch_uri( env, uri, cached, NULL );
+			muse_cell result = fetch_uri( env, uri, cached, NULL, headers );
 			muse_trace_pop(env);
 			return result;
 		}
