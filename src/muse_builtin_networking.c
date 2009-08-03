@@ -1124,6 +1124,7 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 				while ( InternetReadFile( huri, buffer, 4096, &bytesRead ) == FALSE || bytesRead > 0 )
 				{
 					fwrite( buffer, 1, bytesRead, f );
+					procrastinate(env);
 				}
 				fclose(f);
 
