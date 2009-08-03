@@ -922,10 +922,17 @@ muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
 }
 
 #ifdef MUSE_PLATFORM_WINDOWS
-static muse_cell destroy_internet_handle( muse_env *env, void *net, muse_cell args )
+typedef struct
+{
+	HINTERNET net;
+} internet_handle_t;
+static muse_cell destroy_internet_handle( muse_env *env, internet_handle_t *net, muse_cell args )
 {
 	if ( muse_doing_gc(env) )
-		InternetCloseHandle( (HINTERNET)net );
+	{
+		InternetCloseHandle( net->net );
+		free(net);
+	}
 	return MUSE_NIL;
 }
 
@@ -972,8 +979,33 @@ static size_t format_http_headers( muse_env *env, muse_char *buffer, size_t sz, 
 	return n;
 }
 
-static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, const muse_char *mimePattern, muse_cell headers )
+static muse_cell finalizer_InternetCloseHandle( muse_env *env, HINTERNET huri, muse_cell args_unused )
 {
+	InternetCloseHandle(huri);
+	return MUSE_NIL;
+}
+
+static muse_cell finalizer_fclose( muse_env *env, FILE *f, muse_cell args_unused )
+{
+	fclose(f);
+	return MUSE_NIL;
+}
+
+typedef struct 
+{
+	muse_cell uri;
+	muse_boolean cached;
+	const muse_char *mimePattern;
+	muse_cell headers;
+} fetch_uri_args_t;
+
+static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell args_unused )
+{
+	muse_cell uri = args->uri;
+	muse_boolean cached = args->cached;
+	const muse_char *mimePattern = args->mimePattern;
+	muse_cell headers = args->headers;
+
 	HINTERNET net = 0;
 	HINTERNET huri = 0;
 	muse_char mimeType[256];
@@ -1012,9 +1044,14 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 				// If initialization fails, allow replacement of uri with a default file.
 				if ( net == NULL )
 					return muse_raise_error( env, _csymbol(L"fetch-uri:network-error"), MUSE_NIL );
-				_define( netsym, _mk_destructor( destroy_internet_handle, (void*)net ) );
+				
+				{
+					internet_handle_t *h = (internet_handle_t*)calloc( 1, sizeof(internet_handle_t) );
+					h->net = net;
+					_define( netsym, _mk_destructor( (muse_nativefn_t)destroy_internet_handle, h ) );
+				}
 			} else {
-				net = (HINTERNET)muse_nativefn_context( env, _symval(netsym), NULL );
+				net = ((internet_handle_t*)muse_nativefn_context( env, _symval(netsym), NULL ))->net;
 			}
 		}
 
@@ -1028,8 +1065,11 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 		// with a default uri or file.
 		if ( huri == NULL )	
 		{
-			return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern, headers );
+			args->uri = muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri );
+			return fetch_uri( env, args, args_unused );
 		}
+
+		muse_add_finalizer_call( env, (muse_nativefn_t)finalizer_InternetCloseHandle, huri );
 
 		// Find out type of uri.
 		if ( HttpQueryInfoW( huri, HTTP_QUERY_CONTENT_TYPE, (LPVOID)mimeType, &mimeType_size, 0 ) == TRUE )
@@ -1059,7 +1099,8 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 					// Not of the appropriate mime type. Allow replacement of the uri
 					// with a default uri or file
 					InternetCloseHandle(huri);
-					return fetch_uri( env, muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri ), cached, mimePattern, headers );
+					args->uri = muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri );
+					return fetch_uri( env, args, args_unused );
 				}
 			}
 
@@ -1121,14 +1162,14 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 			{
 				BYTE buffer[4096];
 				DWORD bytesRead = 0;
+
+				muse_add_finalizer_call( env, (muse_nativefn_t)finalizer_fclose, f );
+
 				while ( InternetReadFile( huri, buffer, 4096, &bytesRead ) == FALSE || bytesRead > 0 )
 				{
 					fwrite( buffer, 1, bytesRead, f );
-					procrastinate(env);
+					yield_process(env,1);
 				}
-				fclose(f);
-
-				InternetCloseHandle( huri );
 
 				// Cache the URL.
 				{
@@ -1148,14 +1189,12 @@ static muse_cell fetch_uri( muse_env *env, muse_cell uri, muse_boolean cached, c
 			}
 			else
 			{
-				InternetCloseHandle( huri );
 				return muse_raise_error( env, muse_csymbol( env, L"fetch-uri:cache-failure" ), uri );
 			}
 		}
 		else
 		{
 			// Failed.
-			InternetCloseHandle( huri );
 			return muse_raise_error( env, muse_csymbol( env, L"fetch-uri:cache-failure" ), uri );
 		}
 	}
@@ -1218,7 +1257,14 @@ muse_cell fn_fetch_uri( muse_env *env, void *context, muse_cell args )
 		
 
 		{
-			muse_cell result = fetch_uri( env, uri, cached, NULL, headers );
+			muse_cell result;
+			fetch_uri_args_t args;
+			args.uri = uri;
+			args.cached = cached;
+			args.mimePattern = NULL;
+			args.headers = headers;
+
+			result = muse_try( env, MUSE_NIL, (muse_nativefn_t)fetch_uri, &args, MUSE_NIL );
 			muse_trace_pop(env);
 			return result;
 		}

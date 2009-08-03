@@ -713,6 +713,11 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
 /*@}*/
 /*@}*/
 
+static muse_cell localfn_eval( muse_env *env, void *context, muse_cell arg )
+{
+	return _eval(arg);
+}
+
 /**
  * Marks an expression that needs to be protected by
  * exception handlers. A try block has the following syntax -
@@ -794,7 +799,16 @@ static muse_cell try_handlers( muse_env *env, muse_cell handler_args )
  */
 muse_cell syntax_try( muse_env *env, void *context, muse_cell args ) 
 {
-	muse_cell trapval = _mk_functional_object( &g_trap_point_type, _tail(args) );
+	return muse_try( env, _tail(args), localfn_eval, NULL, _head(args) );
+}
+
+/**
+ * Calls the given function fn within the context of a try block,
+ * protected by the given handlers list (which can be nil).
+ */ 
+MUSEAPI muse_cell muse_try( muse_env *env, muse_cell handlers, muse_nativefn_t fn, void *context, muse_cell arg )
+{
+	muse_cell trapval = _mk_functional_object( &g_trap_point_type, handlers );
 
 	trap_point_t *tp = _tpdata(trapval);
 
@@ -812,7 +826,7 @@ muse_cell syntax_try( muse_env *env, void *context, muse_cell args )
 	if ( resume_capture( env, &(tp->escape), setjmp(tp->escape.state) ) == 0 )
 	{
 		/* Evaluate the body of the try block. */
-		result = _evalnext(&args);
+		result = fn( env, context, arg );
 	}
 	else
 	{
@@ -966,6 +980,38 @@ muse_cell syntax_finally( muse_env *env, void *context, muse_cell args )
 		MUSE_DIAGNOSTICS2({ muse_message( env, L"(finally ...)", L"No enclosing (try ...) block!" ); });
 		return MUSE_NIL;
 	}
+}
+
+/**
+ * Adds a call to the given function to be triggered
+ * upon exiting the current try block.
+ */
+MUSEAPI void muse_add_finalizer( muse_env *env, muse_cell finalizer )
+{
+	/* Get the current trap point. */
+	muse_cell trapval = _symval( _builtin_symbol( MUSE_TRAP_POINT ) );
+	trap_point_t *trap = _tpdata(trapval);
+	
+	if ( trap )
+	{
+		int sp = _spos();
+		trap->finalizers = _cons( finalizer, trap->finalizers );	
+		_unwind(sp);
+	}
+	else
+	{
+		MUSE_DIAGNOSTICS2({ muse_message( env, L"(finally ...)", L"No enclosing (try ...) block!" ); });
+	}
+}
+
+/**
+ * A special variant of muse_add_finalizer to call the given native fn.
+ */
+MUSEAPI void muse_add_finalizer_call( muse_env *env, muse_nativefn_t fn, void *context )
+{
+	int sp = _spos();
+	muse_add_finalizer( env, _mk_nativefn( (muse_nativefn_t)fn, context ) );
+	_unwind(sp);
 }
 
 /**
