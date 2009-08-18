@@ -192,6 +192,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\muse.dll"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -262,6 +263,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\muse.dll"
 			/>
 			<Tool
 				Name="VCALinkTool"
