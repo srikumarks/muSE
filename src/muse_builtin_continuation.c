@@ -1100,7 +1100,7 @@ muse_cell fn_top_level_handler( muse_env *env, void *context, muse_cell args )
 /**
  * Wraps an apply in a try block with the default top-level handler.
  */
-muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args )
+MUSEAPI muse_cell muse_apply_top_level( muse_env *env, muse_cell fn, muse_cell args )
 {
 	muse_port_t p = muse_stdport(env,MUSE_STDERR_PORT);
 	muse_cell wrapped_expr = muse_list( env, "Sc(Sc(cS))", 

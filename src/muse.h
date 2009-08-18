@@ -451,6 +451,7 @@ MUSEAPI muse_cell	muse_force( muse_env *env, muse_cell cell );
 MUSEAPI muse_cell	muse_raise_error( muse_env *env, muse_cell error, muse_cell info );
 MUSEAPI muse_cell	muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_start );
 MUSEAPI muse_cell	muse_try( muse_env *env, muse_cell handlers, muse_nativefn_t fn, void *context, muse_cell arg );
+MUSEAPI muse_cell	muse_apply_top_level( muse_env *env, muse_cell fn, muse_cell args );
 MUSEAPI void		muse_add_finalizer( muse_env *env, muse_cell finalizer );
 MUSEAPI void		muse_add_finalizer_call( muse_env *env, muse_nativefn_t fn, void *context );
 /*@}*/

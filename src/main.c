@@ -326,8 +326,6 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 	}
 #endif
 
-muse_cell try_apply( muse_env *env, muse_cell fn, muse_cell args );
-
 typedef struct {
 	int argc;
 	char **argv;
@@ -411,7 +409,7 @@ int main( int argc, char **argv )
 			data.argv = argv+1;
 			
 			args = muse_generate_list( env, args_list_generator, &data );
-			try_apply( env, fn_main, args );
+			muse_apply_top_level( env, fn_main, args );
 		}
 		else
 		{
@@ -421,7 +419,7 @@ int main( int argc, char **argv )
 			args_t args;
 			args.argc = argc-1;
 			args.argv = argv+1;
-			try_apply( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
+			muse_apply_top_level( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
 		}
 	}
 	else
@@ -430,7 +428,7 @@ int main( int argc, char **argv )
 		args_t args;
 		args.argc = argc-1;
 		args.argv = argv+1;
-		try_apply( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
+		muse_apply_top_level( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
 	}
 
 	muse_destroy_env(env);
