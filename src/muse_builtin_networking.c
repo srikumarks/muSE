@@ -979,15 +979,30 @@ static size_t format_http_headers( muse_env *env, muse_char *buffer, size_t sz, 
 	return n;
 }
 
-static muse_cell finalizer_InternetCloseHandle( muse_env *env, HINTERNET huri, muse_cell args_unused )
+typedef struct 
 {
-	InternetCloseHandle(huri);
-	return MUSE_NIL;
-}
+	HINTERNET huri;
+	FILE *cache_file;
+} fetch_uri_finalizer_data_t;
 
-static muse_cell finalizer_fclose( muse_env *env, FILE *f, muse_cell args_unused )
+static muse_cell fetch_uri_finalizer( muse_env *env, fetch_uri_finalizer_data_t *data, muse_cell args )
 {
-	fclose(f);
+	if ( data->cache_file ) 
+	{
+		fclose(data->cache_file);
+		data->cache_file = NULL;
+	}
+
+	if ( data->huri )
+	{
+		InternetCloseHandle(data->huri);
+		data->huri = NULL;
+	}
+
+	// We allow override by passing some arbitrary arg to disable the free call.
+	if ( args == MUSE_NIL )
+		free(data);
+
 	return MUSE_NIL;
 }
 
@@ -1012,6 +1027,7 @@ static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell arg
 	muse_char ext[10];
 	DWORD mimeType_size = 256;
 	muse_char localfile[MAX_PATH+1];
+	fetch_uri_finalizer_data_t *finalizer_data = NULL;
 	
 	int uri_len = 0;
 	const muse_char *uri_str = muse_text_contents( env, uri, &uri_len );
@@ -1069,7 +1085,12 @@ static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell arg
 			return fetch_uri( env, args, args_unused );
 		}
 
-		muse_add_finalizer_call( env, (muse_nativefn_t)finalizer_InternetCloseHandle, huri );
+		// Add the finalizer call for cleanup operations.
+		{
+			finalizer_data = (fetch_uri_finalizer_data_t*)calloc( 1, sizeof(fetch_uri_finalizer_data_t) );
+			finalizer_data->huri = huri;
+			muse_add_finalizer_call( env, (muse_nativefn_t)fetch_uri_finalizer, finalizer_data );
+		}
 
 		// Find out type of uri.
 		if ( HttpQueryInfoW( huri, HTTP_QUERY_CONTENT_TYPE, (LPVOID)mimeType, &mimeType_size, 0 ) == TRUE )
@@ -1098,7 +1119,7 @@ static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell arg
 				{
 					// Not of the appropriate mime type. Allow replacement of the uri
 					// with a default uri or file
-					InternetCloseHandle(huri);
+					fetch_uri_finalizer( env, finalizer_data, MUSE_T );
 					args->uri = muse_raise_error( env, muse_csymbol( env, L"fetch-uri:bad-resource"), uri );
 					return fetch_uri( env, args, args_unused );
 				}
@@ -1163,13 +1184,24 @@ static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell arg
 				BYTE buffer[4096];
 				DWORD bytesRead = 0;
 
-				muse_add_finalizer_call( env, (muse_nativefn_t)finalizer_fclose, f );
+				finalizer_data->cache_file = f;
 
 				while ( InternetReadFile( huri, buffer, 4096, &bytesRead ) == FALSE || bytesRead > 0 )
 				{
 					fwrite( buffer, 1, bytesRead, f );
 					yield_process(env,1);
 				}
+
+				// We have to close the file and the huri handle before committing
+				// to the cache. The finalizers are supposed to take care of closing
+				// them, but we need to close them *before* the CommitUrlCacheEntry
+				// call. If the InternetCloseHandle() call happens after the
+				// CommitUrlCacheEntry call, then the cache file gets immediately
+				// deleted after InternetCloseHandle() ... only within Reveal!!
+				// Within the muSE command-line, all call orders work just fine!
+				//
+				// <sigh> .. yet another Win32 quirk to learn about and live with.
+				fetch_uri_finalizer( env, finalizer_data, MUSE_T );
 
 				// Cache the URL.
 				{
@@ -1236,6 +1268,8 @@ static muse_cell fetch_uri( muse_env *env, fetch_uri_args_t *args, muse_cell arg
  *		Indicates a problem downloading the uri and storing it in
  *		the system cache. In this case, you're allowed to replace it with
  *		a file.
+ *
+ * @note Supports \ref fn_the "the"
  */
 muse_cell fn_fetch_uri( muse_env *env, void *context, muse_cell args )
 {
@@ -1266,7 +1300,7 @@ muse_cell fn_fetch_uri( muse_env *env, void *context, muse_cell args )
 
 			result = muse_try( env, MUSE_NIL, (muse_nativefn_t)fetch_uri, &args, MUSE_NIL );
 			muse_trace_pop(env);
-			return result;
+			return muse_add_recent_item( env, (muse_int)fn_fetch_uri, result );
 		}
 	}
 #else
