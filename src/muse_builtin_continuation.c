@@ -499,10 +499,14 @@ static trap_point_t *trap_point_data( muse_env *env, muse_cell trap )
  */
 static muse_cell fn_resume( muse_env *env, void *context, muse_cell args )
 {
-	if ( !muse_doing_gc(env) )
+	resume_point_t *rp = (resume_point_t*)context;
+	
+	if ( muse_doing_gc(env) )
 	{
-		resume_point_t *rp = (resume_point_t*)context;
-		
+		free(rp);
+	}
+	else
+	{
 		if ( rp->resumingtrap ) {
 			trap_point_t *tp = _tpdata(rp->resumingtrap);
 			if ( tp ) {
