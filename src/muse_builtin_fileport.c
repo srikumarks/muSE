@@ -274,7 +274,7 @@ static fileport_type_t g_port_type_stdin =
 			NULL,
 			NULL,
 			NULL,
-			NULL,
+			fileport_destroy,
 			NULL
 		},
 
@@ -296,7 +296,7 @@ static fileport_type_t g_port_type_stdout =
 			NULL,
 			NULL,
 			NULL,
-			NULL,
+			fileport_destroy,
 			NULL
 		},
 
