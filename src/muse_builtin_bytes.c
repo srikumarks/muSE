@@ -708,6 +708,35 @@ muse_cell fn_copy_bytes( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+/**
+ * @code (string->bytes string) @endcode
+ *
+ * Renders the given unicode string into UTF-8 encoding and returns
+ * it as a bytes object.
+ */
+muse_cell fn_string_to_bytes( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell text = _evalnext(&args);
+
+	if ( _cellt(text) != MUSE_TEXT_CELL )
+		return muse_raise_error( env, _csymbol(L"error:string-expected"), _cons(text,MUSE_NIL) );
+	else {
+		muse_cell barr = fn_bytes( env, NULL, MUSE_NIL );
+		bytes_t *b = _bytes_data(barr);
+		int len = 0;
+		const muse_char *textptr = muse_text_contents( env, text, &len );
+		b->size = muse_utf8_size( textptr, (size_t)len );
+		if ( b->size > 0 ) {
+			size_t nbytes = 0;
+			b->bytes = (unsigned char *)calloc( 1, b->size );
+			nbytes = muse_unicode_to_utf8( (char*)(b->bytes), b->size, textptr, (size_t)len );
+			b->size = nbytes;
+		}
+		return barr;
+	}
+}
+
+
 typedef struct 
 {
 	muse_nativefn_t fn;
@@ -724,6 +753,7 @@ void muse_define_builtin_type_bytes( muse_env *env )
 		{ fn_write_bytes,	L"write-bytes"	},
 		{ fn_read_bytes,	L"read-bytes"	},
 		{ fn_copy_bytes,	L"copy-bytes"	},
+		{ fn_string_to_bytes, L"string->bytes" },
 		{ NULL,				NULL			}
 	};
 
