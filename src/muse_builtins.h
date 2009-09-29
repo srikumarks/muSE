@@ -148,6 +148,7 @@ muse_cell fn_supers( muse_env *env, void *context, muse_cell args );
 muse_cell fn_super_invoke( muse_env *env, void *context, muse_cell args );
 muse_cell fn_super_invoke_explicit( muse_env *env, void *context, muse_cell args );
 muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args );
+muse_cell fn_object_p( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Algorithms Algorithms */

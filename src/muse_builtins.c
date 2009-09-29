@@ -154,6 +154,7 @@ static const struct _builtins
 {		L"super-invoke",	fn_super_invoke	},
 {		L"super-invoke*",	fn_super_invoke_explicit	},
 {		L"isa?",		fn_isa_p			},
+{		L"object?",		fn_object_p			},
 	
 /************** Ports ***************/
 {		L"port?",		fn_port_p			},

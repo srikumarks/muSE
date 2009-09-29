@@ -465,3 +465,18 @@ muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args )
 		return _cellt(x) == _cellt(type) ? type : MUSE_NIL;
 	}
 }
+
+/**
+ * @code (object? obj) @endcode
+ *
+ * Evalutes to \p obj if it is an object and to () if it isn't.
+ */
+muse_cell fn_object_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell thing = _evalnext(&args);
+	muse_functional_object_t *f = _fnobjdata(thing);
+	if ( f && f->type_info->type_word == 'mobj' )
+		return thing;
+	else
+		return MUSE_NIL;
+}
