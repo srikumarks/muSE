@@ -471,6 +471,30 @@ static muse_cell vector_put( muse_env *env, void *self, muse_cell key, muse_cell
 	}
 }
 
+muse_cell fn_vector_to_list( muse_env *env, void *context, muse_cell args );
+
+static muse_cell vector_format( muse_env *env, void *self )
+{
+	vector_t *v = (vector_t*)self;
+	int sp = _spos();
+	muse_cell items_arg = _cons( v->base.self, MUSE_NIL );
+	muse_cell items = fn_vector_to_list( env, NULL, items_arg );
+	muse_cell result = muse_apply( env, muse_mk_nativefn( env, fn_format, NULL ), items, MUSE_TRUE, MUSE_FALSE );
+	_unwind(sp);
+	_spush(result);
+
+	/* Don't leave garbage. This is possible here 'cos format
+	won't use the cells used to pass its arguments. */
+	_returncell(items_arg);
+	while ( items ) {
+		muse_cell n = _tail(items);
+		_returncell(items);
+		items = n;
+	}
+
+	return result;
+}
+
 static muse_prop_view_t g_vector_prop_view =
 {
 	vector_get,
@@ -486,6 +510,11 @@ static muse_monad_view_t g_vector_monad_view =
 	vector_reduce
 };
 
+static muse_format_view_t g_vector_format_view =
+{
+	vector_format
+};
+
 static void *vector_view( muse_env *env, int id )
 {
 	switch ( id )
@@ -494,6 +523,7 @@ static void *vector_view( muse_env *env, int id )
 		case 'iter' : return vector_iterator;
 		case 'dtfn' : return vector_datafn;
 		case 'prop' : return &g_vector_prop_view;
+		case 'frmt' : return &g_vector_format_view;
 		default : return NULL;
 	}
 }
