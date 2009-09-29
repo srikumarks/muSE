@@ -725,6 +725,12 @@ MUSEAPI muse_cell	muse_mk_box( muse_env *env, muse_cell contents );
 MUSEAPI muse_cell	muse_box_get( muse_env *env, muse_cell box );
 MUSEAPI muse_cell	muse_box_set( muse_env *env, muse_cell box, muse_cell contents );
 /*@}*/
+/** @name ByteArrays */
+/*@{*/
+MUSEAPI muse_cell	muse_mk_bytes( muse_env *env, size_t s );
+MUSEAPI void *		muse_bytes_data( muse_env *env, muse_cell b, size_t offset );
+MUSEAPI size_t		muse_bytes_size( muse_env *env, muse_cell b );
+/*@}*/
 /*@}*/
 
 /*@}*/

@@ -753,6 +753,21 @@ muse_cell fn_string_to_bytes( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+MUSEAPI muse_cell muse_mk_bytes( muse_env *env, size_t s )
+{
+	return fn_bytes( env, NULL, _cons( _mk_int(s), MUSE_NIL ) );
+}
+
+MUSEAPI void *muse_bytes_data( muse_env *env, muse_cell b, size_t offset )
+{
+	return _bytes_ptr(b) + offset;
+}
+
+MUSEAPI size_t muse_bytes_size( muse_env *env, muse_cell b )
+{
+	return _bytes_data(b)->size;
+}
+
 
 typedef struct 
 {
