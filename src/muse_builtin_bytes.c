@@ -432,7 +432,7 @@ muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 	return MUSE_NIL;
 }
 
-static muse_cell bytes_format( muse_env *env, void *ptr, muse_cell args )
+static muse_cell bytes_format( muse_env *env, void *ptr )
 {
 	bytes_t *b = (bytes_t*)ptr;
 
@@ -745,8 +745,8 @@ muse_cell fn_string_to_bytes( muse_env *env, void *context, muse_cell args )
 		b->size = muse_utf8_size( textptr, (size_t)len );
 		if ( b->size > 0 ) {
 			size_t nbytes = 0;
-			b->bytes = (unsigned char *)calloc( 1, b->size );
-			nbytes = muse_unicode_to_utf8( (char*)(b->bytes), b->size, textptr, (size_t)len );
+			b->bytes = (unsigned char *)calloc( 1, (size_t)(b->size) );
+			nbytes = muse_unicode_to_utf8( (char*)(b->bytes), (size_t)(b->size), textptr, (size_t)len );
 			b->size = nbytes;
 		}
 		return barr;
