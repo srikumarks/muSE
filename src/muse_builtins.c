@@ -842,10 +842,65 @@ muse_cell fn_generate_documentation( muse_env *env, void *context, muse_cell arg
 	return _t();
 }
 
+static muse_cell as_string( muse_env *env, muse_cell c, int sp )
+{
+	char buffer[128];
+
+	switch ( _cellt(c) )
+	{
+	case MUSE_INT_CELL : 
+		sprintf( buffer, MUSE_FMT_INT, _intvalue(c) );
+		return muse_mk_ctext_utf8(env,buffer);
+	case MUSE_FLOAT_CELL :
+		sprintf( buffer, MUSE_FMT_FLOAT, _floatvalue(c) );
+		return muse_mk_ctext_utf8(env,buffer);
+	case MUSE_TEXT_CELL :
+		return c;
+	case MUSE_SYMBOL_CELL :
+		return _tail(_head(_tail(c)));
+	case MUSE_NATIVEFN_CELL :
+		{
+			muse_functional_object_t *f = NULL;
+			muse_format_view_t *fv = _fnobjview( c, 'frmt', f );
+			if ( fv ) {
+				muse_cell replacement = fv->format( env, f );
+				muse_assert( replacement != c ); /*< Potential for infinite loop if this assert fails. */
+				_unwind(sp);
+				_spush(replacement);
+				return as_string( env, replacement, sp );
+			}
+		}
+
+	default:
+		return MUSE_NIL;
+	}
+}
+
 /**
  * @code (format ...args...) @endcode
  * Converts each arg to a string, concatenates all the strings
- * and returns the result as a single string.
+ * and returns the result as a single string. Things that
+ * support the 'frmt' view such as \ref fn_bytes_p "bytes?"
+ * and \ref fn_object_p "object?" convert themselves to strings.
+ *
+ * Objects, in particular, get their "as-string" methods 
+ * invoked to get a string representation. The "as-string"
+ * can also be a field. If it isn't a method, its value
+ * is used as the string representation of the object.
+ * In particular, the "as-string" implementation can return
+ * or be any object which can be converted to a string, such
+ * as int, float or even another object.
+ *
+ * For example -
+ * @code
+ * > (define ex 
+ *     (object ()
+ *       'name		"telepathic-robot"
+ *       'id		3
+ *       'as-string (fn (self) (format self.name "-" self.id))))
+ * > (format "object=" ex)
+ * object=telepathic-robot-3
+ * @endcode
  */
 muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 {
@@ -860,38 +915,15 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 		muse_cell v = values;
 		while ( v )
 		{
-			char buffer[128];
-			muse_cell c = _head(v);
-			muse_cell replacement = MUSE_NIL;
+			muse_cell replacement = as_string( env, _head(v), _spos() );
 
-			switch ( _cellt(c) )
-			{
-			case MUSE_INT_CELL : 
-				sprintf( buffer, MUSE_FMT_INT, _intvalue(c) );
-				replacement = muse_mk_ctext_utf8(env,buffer);
-				break;
-			case MUSE_FLOAT_CELL :
-				sprintf( buffer, MUSE_FMT_FLOAT, _floatvalue(c) );
-				replacement = muse_mk_ctext_utf8(env,buffer);
-				break;
-			case MUSE_TEXT_CELL :
-				replacement = c;
-				break;
-			case MUSE_SYMBOL_CELL :
-				replacement = _tail(_head(_tail(c)));
-				break;
-			default:;
-			}
-
-			_seth( v, replacement );
-
-			if ( replacement )
-			{
+			if ( replacement ) {
 				int length = 0;
 				_text_contents( replacement, &length );
 				total_length += length;
 			}
 
+			_seth(v,replacement);
 			v = _tail(v);
 		}
 	}

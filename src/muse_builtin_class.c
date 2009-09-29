@@ -38,6 +38,10 @@ static muse_prop_view_t g_object_prop_view = {
 	object_put_prop
 };
 
+static muse_cell object_format( muse_env *env, void *self );
+
+static muse_format_view_t g_object_format_view = { object_format };
+
 static void object_init( muse_env *env, void *ptr, muse_cell args )
 {
 	object_t *obj = (object_t*)ptr;
@@ -64,10 +68,11 @@ static void object_init( muse_env *env, void *ptr, muse_cell args )
 
 static void *object_view( muse_env *env, int id ) 
 {
-	if ( id == 'prop' )
-		return &g_object_prop_view;
-	else
-		return NULL;
+	switch ( id ) {
+		case 'prop' : return &g_object_prop_view;
+		case 'frmt' : return &g_object_format_view;
+		default		: return NULL;
+	}
 }
 
 static void object_mark( muse_env *env, void *obj )
@@ -346,6 +351,30 @@ static muse_cell object_put_prop( muse_env *env, void *self, muse_cell key, muse
 		}
 	}
 }
+
+static muse_cell object_format( muse_env *env, void *ptr )
+{
+	/* Get the "as-string" method of the object. 
+	If present, call it to get a string. */
+	object_t *self = (object_t*)ptr;
+	muse_cell sym_as_string = _csymbol(L"as-string");
+
+	muse_cell as_string_kv = object_search_prop( env, self, sym_as_string, NULL, MUSE_TRUE );
+
+	if ( as_string_kv ) {
+		muse_cell as_string = _tail(as_string_kv);
+		if ( _cellt(as_string) == MUSE_LAMBDA_CELL ) {
+			/* It is a method. Apply it. */
+			return muse_apply( env, as_string, _cons( self->base.self, MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
+		} else {
+			/* It is a value, just return it. */
+			return as_string;
+		}
+	} else {
+		return _csymbol(L"{object}");
+	}
+}
+
 
 static muse_cell super_invoke( muse_env *env, object_t *self, muse_cell supers, muse_cell methodkey, muse_cell args )
 {

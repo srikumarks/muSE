@@ -432,13 +432,30 @@ muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args )
 	return MUSE_NIL;
 }
 
-muse_functional_object_type_t g_bytes_type =
+static muse_cell bytes_format( muse_env *env, void *ptr, muse_cell args )
+{
+	bytes_t *b = (bytes_t*)ptr;
+
+	return muse_mk_text_utf8( env, (const char *)b->bytes, (const char *)(b->bytes + b->size) );
+}
+
+static muse_format_view_t g_bytes_format_view = { bytes_format };
+
+static void *bytes_view( muse_env *env, int id )
+{
+	switch ( id ) {
+		case 'frmt' : return &g_bytes_format_view;
+		default		: return NULL;
+	}
+}
+
+static muse_functional_object_type_t g_bytes_type =
 {
 	'muSE',
 	'barr',
 	sizeof(bytes_t),
 	(muse_nativefn_t)fn_bytes_fn,
-	NULL,
+	bytes_view,
 	bytes_init,
 	bytes_mark,
 	bytes_destroy,

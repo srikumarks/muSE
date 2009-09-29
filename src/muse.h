@@ -861,6 +861,18 @@ typedef struct {
 		 */
 } muse_scope_view_t;
 
+/**
+ * An object can expose a "format" function to convert itself
+ * into a string. The returned object *must* be a string.
+ */
+typedef struct {
+	muse_cell (*format)( muse_env *env, void *self );
+		/**<
+		 * Call by the "format" function to get a string representation
+		 * of this object. The returned object *must* be a string.
+		 */
+} muse_format_view_t;
+
 END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_H__ */
