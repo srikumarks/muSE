@@ -850,6 +850,7 @@ muse_functional_object_type_t g_image_properties_type =
 	image_properties_destroy,
 	NULL
 };
+#endif
 
 /**
  * @code (image-properties path-to-image) @endcode
@@ -860,60 +861,70 @@ muse_functional_object_type_t g_image_properties_type =
  * The metadata can be accessed either by symbolic key or by numeric tag code,
  * as specified in the Microsoft documentation.
  *   
- *   Image property tag constants
- *     http://msdn.microsoft.com/en-us/library/ms534413(VS.85).aspx
- *   
- *   Image property tag type constants
- *     http://msdn.microsoft.com/en-us/library/ms534414(VS.85).aspx
+ *   - <a href="http://msdn.microsoft.com/en-us/library/ms534413(VS.85).aspx">Image property tag constants</a>
+ *   - <a href="http://msdn.microsoft.com/en-us/library/ms534414(VS.85).aspx">Image property tag type constants</a>
  *
  * The symbolic names of the tags are derived from the constant declarations
  * as follows -
- *	# A name of the form PropertyTagGpsDestDistRef becomes gps-dest-dist-ref
- *	  i.e. the PropertyTag prefix is dropped and the camel case is
- *	  converted into Scheme convention.
- *
- *	# For names with abbreviations in them such as PropertyTagJPEGQuality,
- *	  the lower case form preserves the abbreviation - 
- *	  so PropertyTagJPEGQuality becomes jpeg-quality 
- *
- *	# YCbCr is also converted into lower case as ycbcr -
- *    so PropertyTagThumbnailYCbCrCoefficients becomes thumbnail-ycbcr-coefficients
+ *	-# A name of the form \c PropertyTagGpsDestDistRef becomes \c gps-dest-dist-ref
+ *	   i.e. the \c PropertyTag prefix is dropped and the camel case is
+ *	   converted into Scheme convention.
+ *	-# For names with abbreviations in them such as \c PropertyTagJPEGQuality,
+ *	   the lower case form preserves the abbreviation - 
+ *	   so \c PropertyTagJPEGQuality becomes \c jpeg-quality 
+ *	-# YCbCr is also converted into lower case as ycbcr -
+ *     so \c PropertyTagThumbnailYCbCrCoefficients becomes \c thumbnail-ycbcr-coefficients
  *
  * The following extra properties are also exposed -
- *	# @code 'size			= {vector width-pixels height-pixels} @endcode
- *	# @code 'physical-size	= {vector physical-width physical-height} @endcode
- *	# @code 'resolution		= {vector hres vres} @endcode
- *	# @code 'path			= "path/to/file.jpg" @endcode
+ * <table border="0" cellspacing="0">
+ * <tr><td>\c 'size</td>	<td>@code {vector width-pixels height-pixels} @endcode</td></tr>
+ * <tr><td>\c 'physical-size</td>	<td>@code {vector physical-width physical-height} @endcode</td></tr>
+ * <tr><td>\c 'resolution</td>	<td>@code {vector hres vres} @endcode</td></tr>
+ * <tr><td>\c 'path</td>	<td>@code "path/to/file.jpg" @endcode</td></tr>
+ * </table>
  *
  *	@exception image-properties:gdiplus-error
- *	Handler		: (fn (resume 'image-properties:gdiplus-error) ...)
- *	When		: Initializing Gdiplus failed when "image-properties" function is called.
- *	Consequence	: Cannot use image-properties feature.
- *	Resume		: Useless
+ *  <table border="0" cellspacing="0" width="80em">
+ *	<tr><td>\b Handler</td>		<td>@code (fn (resume 'image-properties:gdiplus-error) ...) @endcode </td></tr>
+ *	<tr><td>\b When</td>		<td>Initializing Gdiplus failed when \c image-properties function is called. </td></tr>
+ *	<tr><td>\b Consequence</td>	<td>Cannot use image-properties feature. </td></tr>
+ *	<tr><td>\b Resume</td>		<td>Useless </td></tr>
+ *	</table>
  *
  *	@exception image-properties:invalid-tag
- *	Handler		: (fn (resume 'image-properties:invalid-tag self code/tag) ...)
- *	When		: A property with an invalid tag is requested. The tag can be numeric or symbolic.
- *	              If the tag is not a number or a symbol, then this exception means
- *				  that you have to pass a number or a symbol. 
- *	Consequence	: Cannot retrieve property.
- *	Resume		: By passing the expected result.
+ *  <table border="0" cellspacing="0" width="80em">
+ *	<tr><td>\b Handler</td>		<td>@code (fn (resume 'image-properties:invalid-tag props code/tag) ...) @endcode </td></tr>
+ *	<tr><td>\b When</td>		<td>A property with an invalid tag is requested. The tag can be numeric or symbolic.
+ *								If the tag is not a number or a symbol, then this exception means
+ *								that you have to pass a number or a symbol. \p props is the properties objects
+ *								which raised the exception. (i.e. this exception is not raised by \c image-properties itself,
+ *								but by the object it returns.)</td></tr>
+ *	<tr><td>\b Consequence</td>	<td>Cannot retrieve property.</td></tr>
+ *	<tr><td>\b Resume</td>		<td>By passing the expected result.</td></tr>
+ *	</table>
  *	
  *	@exception error:string-expected
- *	Handler		: (fn (resume 'error:string-expected alt) ...)
- *	When		: image-properties is called with a non-path value.
- *	Consequence	: Cannot read image properties.
- *	Resume		: By passing a valid string path to file.
+ *  <table border="0" cellspacing="0" width="80em">
+ *	<tr><td>\b Handler</td>		<td>@code (fn (resume 'error:string-expected alt) ...) @endcode </td></tr>
+ *	<tr><td>\b When</td>		<td>\c image-properties is called with a non-path value.</td></tr>
+ *	<tr><td>\b Consequence</td>	<td>Cannot read image properties.</td></tr>
+ *	<tr><td>\b Resume</td>		<td>By passing a valid string path to file.</td></tr>
+ *	</table>
  *	
  *	@exception image-properties:file-error
- *	Handler		: (fn (resume 'image-properties:file-error path) ...)
- *	When		: There is a problem opening the image file.
- *	Consequence	: Properties cannot be read.
- *	Resume		: By passing a path to a valid image.
+ *  <table border="0" cellspacing="0" width="80em">
+ *	<tr><td>\b Handler</td>		<td>@code (fn (resume 'image-properties:file-error path) ...) @endcode </td></tr>
+ *	<tr><td>\b When</td>		<td>There is a problem opening the image file.</td></tr>
+ *	<tr><td>\b Consequence</td>	<td>Properties cannot be read.</td></tr>
+ *	<tr><td>\b Resume</td>		<td>By passing a path to a valid image.</td></tr>
+ *	</table>
  *
  *	@exception image-properties:not-supported
- *	Handler		: (fn (resume 'image-properties:not-supported) ...)
- *	When		: The image-properties feature is not available on this platform.
+ *  <table border="0" cellspacing="0" width="80em">
+ *	<tr><td>\b Handler</td>		<td>@code (fn (resume 'image-properties:not-supported) ...) @endcode </td></tr>
+ *	<tr><td>\b When</td>		<td>The \c image-properties feature is not available on this platform.
+ *								Currently (r619) this feature is available only on Win32.</td></tr>
+ *	</table>
  *
  * @par Sample session
  * @code
@@ -957,24 +968,19 @@ somewhere/something.jpg
  */
 muse_cell fn_image_properties( muse_env *env, void *context, muse_cell args )
 {
+#if MUSE_PLATFORM_WINDOWS
 	return muse_add_recent_item( env, (muse_int)fn_image_properties, muse_mk_functional_object( env, &g_image_properties_type, args ) );
+#else
+	return muse_raise_error( env, _csymbol(L"image-properties:not-supported"), MUSE_NIL );
+#endif
 }
 
 extern "C" void muse_define_image_properties( muse_env *env )
 {
+#if MUSE_PLATFORM_WINDOWS
 	int sp = _spos();
 	_define( _csymbol(L"image-properties"), muse_mk_nativefn( env, fn_image_properties, NULL ) );
 	init_tag_table(env);
 	_unwind(sp);
-}
-#else
-static muse_cell fn_image_properties( muse_env *env, void *context, muse_cell args )
-{
-	return muse_raise_error( env, _csymbol(L"image-properties:not-supported"), MUSE_NIL );
-}
-
-extern "C" void muse_define_image_properties( muse_env *env )
-{
-	// Undefined.
-}
 #endif
+}

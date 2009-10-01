@@ -150,6 +150,9 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic", \ref fn_post "post"
  *	- \ref fn_run "run", \ref fn_this_process "this-process", \ref fn_process_p "process?"
  *	- \ref fn_with_timeout_us "with-timeout-us"
+ *
+ * @subsection ML_Utilities Utilities
+ *	- \ref fn_image_properties "image-properties"
  */
  
 /**

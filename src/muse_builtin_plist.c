@@ -69,10 +69,18 @@ muse_cell fn_get( muse_env *env, void *context, muse_cell args)
 
 /**
  * Deeply nested value setting support. 
- *	# If the \p argv has a single element, then that becomes the
- *	  value of the \p prop key of the \p obj.
- *	# If the \p argv has more than one element, then the call recurses
- *	  into the object that is the \p prop of \p obj.
+ *	-# If the \p argv has a single element, then that becomes the
+ *	   value of the \p prop key of the \p obj.
+ *	-# If the \p argv has more than one element, then the call recurses
+ *	   into the object that is the \p prop of \p obj.
+ *
+ * @exception error:readonly-object
+ * <table border="0" cellspacing="0" width="80em">
+ * <tr><td>\b Handler</td>		<td>@code (fn (resume 'error:readonly-object obj prop . argv) ...) @endcode</td></tr>
+ * <tr><td>\b When</td>			<td>You tried to set a property of a read-only object.</td></tr>
+ * <tr><td>\b Resume</td>		<td>By performing the expected operation and passing the expected
+ *								result of the \c put operation that failed.</td></tr>
+ * </table>
  *
  * @see muse_get()
  */
@@ -89,7 +97,10 @@ MUSEAPI muse_cell muse_put( muse_env *env, muse_cell obj, muse_cell prop, muse_c
 		muse_functional_object_t *fobj = NULL;
 		muse_prop_view_t *prop_view = _fnobjview(obj,'prop',fobj);
 		if ( prop_view ) {
-			return prop_view->put_prop( env, fobj, prop, argv );
+			if ( prop_view->put_prop )
+				return prop_view->put_prop( env, fobj, prop, argv );
+			else
+				return muse_raise_error( env, _csymbol(L"error:readonly-object"), _cons( obj, _cons( prop, argv ) ) );
 		} else {
 			return MUSE_NIL;
 		}
