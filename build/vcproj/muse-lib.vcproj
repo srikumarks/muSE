@@ -400,6 +400,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_image_info.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_misc.c"
 				>
 			</File>
