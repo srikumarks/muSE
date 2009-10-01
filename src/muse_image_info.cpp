@@ -734,6 +734,7 @@ static void image_properties_init( muse_env *env, void *ptr, muse_cell args )
 	image_properties_t *im = (image_properties_t*)ptr;
 
 	init_gdiplus(env);
+	init_tag_table(env);
 
 	muse_cell path = _evalnext(&args);
 	muse_cell gimc = MUSE_NIL;
@@ -980,7 +981,6 @@ extern "C" void muse_define_image_properties( muse_env *env )
 #if MUSE_PLATFORM_WINDOWS
 	int sp = _spos();
 	_define( _csymbol(L"image-properties"), muse_mk_nativefn( env, fn_image_properties, NULL ) );
-	init_tag_table(env);
 	_unwind(sp);
 #endif
 }
