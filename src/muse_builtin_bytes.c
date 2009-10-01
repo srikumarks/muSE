@@ -765,7 +765,7 @@ MUSEAPI void *muse_bytes_data( muse_env *env, muse_cell b, size_t offset )
 
 MUSEAPI size_t muse_bytes_size( muse_env *env, muse_cell b )
 {
-	return _bytes_data(b)->size;
+	return (size_t)(_bytes_data(b)->size);
 }
 
 
