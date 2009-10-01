@@ -65,12 +65,13 @@ static muse_cell fn_gdiplus( muse_env *env, gdiplus_info_t *g, muse_cell args )
 
 /**
  * Converts a few of the property types into muSE values.
- *	# ASCII values are turned into strings. Trailing spaces are trimmed.
- *	# Byte, Short, Long and SLong values are turned into vector of integers.
- *	# Rational and SRational values are turned into vector of floats.
- * Note that if the number of items is 1, the value is not a vector of
- * size 1, but is simply a value. This is convenient since there are 
- * many such parameters.
+ *	-# ASCII values are turned into strings. Trailing spaces are trimmed.
+ *	-# Byte arrays are converted into corresponding bytes objects.
+ *	-# Short, Long and SLong values are turned into vector of integers.
+ *	-# Rational and SRational values are turned into vector of floats.
+ * Note that if the number of items is 1 (even for bytes), the value is 
+ * not a vector of size 1, but is simply a value. This is convenient since 
+ * there are many such parameters.
  */
 muse_cell convert_image_property( muse_env *env, image_properties_t *info, PropertyItem *pi, bool ignore_undefined )
 {
@@ -97,17 +98,16 @@ muse_cell convert_image_property( muse_env *env, image_properties_t *info, Prope
 			size_t N = pi->length;
 			if ( N == 1 )
 			{
+				// A single byte is interpreted as an integer value.
 				return _mk_int(((unsigned char *)pi->value)[0]);
 			}
 			else
 			{
-				muse_cell value = muse_mk_vector( env, (int)N );
-				int sp = _spos();
-				for ( size_t j = 0; j < N; ++j )
-				{
-					muse_vector_put( env, value, (int)j, muse_mk_int( env, ((unsigned char *)pi->value)[j] ) );
-					_unwind(sp);
-				}
+				// An array of bytes is converted into a bytes object,
+				// which is more compact than a vector.
+				muse_cell value = muse_mk_bytes( env, N );
+				void *data = muse_bytes_data( env, value, 0 );
+				memcpy( data, pi->value, N );
 				return value;
 			}
 		}
