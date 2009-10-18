@@ -84,6 +84,9 @@
 		A9A10A3C0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
 		A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
 		A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */ = {isa = PBXBuildFile; fileRef = A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */; };
+		A9ABD7FE108B06AD00B9EF59 /* muse_image_info.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9ABD7FD108B06AD00B9EF59 /* muse_image_info.cpp */; };
+		A9ABD7FF108B06AD00B9EF59 /* muse_image_info.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9ABD7FD108B06AD00B9EF59 /* muse_image_info.cpp */; };
+		A9ABD800108B06AD00B9EF59 /* muse_image_info.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9ABD7FD108B06AD00B9EF59 /* muse_image_info.cpp */; };
 		A9BAAA120BAA6D04003F0B9B /* MuseEnvironment.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */; };
 		A9BAAA130BAA6D04003F0B9B /* MuseEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */; };
 		A9E087F30E3660CC00F6BCAF /* muse_win32_com.c in Sources */ = {isa = PBXBuildFile; fileRef = A9E087F20E3660CB00F6BCAF /* muse_win32_com.c */; };
@@ -177,6 +180,7 @@
 		A977A8F30CC2EC3400EA48A7 /* muse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = muse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A979C6C50D0F43E90048872A /* muse_builtin_box.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = muse_builtin_box.c; sourceTree = "<group>"; };
 		A9A10A3B0CDDBEFA00E241B0 /* muse_builtin_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = muse_builtin_module.c; sourceTree = "<group>"; };
+		A9ABD7FD108B06AD00B9EF59 /* muse_image_info.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = muse_image_info.cpp; sourceTree = "<group>"; };
 		A9BAAA100BAA6D04003F0B9B /* MuseEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MuseEnvironment.h; sourceTree = "<group>"; };
 		A9BAAA110BAA6D04003F0B9B /* MuseEnvironment.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MuseEnvironment.m; sourceTree = "<group>"; };
 		A9E087F20E3660CB00F6BCAF /* muse_win32_com.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = muse_win32_com.c; sourceTree = "<group>"; };
@@ -287,6 +291,7 @@
 		C420F6B40BA53CB900FAF5C4 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				A9ABD7FD108B06AD00B9EF59 /* muse_image_info.cpp */,
 				A9FE14600FB9F924000EDB50 /* muse_builtin_json.c */,
 				C420F6B60BA53CB900FAF5C4 /* main.c */,
 				C420F6B70BA53CB900FAF5C4 /* muse.c */,
@@ -489,6 +494,7 @@
 				A979C6C60D0F43E90048872A /* muse_builtin_box.c in Sources */,
 				A9E087F30E3660CC00F6BCAF /* muse_win32_com.c in Sources */,
 				A9FE14610FB9F924000EDB50 /* muse_builtin_json.c in Sources */,
+				A9ABD7FE108B06AD00B9EF59 /* muse_image_info.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -528,6 +534,7 @@
 				A9A10A3D0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
 				A979C6C70D0F43E90048872A /* muse_builtin_box.c in Sources */,
 				A9FE14620FB9F924000EDB50 /* muse_builtin_json.c in Sources */,
+				A9ABD7FF108B06AD00B9EF59 /* muse_image_info.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -567,6 +574,7 @@
 				A9A10A3E0CDDBEFA00E241B0 /* muse_builtin_module.c in Sources */,
 				A979C6C80D0F43E90048872A /* muse_builtin_box.c in Sources */,
 				A9FE14630FB9F924000EDB50 /* muse_builtin_json.c in Sources */,
+				A9ABD800108B06AD00B9EF59 /* muse_image_info.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -618,10 +626,7 @@
 		1DEB927908733DD40010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					ppc,
-					i386,
-				);
+				ARCHS = i386;
 				GCC_FAST_OBJC_DISPATCH = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -633,10 +638,7 @@
 		1DEB927A08733DD40010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					ppc,
-					i386,
-				);
+				ARCHS = i386;
 				GCC_AUTO_VECTORIZATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
@@ -650,6 +652,7 @@
 				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_CFLAGS = "-fasm-blocks";
 				PREBINDING = NO;
 				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};

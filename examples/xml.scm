@@ -5,6 +5,7 @@
 	     :select :and :any :or :not
 	     :child :path :descendant
              :pipe :map : :* :reduce :apply :filter :attr= :attr=*
+	     :replace
 	     read-xml-file))
 
 ; In v271, a native function called read-xml was added to muSE
@@ -293,5 +294,27 @@
   (read-xml (open-file file 'for-reading))
   (close (the open-file))
   (the read-xml))
+
+; Utility to replace a portion of an xml tree with something else.
+; Usage: (:replace $what $with-what)
+; $what is a case pattern to match
+; $with-what is an expression which when evaluated will yield the
+; value that must replace the case pattern. 
+; For example, (:replace "hello" "world") will create a node
+; processor that will replace all occurrences of the string "hello"
+; with the string "world".
+(define :replace
+  (fn '($what $with-what)
+    (let ((f (eval (list fn (list '$self '$node)
+                     (list case '$node
+                       (list (cons '$h '$t) (list case '$h
+                                              (list $what (list setf! '$node $with-what))
+                                              (list _ (list '$self '$self '$h)))
+                                            (list '$self '$self '$t)
+                                            '$node)
+                       (list _ _))))))
+      (list fn (list '$node)
+        (list f f '$node)))))
+
 
 (print "(XML library loaded)")
