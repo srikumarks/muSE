@@ -41,7 +41,52 @@ typedef struct
 	muse_cell ref; /**< The bytes object to the data of which this one refers. */
 } bytes_t;
 
-extern muse_functional_object_type_t g_bytes_type;
+/**
+ * Declarations of stuff placed at start of file for clarity and source
+ * code compatibility with other compilers such as gcc. 
+ */
+/*@{*/
+static bytes_t *bytes_alloc( bytes_t *b, muse_int size );
+static void bytes_free( bytes_t *b );
+#define _bytes_data(b) bytes_data(env,b)
+static bytes_t *bytes_data( muse_env *env, muse_cell b );
+#define _mk_bytes(size) mk_bytes(env,size)
+muse_cell mk_bytes( muse_env *env, muse_int size );
+#define _bytes_ptr(b) bytes_ptr(env,b)
+unsigned char *bytes_ptr( muse_env *env, muse_cell b );
+void bytes_set_size( muse_env *env, muse_cell b, muse_int size );
+#define _mk_slice(b,offset,size) mk_slice(env,b,offset,size)
+static muse_cell mk_slice( muse_env *env, muse_cell b, muse_int offset, muse_int size );
+static void bytes_init( muse_env *env, void *ptr, muse_cell args );
+static void bytes_mark( muse_env *env, void *ptr );
+static void bytes_destroy( muse_env *env, void *ptr );
+static void bytes_write( muse_env *env, void *ptr, void *port );
+muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args );
+static bytes_t *bytes_alloc( bytes_t *b, muse_int size );
+muse_cell fn_bytes_fn( muse_env *env, bytes_t *b, muse_cell args );
+static muse_cell bytes_format( muse_env *env, void *ptr );
+static void *bytes_view( muse_env *env, int id );
+
+static muse_functional_object_type_t g_bytes_type =
+{
+	'muSE',
+	'barr',
+	sizeof(bytes_t),
+	(muse_nativefn_t)fn_bytes_fn,
+	bytes_view,
+	bytes_init,
+	bytes_mark,
+	bytes_destroy,
+	bytes_write
+};
+
+
+static muse_format_view_t g_bytes_format_view = 
+{ 
+	bytes_format 
+};
+/*@}*/
+
 
 static bytes_t *bytes_alloc( bytes_t *b, muse_int size )
 {
@@ -61,13 +106,11 @@ static void bytes_free( bytes_t *b )
 	}
 }
 
-#define _bytes_data(b) bytes_data(env,b)
 static bytes_t *bytes_data( muse_env *env, muse_cell b )
 {
 	return (bytes_t*)muse_functional_object_data( env, b, 'barr' );
 }
 
-#define _mk_bytes(size) mk_bytes(env,size)
 muse_cell mk_bytes( muse_env *env, muse_int size )
 {
 	muse_cell bytes = _mk_functional_object( &g_bytes_type, MUSE_NIL );
@@ -77,7 +120,6 @@ muse_cell mk_bytes( muse_env *env, muse_int size )
 	return bytes;
 }
 
-#define _bytes_ptr(b) bytes_ptr(env,b)
 unsigned char *bytes_ptr( muse_env *env, muse_cell b )
 {
 	return _bytes_data(b)->bytes;
@@ -89,7 +131,6 @@ void bytes_set_size( muse_env *env, muse_cell b, muse_int size )
 	_bytes_data(b)->size = size;
 }
 
-#define _mk_slice(b,offset,size) mk_slice(env,b,offset,size)
 static muse_cell mk_slice( muse_env *env, muse_cell b, muse_int offset, muse_int size )
 {
 	bytes_t *bdata = _bytes_data(b);
@@ -439,8 +480,6 @@ static muse_cell bytes_format( muse_env *env, void *ptr )
 	return muse_mk_text_utf8( env, (const char *)b->bytes, (const char *)(b->bytes + b->size) );
 }
 
-static muse_format_view_t g_bytes_format_view = { bytes_format };
-
 static void *bytes_view( muse_env *env, int id )
 {
 	switch ( id ) {
@@ -448,19 +487,6 @@ static void *bytes_view( muse_env *env, int id )
 		default		: return NULL;
 	}
 }
-
-static muse_functional_object_type_t g_bytes_type =
-{
-	'muSE',
-	'barr',
-	sizeof(bytes_t),
-	(muse_nativefn_t)fn_bytes_fn,
-	bytes_view,
-	bytes_init,
-	bytes_mark,
-	bytes_destroy,
-	bytes_write
-};
 
 /**
  * @code (bytes? bytes) @endcode
