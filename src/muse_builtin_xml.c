@@ -762,39 +762,42 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 
 			while ( !port_eof(p) && p->error == 0 )
 			{
-				int c = port_getc(p);
-				if ( c == '<' )
+				if ( textsize >= textcap )
 				{
-					/* Beginning of sub tag or tag end.*/
-					muse_cell result;
-					char *trimmedtext = text;
-					size_t trimmedtextlen = textsize;
-					port_ungetc(c,p);
-					text[textsize] = '\0';
-					xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
-					if ( trimmedtextlen == 0 )
+					textcap *= 2;
+					text = (char*)realloc( text, textcap );
+				}
+
+				/* Process the next character. */
+				{
+					int c = port_getc(p);
+					if ( c == '<' )
 					{
-						/* If text is entirely white space, skip it. */
-						free(text);
-						return xml_tag_body_gen( env, p, i, eol );
+						/* Beginning of sub tag or tag end.*/
+						muse_cell result;
+						char *trimmedtext = text;
+						size_t trimmedtextlen = textsize;
+						port_ungetc(c,p);
+						text[textsize] = '\0';
+						xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
+						if ( trimmedtextlen == 0 )
+						{
+							/* If text is entirely white space, skip it. */
+							free(text);
+							return xml_tag_body_gen( env, p, i, eol );
+						}
+						else
+						{
+							result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
+							free(text);
+							(*eol) = MUSE_FALSE;
+							return result;
+						}
 					}
 					else
 					{
-						result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
-						free(text);
-						(*eol) = MUSE_FALSE;
-						return result;
+						text[textsize++] = (char)c;
 					}
-				}
-				else
-				{
-					if ( textsize >= textcap )
-					{
-						textcap *= 2;
-						text = (char*)realloc( text, textcap );
-					}
-
-					text[textsize++] = (char)c;
 				}
 			}
 
