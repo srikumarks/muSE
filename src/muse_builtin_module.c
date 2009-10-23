@@ -413,6 +413,84 @@ muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+static muse_cell require_modules( muse_env *env, void *context, int i, muse_boolean *eol )
+{
+	muse_cell *args = (muse_cell*)context;
+
+	(*eol) = MUSE_FALSE;
+	
+	if ( *args ) {
+		muse_cell mod = _evalnext(args);
+		int sp = _spos();
+
+		do {
+			if ( mod == MUSE_NIL )
+				return MUSE_NIL;
+
+			if ( _cellt(mod) == MUSE_SYMBOL_CELL ) {
+				/* Try loading local file first. */
+				muse_cell expr = muse_list( env, "S(S(ScT))(SSc)", 
+												 L"try", L"load", L"format", mod, L".scm", 
+												 L"fn", L"_", MUSE_NIL );
+				muse_cell modl = muse_eval( env, expr, MUSE_FALSE );
+				if ( _functional_object_data( modl, 'mmod' ) ) {
+					/* Load succeeded. */
+					return modl;
+				} else {
+					/* If failed, load from the URL. */
+					expr = muse_list( env, "S(S(STcT))", 
+										   L"load", L"fetch-uri", L"format", 
+										   L"http://muvee-symbolic-expressions.googlecode.com/svn/trunk/lib/", mod, L".scm" );
+					modl = muse_eval( env, expr, MUSE_FALSE );
+					if ( _functional_object_data( modl, 'mmod' ) ) {
+						/* Load succeeded. */
+						return modl;
+					} else {
+						/* If failed, raise exception. You can continue by passing a valid module
+						reference. If you continue using NIL, it will be ignored. and the next module
+						will be processed.*/
+						_unwind(sp);
+						mod = muse_raise_error( env, _csymbol(L"error:invalid-module-reference"), _cons( mod, MUSE_NIL ) );
+						continue;
+					}
+				}
+			} else if ( _functional_object_data( mod, 'mmod' ) ) {
+				/* Module already loaded. Continue. */
+				return mod;
+			} else {
+				_unwind(sp);
+				mod = muse_raise_error( env, _csymbol(L"error:invalid-module-reference"), _cons( mod, MUSE_NIL ) );
+				continue;
+			}
+		} while ( MUSE_TRUE );
+
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+/**
+ * (require ModuleSymbol ...)
+ *
+ * Will first search the current directory for file named "ModuleSymbol.scm"
+ * and load that if found. The module is not "import"ed. If such a file
+ * doesn't exist, it will fetch and load 
+ *  "http://muvee-symbolic-expressions.googlecode.com/svn/trunk/lib/ModuleSymbol.scm"
+ * 
+ * Can raise fetch-uri and load related exceptions.
+ *
+ * @exception error:invalid-module-reference
+ * Handler format: @code (fn ('error:invalid-module-reference given-ref) ...) @endcode
+ * Raised when the module (if not loaded yet) could neither be resolved as a local
+ * file nor as a file on the library site.
+ * 
+ */
+muse_cell fn_require( muse_env *env, void *context, muse_cell args )
+{
+	return muse_generate_list( env, require_modules, &args );
+}
+
 static muse_cell import_scope_begin( muse_env *env, void *self, muse_cell expr )
 {
 	/* Introduce the modules and then vanish from the function body. */
@@ -459,5 +537,6 @@ void muse_define_builtin_type_module( muse_env *env )
 	int sp = _spos();
 	_define( _csymbol(L"module"), _mk_nativefn( fn_module, NULL ) );
 	_define( _csymbol(L"import"), _mk_functional_object( &g_import_type, MUSE_NIL ) );
+	_define( _csymbol(L"require"), _mk_nativefn( fn_require, NULL ) );
 	_unwind(sp);
 }
