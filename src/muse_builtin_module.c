@@ -385,6 +385,8 @@ static void introduce_module_global( muse_env *env, module_t *m )
 	}
 }
 
+muse_cell fn_require( muse_env *env, void *context, muse_cell args );
+
 /**
  * @code (import ModA ModB ...) @endcode
  *
@@ -399,8 +401,15 @@ static void introduce_module_global( muse_env *env, module_t *m )
 muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 {
 	int bsp = _bspos();
+
+	if ( bsp == 0 ) {
+		args = fn_require( env, context, args );
+	} else {
+		args = muse_eval_list( env, args );
+	}
+
 	while ( args ) {
-		muse_cell mod = _evalnext(&args);
+		muse_cell mod = _next(&args);
 		module_t *m = (module_t*)_functional_object_data( mod, 'mmod' );
 		if ( m ) {
 			if ( bsp == 0 )
@@ -409,7 +418,7 @@ muse_cell fn_import( muse_env *env, void *context, muse_cell args )
 				introduce_module_local( env, m );
 		}
 	}
-	
+
 	return MUSE_NIL;
 }
 
