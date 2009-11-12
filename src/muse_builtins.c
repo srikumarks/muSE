@@ -196,6 +196,7 @@ static const struct _builtins
 {		L"list-files",				fn_list_files				},
 {		L"list-folders",			fn_list_folders				},
 {		L"split",					fn_split					},
+{		L"system",					fn_system					},
 	
 {		NULL,			NULL				}
 };
@@ -1461,3 +1462,30 @@ muse_cell fn_trace( muse_env *env, void *context, muse_cell args )
 		return env->parameters[MUSE_ENABLE_TRACE] ? on : off;
 	}
 }
+
+/**
+ * (system cmd arg1 arg2 ...)
+ * Executes the system command passing the given args.
+ */
+muse_cell fn_system( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell formatfn = muse_mk_nativefn( env, fn_format, NULL );
+	muse_cell cmd_and_args = muse_eval_list( env, args );
+	muse_cell cmd = _head(cmd_and_args);
+	muse_cell eargs = _tail(cmd_and_args);
+	muse_cell val = muse_apply( env, formatfn, _cons( cmd, MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
+	int nargs = muse_list_length( env, eargs );
+	wchar_t command_line[1024];
+
+	int N = swprintf( command_line, 1024, L"%ls", muse_text_contents( env, val, NULL ) );
+	
+	int i = 0;
+	for ( i = 0; i < nargs; ++i, eargs = _tail(eargs) )
+	{
+		muse_cell val = muse_apply( env, formatfn, _cons( _head(eargs), MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
+		N += swprintf( command_line + N, 1024 - N, L" \"%ls\"", muse_text_contents( env, val, NULL ) );
+	}
+
+	return muse_mk_int( env, _wsystem( command_line ) );
+}
+
