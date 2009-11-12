@@ -197,10 +197,16 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 		while ( text < text_end )
 		{
 			muse_char c = *text++;
-			if ( c == '"' )
-				port_write( "&quot;", 6, p );
-			else
+			switch ( c )
+			{
+			case '"': port_write( "&quot;", 6, p ); break;
+			case '&': port_write( "&amp;", 5, p ); break;
+			case '<': port_write( "&lt;", 4, p ); break;
+			case '>': port_write( "&gt;", 4, p ); break;
+			case '\'': port_write( "&apos;", 4, p ); break;
+			default:
 				port_putc( c, p );
+			}
 		}
 		return 0;
 	}
@@ -209,6 +215,17 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 		write_xml_node( env, p, xmlnode, depth );
 		return 1;
 	}
+}
+
+void muse_define_xml_codes(muse_env *env)
+{
+	int sp = _spos();
+	_define( _csymbol(L"&amp;"), muse_mk_ctext( env, L"&" ) );
+	_define( _csymbol(L"&lt;"), muse_mk_ctext( env, L"<" ) );
+	_define( _csymbol(L"&gt;"), muse_mk_ctext( env, L">" ) );
+	_define( _csymbol(L"&quot;"), muse_mk_ctext( env, L"\"" ) );
+	_define( _csymbol(L"&apos;"), muse_mk_ctext( env, L"'" ) );
+	_unwind(sp);
 }
 
 static void xml_skip_ignorables( muse_port_t p );
@@ -721,6 +738,37 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 	}
 }
 
+static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
+{
+	const int BMAX = 32;
+	muse_char buffer[32];
+	int ix = 0;
+
+	int c = port_getc(p);
+
+	if ( c == '&' ) {
+		buffer[ix++] = c;
+		do {
+			c = port_getc(p);
+			buffer[ix++] = tolower((muse_char)c);
+		} while ( c != ';' && ix + 1 < BMAX );
+
+		buffer[ix] = 0;
+
+		{
+			muse_cell code = muse_symbol( env, buffer, buffer+ix );
+			muse_cell result = muse_symbol_value( env, code );
+			if ( result == code && _cellt(result) != MUSE_TEXT_CELL )
+				return muse_raise_error( env, _csymbol(L"error:unsupported-xml-code"), _cons(code,MUSE_NIL) );
+			else
+				return result;
+		}
+	} else {
+		port_ungetc( c, p );
+		return MUSE_NIL;
+	}
+}
+
 static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
 {
 	if ( port_eof(p) || p->error != 0 )
@@ -753,61 +801,77 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 		}
 		else
 		{
-			size_t textcap = 128;
-			size_t textsize = 0;
-			char *text = (char*)malloc( textcap );
-
-			/* Keep the character just read in. */
-			text[textsize++] = c;
-
-			while ( !port_eof(p) && p->error == 0 )
+			if ( c == '&' )
 			{
-				if ( textsize >= textcap )
-				{
-					textcap *= 2;
-					text = (char*)realloc( text, textcap );
-				}
+				/* Support &amp; &lt; and &gt; */
+				port_ungetc( c, p );
+				c = muse_text_contents( env, xml_parse_amp_code( env, p ), NULL )[0];
+			}
 
-				/* Process the next character. */
+
+			{
+				size_t textcap = 128;
+				size_t textsize = 0;
+				char *text = (char*)malloc( textcap );
+
+				/* Keep the character just read in. */
+				text[textsize++] = c;
+
+				while ( !port_eof(p) && p->error == 0 )
 				{
-					int c = port_getc(p);
-					if ( c == '<' )
+					if ( textsize >= textcap )
 					{
-						/* Beginning of sub tag or tag end.*/
-						muse_cell result;
-						char *trimmedtext = text;
-						size_t trimmedtextlen = textsize;
-						port_ungetc(c,p);
-						text[textsize] = '\0';
-						xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
-						if ( trimmedtextlen == 0 )
+						textcap *= 2;
+						text = (char*)realloc( text, textcap );
+					}
+
+					/* Process the next character. */
+					{
+						int c = port_getc(p);
+						if ( c == '<' )
 						{
-							/* If text is entirely white space, skip it. */
-							free(text);
-							return xml_tag_body_gen( env, p, i, eol );
+							/* Beginning of sub tag or tag end.*/
+							muse_cell result;
+							char *trimmedtext = text;
+							size_t trimmedtextlen = textsize;
+							port_ungetc(c,p);
+							text[textsize] = '\0';
+							xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
+							if ( trimmedtextlen == 0 )
+							{
+								/* If text is entirely white space, skip it. */
+								free(text);
+								return xml_tag_body_gen( env, p, i, eol );
+							}
+							else
+							{
+								result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
+								free(text);
+								(*eol) = MUSE_FALSE;
+								return result;
+							}
+						}
+						else if ( c == '&' )
+						{
+							port_ungetc(c,p);
+							c = muse_text_contents( env, xml_parse_amp_code( env, p ), NULL )[0];
+							text[textsize++] = (char)c;
 						}
 						else
 						{
-							result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
-							free(text);
-							(*eol) = MUSE_FALSE;
-							return result;
+							text[textsize++] = (char)c;
 						}
 					}
-					else
-					{
-						text[textsize++] = (char)c;
-					}
 				}
-			}
 
-			text[textsize] = '\0';
+				text[textsize] = '\0';
 
-			{
-				muse_cell result = muse_mk_text_utf8( env, text, text+textsize );
-				free(text);
-				(*eol) = MUSE_FALSE;
-				return result;
+				{
+					muse_cell result = muse_mk_text_utf8( env, text, text+textsize );
+					free(text);
+					(*eol) = MUSE_FALSE;
+					return result;
+				}
 			}
 		}
 	}
