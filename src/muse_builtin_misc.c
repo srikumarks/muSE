@@ -305,3 +305,19 @@ muse_cell fn_split( muse_env *env, void *context, muse_cell args )
 
 	return muse_add_recent_item( env, (muse_int)fn_split, muse_generate_list( env, fieldgen, &state ) );
 }
+
+/**
+ * @code (alert arg1 arg2 ...) @endcode
+ *
+ * Puts up an "abort-retry-ignore" message box with the given text.
+ * The arguments are "format"ed into a single string and presented
+ * in the dialog box.
+ */
+muse_cell fn_alert( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell msg = fn_format( env, context, args );
+
+	muse_message( env, NULL, L"%s", _text_contents( msg, NULL ) );
+
+	return MUSE_NIL;
+}

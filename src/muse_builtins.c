@@ -197,6 +197,7 @@ static const struct _builtins
 {		L"list-folders",			fn_list_folders				},
 {		L"split",					fn_split					},
 {		L"system",					fn_system					},
+{		L"alert",					fn_alert					},
 	
 {		NULL,			NULL				}
 };

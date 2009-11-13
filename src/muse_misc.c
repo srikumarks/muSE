@@ -710,12 +710,17 @@ MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_c
 	va_list args;
 	size_t len = 0;
 
-	muse_assert( wcslen(context) < MAXLEN-60);
-	#if MUSE_PLATFORM_WINDOWS
-		len += swprintf( text, MAXLEN, L"Context:    %s\n\n", context );
-	#else
-		len += swprintf( text, MAXLEN, L"%ls\n\n", context );
-	#endif
+	if ( context && context[0] == '\0' ) {
+		muse_assert( wcslen(context) < MAXLEN-60);
+		#if MUSE_PLATFORM_WINDOWS
+			len += swprintf( text, MAXLEN, L"Context:    %s\n\n", context );
+		#else
+			len += swprintf( text, MAXLEN, L"%ls\n\n", context );
+		#endif
+	} else {
+		/* Passing NULL or an empty string for context will result
+		   the context line being left out. */
+	}
 
 	va_start( args, message );
 	len += muse_vsprintf( env, text + len, MAXLEN - len, message, &args );
