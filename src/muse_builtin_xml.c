@@ -203,7 +203,7 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 			case '&': port_write( "&amp;", 5, p ); break;
 			case '<': port_write( "&lt;", 4, p ); break;
 			case '>': port_write( "&gt;", 4, p ); break;
-			case '\'': port_write( "&apos;", 4, p ); break;
+			case '\'': port_write( "&apos;", 6, p ); break;
 			default:
 				port_putc( c, p );
 			}
