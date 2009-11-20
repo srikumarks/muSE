@@ -1477,6 +1477,8 @@ muse_cell fn_system( muse_env *env, void *context, muse_cell args )
 	muse_cell eargs = _tail(cmd_and_args);
 	muse_cell val = muse_apply( env, formatfn, _cons( cmd, MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
 	int nargs = muse_list_length( env, eargs );
+	
+#ifdef MUSE_WIDECHAR_VERSION
 	wchar_t command_line[1024];
 
 	int N = swprintf( command_line, 1024, L"%ls", muse_text_contents( env, val, NULL ) );
@@ -1489,5 +1491,20 @@ muse_cell fn_system( muse_env *env, void *context, muse_cell args )
 	}
 
 	return muse_mk_int( env, _wsystem( command_line ) );
+#else
+	char command_line[1024];
+	
+	int N = snprintf( command_line, 1024, "%ls", muse_text_contents( env, val, NULL ) );
+	
+	int i = 0;
+	for ( i = 0; i < nargs; ++i, eargs = _tail(eargs) )
+	{
+		muse_cell val = muse_apply( env, formatfn, _cons( _head(eargs), MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
+		N += snprintf( command_line + N, 1024 - N, " \"%ls\"", muse_text_contents( env, val, NULL ) );
+	}
+	
+	return muse_mk_int( env, system( command_line ) );
+#endif
+	
 }
 
