@@ -371,9 +371,13 @@ static muse_functional_object_type_t g_module_type =
  */
 muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 {
+	int bsp = _bspos();
 	muse_cell mname = _head(args);
 	muse_cell mod = muse_mk_functional_object( env, &g_module_type, args );
-	_define(mname,mod);
+	if ( bsp == 0 )
+		_define(mname,mod);
+	else
+		_pushdef(mname,mod);
 	return mod;
 }
 
