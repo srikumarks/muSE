@@ -321,3 +321,120 @@ muse_cell fn_alert( muse_env *env, void *context, muse_cell args )
 
 	return MUSE_NIL;
 }
+
+static muse_char hexdigit( int digit )
+{
+	if ( digit >= 0 && digit <= 9 )
+		return '0' + digit;
+	else if ( digit > 9 && digit <= 15 )
+		return 'a' + (digit - 9);
+	else
+		return (muse_char)0;
+}
+
+static int hexval( muse_char c )
+{
+	if ( c >= '0' && c <= '9' )
+		return c - '0';
+	else if ( c >= 'a' && c <= 'f' )
+		return 10 + (c - 'a');
+	else if ( c >= 'A' && c <= 'F' )
+		return 10 + (c - 'A');
+	else
+		return 0;
+}
+
+/**
+ * @code (urlencode "string") @endcode
+ *
+ * Takes an arbitrary string and returns a version that can be used as a part of a URL.
+ * The string is not expected to contain unicode characters.
+ */
+muse_cell fn_urlencode( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell str = _evalnext(&args);
+	int len = 0;
+	const muse_char *cstr = muse_text_contents( env, str, &len );
+
+	int olen = len;
+	muse_char *ocstr = (muse_char*)calloc( olen+1, sizeof(muse_char) );
+
+	int in = 0, out = 0;
+	for ( in = 0; in < len; ++in ) {
+		if ( out + 4 >= olen ) {
+			ocstr = (muse_char*)realloc( ocstr, sizeof(muse_char) * (olen * 2 + 1) );
+			olen *= 2;
+		}
+
+		/* Process one character. */
+		{
+			muse_char c = cstr[in];
+			if ( (c & 0x7F) != c ) {
+				free(ocstr);
+				return muse_raise_error( env, _csymbol(L"error:bad-url-component"), _cons(str, MUSE_NIL) );
+			}
+
+			if ( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '.' ) {
+				ocstr[out++] = c;
+			} else {
+				/* Encode the character. */
+				ocstr[out++] = '%';
+				ocstr[out++] = hexdigit((c >> 4) & 0xF);
+				ocstr[out++] = hexdigit(c & 0xF);
+			}
+		}
+	}
+
+	ocstr[out] = '\0';
+
+	{
+		muse_cell result = muse_mk_text( env, ocstr, ocstr + out );
+		free(ocstr);
+		return result;
+	}
+}
+
+/**
+ * @code (urldecode "encoded%20string") @endcode
+ *
+ * Takes a url-encoded string and returns the regular string form.
+ */
+muse_cell fn_urldecode( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell encstr = _evalnext(&args);
+	int len = 0;
+	const muse_char *cstr = muse_text_contents( env, encstr, &len );
+	int olen = len;
+	muse_char *ocstr = (muse_char*)calloc( olen+1, sizeof(muse_char) );
+
+	int in = 0, out = 0;
+	for ( in = 0; in < len; ) {
+		muse_char c = cstr[in++];
+
+		if ( (c & 0x7F) != c ) {
+			free(ocstr);
+			return muse_raise_error( env, _csymbol(L"error:bad-encoded-url-component"), _cons( encstr, MUSE_NIL ) );
+		} else {
+			switch ( c ) {
+				case '+' : ocstr[out++] = ' '; break;
+				case '%' : 
+					if ( in+1 >= len ) {
+						free(ocstr);
+						return muse_raise_error( env, _csymbol(L"error:bad-encoded-url-component"), _cons( encstr, MUSE_NIL ) );
+					} else {
+						ocstr[out++] = (muse_char)((hexval(cstr[in]) << 4) + hexval(cstr[in+1]));
+						in += 2;
+						break;
+					}
+				default :
+					ocstr[out++] = c;
+			}
+		}
+	}
+
+	{
+		muse_cell result = muse_mk_text( env, ocstr, ocstr + out );
+		free(ocstr);
+		return result;
+	}
+}

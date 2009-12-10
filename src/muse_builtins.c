@@ -198,6 +198,8 @@ static const struct _builtins
 {		L"split",					fn_split					},
 {		L"system",					fn_system					},
 {		L"alert",					fn_alert					},
+{		L"urlencode",				fn_urlencode				},
+{		L"urldecode",				fn_urldecode				},
 	
 {		NULL,			NULL				}
 };
