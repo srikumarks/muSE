@@ -665,8 +665,10 @@ muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 		{
 			if ( chunks_iter - chunks >= maxChunks )
 			{
+				int chunkIterIx = chunks_iter - chunks;
 				maxChunks *= 2;
 				chunks = (bytes_t*)realloc( chunks, sizeof(bytes_t) * maxChunks );
+				chunks_iter = chunks + chunkIterIx;
 			}
 
 			bytes_alloc( chunks_iter, (max_bytes == -1) ? chunkSize : max_bytes );
