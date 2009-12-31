@@ -18,26 +18,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-enum { MAXFRAGLEN = 128 };
-
-typedef struct
-{
-	int len;
-	muse_char chars[MAXFRAGLEN];
-} fragment_t;
-
-typedef struct
-{
-	int N;
-	fragment_t **frags;
-} buffer_t;
-
-static buffer_t *buffer_alloc();
-static void buffer_free( buffer_t *b );
-static void buffer_putc( buffer_t *b, muse_char c );
-static muse_cell buffer_to_string( buffer_t *b, muse_env *env );
-static muse_cell buffer_to_symbol( buffer_t *b, muse_env *env );
-
 static muse_cell json_read( muse_port_t p );
 static muse_cell json_read_expr( muse_port_t p );
 static void json_skip_whitespace( muse_port_t p );
@@ -166,69 +146,6 @@ muse_cell fn_read_json( muse_env *env, void *context, muse_cell args )
 
 	muse_push_recent_scope( env );
 	return muse_pop_recent_scope( env, (muse_int)fn_read_json, json_read(p) );
-}
-
-static buffer_t *buffer_alloc()
-{
-	buffer_t *b = (buffer_t*)calloc( 1, sizeof(buffer_t) );
-	b->N = 1;
-	b->frags = (fragment_t**)calloc( 1, sizeof(fragment_t*) );
-	b->frags[0] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
-	b->frags[0]->len = 0;
-	return b;
-}
-
-static void buffer_free( buffer_t *b )
-{
-	int i = 0;
-	for ( i = 0; i < b->N; ++i ) {
-		free( b->frags[i] );
-	}
-
-	free( b->frags );
-	free( b );
-}
-
-static void buffer_putc( buffer_t *b, muse_char c )
-{
-	if ( b->frags[b->N-1]->len >= MAXFRAGLEN ) {
-		b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
-		b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
-		b->N++;
-	}
-
-	// Add character.
-	{
-		fragment_t *f = b->frags[b->N-1];
-		f->chars[f->len++] = c;
-	}
-}
-
-static muse_cell buffer_to_string( buffer_t *b, muse_env *env )
-{
-	int total_size = 0, i = 0;
-	for ( i = 0; i < b->N; ++i )
-		total_size += b->frags[i]->len;
-
-	{
-		muse_cell txt = muse_mk_text( env, NULL, ((const muse_char *)NULL) + total_size );
-		muse_char *txtptr = (muse_char*)muse_text_contents( env, txt, NULL );	
-
-		for ( i = 0; i < b->N; ++i ) {
-			fragment_t *f = b->frags[i];
-			memcpy( txtptr, f->chars, f->len * sizeof(muse_char) );
-			txtptr += f->len;
-		}
-		return txt;
-	}
-}
-
-static muse_cell buffer_to_symbol( buffer_t *b, muse_env *env )
-{
-	muse_cell txt = buffer_to_string( b, env );
-	int len = 0;
-	const muse_char *txtptr = muse_text_contents( env, txt, &len );
-	return muse_symbol( env, txtptr, txtptr + len );
 }
 
 static muse_cell json_read( muse_port_t p )

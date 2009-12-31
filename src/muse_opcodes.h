@@ -754,6 +754,31 @@ void destroy_objc_bridge( muse_env *env );
 muse_cell meta_getname( muse_env *env, muse_cell fn );
 muse_cell meta_putname( muse_env *env, muse_cell fn, muse_cell name );
 
+/* An arbitrary length buffer for reading in strings of unknown length fairly efficiently. */
+enum { MAXFRAGLEN = 128 };
+
+typedef struct
+{
+	int len;
+	muse_char chars[MAXFRAGLEN];
+} fragment_t;
+
+typedef struct
+{
+	int N;
+	fragment_t **frags;
+} buffer_t;
+
+buffer_t *buffer_alloc();
+void buffer_free( buffer_t *b );
+void buffer_putc( buffer_t *b, muse_char c );
+void buffer_puts( buffer_t *b, const muse_char *s, int len );
+muse_cell buffer_to_string( buffer_t *b, muse_env *env );
+muse_cell buffer_to_symbol( buffer_t *b, muse_env *env );
+int buffer_length( buffer_t *b );
+muse_char buffer_char( buffer_t *b, int i );
+muse_cell buffer_substring( buffer_t *b, muse_env *env, int from, int len );
+
 
 END_MUSE_C_FUNCTIONS
 

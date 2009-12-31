@@ -1244,3 +1244,146 @@ static size_t levenshtein_distance( const muse_char *s1, const muse_char *s2 )
 		return d[l1 + rowlen * l2];
 	}
 }
+
+
+buffer_t *buffer_alloc()
+{
+	buffer_t *b = (buffer_t*)calloc( 1, sizeof(buffer_t) );
+	b->N = 1;
+	b->frags = (fragment_t**)calloc( 1, sizeof(fragment_t*) );
+	b->frags[0] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
+	b->frags[0]->len = 0;
+	return b;
+}
+
+void buffer_free( buffer_t *b )
+{
+	int i = 0;
+	for ( i = 0; i < b->N; ++i ) {
+		free( b->frags[i] );
+	}
+
+	free( b->frags );
+	free( b );
+}
+
+void buffer_putc( buffer_t *b, muse_char c )
+{
+	if ( b->frags[b->N-1]->len >= MAXFRAGLEN ) {
+		b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
+		b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
+		b->N++;
+	}
+
+	// Add character.
+	{
+		fragment_t *f = b->frags[b->N-1];
+		f->chars[f->len++] = c;
+	}
+}
+
+void buffer_puts( buffer_t *b, const muse_char *s, int len )
+{
+	if ( len > 0 ) {
+		fragment_t *f = b->frags[b->N-1];
+		int freelen = MAXFRAGLEN - f->len;
+
+		if ( len <= freelen ) {
+			memcpy( f->chars + f->len, s, len * sizeof(muse_char) );
+			f->len += len;
+			return;
+		} else {
+			memcpy( f->chars + f->len, s, freelen * sizeof(muse_char) );
+			f->len += freelen;
+
+			// Grow by one fragment.
+			b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
+			b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
+			b->N++;
+
+			buffer_puts( b, s + freelen, len - freelen );
+			return;
+		}
+	}
+}
+
+muse_cell buffer_to_string( buffer_t *b, muse_env *env )
+{
+	int total_size = 0, i = 0;
+	for ( i = 0; i < b->N; ++i )
+		total_size += b->frags[i]->len;
+
+	{
+		muse_cell txt = muse_mk_text( env, NULL, ((const muse_char *)NULL) + total_size );
+		muse_char *txtptr = (muse_char*)muse_text_contents( env, txt, NULL );	
+
+		for ( i = 0; i < b->N; ++i ) {
+			fragment_t *f = b->frags[i];
+			memcpy( txtptr, f->chars, f->len * sizeof(muse_char) );
+			txtptr += f->len;
+		}
+		return txt;
+	}
+}
+
+muse_cell buffer_to_symbol( buffer_t *b, muse_env *env )
+{
+	muse_cell txt = buffer_to_string( b, env );
+	int len = 0;
+	const muse_char *txtptr = muse_text_contents( env, txt, &len );
+	return muse_symbol( env, txtptr, txtptr + len );
+}
+
+int buffer_length( buffer_t *b )
+{
+	int len = 0;
+	int i = 0;
+	for ( i = 0; i < b->N; ++i ) {
+		len += b->frags[i]->len;
+	}
+	return len;
+}
+
+muse_char buffer_char( buffer_t *b, int i )
+{
+	int f = (i / MAXFRAGLEN);
+	i %= MAXFRAGLEN;
+	if ( f >= 0 && f < b->N ) {
+		fragment_t *fr = b->frags[f];
+		if ( i >= 0 && i < fr->len ) {
+			return fr->chars[i];
+		}
+	}
+
+	return 0;
+}
+
+muse_cell buffer_substring( buffer_t *b, muse_env *env, int from, int len )
+{
+	int maxlen = buffer_length(b);
+	if ( from < 0 || len < 0 || from + len > maxlen )
+		return MUSE_NIL;
+	else {
+		muse_cell text = muse_mk_text( env, (const muse_char *)0, ((const muse_char *)0) + len );
+		muse_char *ctext = muse_text_contents( env, text, NULL );
+		int fromFrag = from / MAXFRAGLEN;
+		int toFrag = (from + len) / MAXFRAGLEN;
+		int i = 0;
+
+		while ( fromFrag < toFrag ) {
+			int fromIx = from % MAXFRAGLEN;
+			int n = MAXFRAGLEN - fromIx;
+			memcpy( ctext, b->frags[fromFrag]->chars + fromIx, n * sizeof(muse_char) );
+			ctext += n;
+			from += n;
+			++fromFrag;
+			len -= n;
+		}
+
+		if ( fromFrag == toFrag && len > 0 ) {
+			memcpy( ctext, b->frags[fromFrag]->chars + (from % MAXFRAGLEN), len * sizeof(muse_char) );
+		}
+
+		return text;
+	}
+}
