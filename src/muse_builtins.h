@@ -40,6 +40,7 @@ muse_cell fn_the( muse_env *env, void *context, muse_cell args );
 muse_cell fn_meta( muse_env *env, void *context, muse_cell args );
 muse_cell fn_trace( muse_env *env, void *context, muse_cell args );
 muse_cell fn_with_recent( muse_env *env, void *context, muse_cell args );
+muse_cell fn_symbol_whose_value_is( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup Exceptions Raising and handling exceptions */
@@ -130,8 +131,10 @@ muse_cell fn_float_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_number_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_cons_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args );
+muse_cell fn_lambda_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_symbol_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_string_p( muse_env *env, void *context, muse_cell args );
+muse_cell fn_whatis( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup TypeCasting Type casting */
@@ -167,6 +170,7 @@ muse_cell fn_eof_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_print( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write( muse_env *env, void *context, muse_cell args );
 muse_cell fn_read( muse_env *env, void *context, muse_cell args );
+muse_cell fn_read_line( muse_env *env, void *context, muse_cell args );
 muse_cell fn_flush( muse_env *env, void *context, muse_cell args );
 muse_cell fn_mickey( muse_env *env, void *context, muse_cell args );
 muse_cell fn_load( muse_env *env, void *context, muse_cell args );
@@ -242,6 +246,12 @@ muse_cell fn_system( muse_env *env, void *context, muse_cell args );
 muse_cell fn_alert( muse_env *env, void *context, muse_cell args );
 muse_cell fn_urlencode( muse_env *env, void *context, muse_cell args );
 muse_cell fn_urldecode( muse_env *env, void *context, muse_cell args );
+muse_cell fn_launch( muse_env *env, void *context, muse_cell args );
+muse_cell fn_windows_registry_entry( muse_env *env, void *context, muse_cell args );
+muse_cell fn_temp_folder( muse_env *env, void *context, muse_cell args );
+muse_cell fn_temp_file( muse_env *env, void *context, muse_cell args );
+muse_cell fn_to_lower( muse_env *env, void *context, muse_cell args );
+muse_cell fn_to_upper( muse_env *env, void *context, muse_cell args );
 void muse_load_builtin_fns( muse_env *env );
 void muse_define_put_macro( muse_env *env );
 /*@}*/

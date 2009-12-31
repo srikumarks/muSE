@@ -696,6 +696,7 @@ static inline muse_cell _quq( muse_cell c )
 	return c < 0 ? -c : c;
 }
 
+#define _quote(x) muse_quote(env,x)
 #define _cons(a,b) muse_cons(env,a,b)
 #define _mk_int(i) muse_mk_int(env,i)
 #define _mk_float(f) muse_mk_float(env,f)

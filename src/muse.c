@@ -196,6 +196,7 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_IT,					L"it"		},
 	{ MUSE_THE,					L"the"		},
 	{ MUSE_TIMEOUTVAR,			L"{{timeout}}"	},
+	{ MUSE_XMLSPLICE,			L"++"		},
 	{ -1,						NULL		},
 };
 
@@ -1354,12 +1355,7 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 	}
 }
 
-/**
- * Just creates an object without allocating a cell for it.
- * It is the caller's responsibility to call muse_destroy_object()
- * once she's done with it.
- */
-MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
+static muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info )
 {
 	muse_assert( type_info && type_info->magic_word == 'muSE' );
 	muse_assert( type_info->size >= sizeof(muse_functional_object_t) );
@@ -1368,14 +1364,29 @@ MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functi
 		muse_functional_object_t *obj = (muse_functional_object_t*)calloc( 1, type_info->size );
 		obj->magic_word		= 'muSE';
 		obj->type_info		= type_info;
-		if ( obj->type_info->init )
-			obj->type_info->init(env, obj, init_args);
 		return obj;
 	}
 }
 
+static muse_functional_object_t *muse_init_object( muse_env *env, muse_functional_object_t *obj, muse_cell init_args )
+{
+	if ( obj->type_info->init )
+		obj->type_info->init( env, obj, init_args );
+	return obj;
+}
+
 /**
- * Counterpart of muse_create_object.
+ * Just creates an object without allocating a cell for it.
+ * It is the caller's responsibility to call muse_destroy_object()
+ * once she's done with it.
+ */
+MUSEAPI muse_functional_object_t *muse_create_and_init_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
+{
+	return muse_init_object( env, muse_create_object( env, type_info ), init_args );
+}
+
+/**
+ * Counterpart of muse_create_and_init_object.
  */
 MUSEAPI void muse_destroy_object( muse_env *env, muse_functional_object_t *obj )
 {
@@ -1393,10 +1404,11 @@ MUSEAPI void muse_destroy_object( muse_env *env, muse_functional_object_t *obj )
  */
 MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args )
 {
-	muse_functional_object_t *obj = muse_create_object( env, type_info, init_args );
+	muse_functional_object_t *obj = muse_create_object( env, type_info );
 	muse_cell fn = _mk_nativefn( obj->type_info->fn, obj );
 	obj->self = fn;
 	add_special(env,fn);
+	muse_init_object( env, obj, init_args );
 	return fn;
 }
 
@@ -2149,7 +2161,8 @@ muse_cell muse_add_recent_item( muse_env *env, muse_int key, muse_cell value )
 		r->entries.vec[i].value = value;
 		
 		rc->depth++;
-		rc->top = rc->base + (rc->depth > MUSE_MAX_RECENT_ITEMS ? MUSE_MAX_RECENT_ITEMS : rc->depth);
+		rc->top = r->entries.top = rc->base + (rc->depth > MUSE_MAX_RECENT_ITEMS ? MUSE_MAX_RECENT_ITEMS : rc->depth);
+			/**< r->entries.top always refers to the absolute top of the recent list. */
 	}
 	return value;
 }

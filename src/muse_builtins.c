@@ -40,6 +40,7 @@ static const struct _builtins
 {		L"meta",		fn_meta				},
 {		L"trace",		fn_trace			},
 {		L"with-recent",	fn_with_recent		},
+{		L"symbol-whose-value-is",	fn_symbol_whose_value_is	},
 
 /************** Continuations and exception mechanism ***************/
 {		L"call/cc",		fn_callcc			},
@@ -133,8 +134,10 @@ static const struct _builtins
 {		L"number?",		fn_number_p			},
 {		L"cons?",		fn_cons_p			},
 {		L"fn?",			fn_fn_p				},
+{		L"lambda?",		fn_lambda_p				},
 {		L"symbol?",		fn_symbol_p			},
 {		L"text?",		fn_string_p			},
+{		L"whatis",		fn_whatis			},
 	
 /************** Type conversions ***************/
 {		L"int",			fn_int				},
@@ -163,6 +166,7 @@ static const struct _builtins
 {		L"print",		fn_print			},
 {		L"write",		fn_write			},
 {		L"read",		fn_read				},
+{		L"read-line",	fn_read_line		},
 {		L"flush",		fn_flush			},
 {		L"mickey",		fn_mickey			},
 {		L"load",		fn_load				},
@@ -200,6 +204,12 @@ static const struct _builtins
 {		L"alert",					fn_alert					},
 {		L"urlencode",				fn_urlencode				},
 {		L"urldecode",				fn_urldecode				},
+{		L"launch",					fn_launch					},
+{		L"windows-registry-entry",	fn_windows_registry_entry	},
+{		L"temp-folder",				fn_temp_folder				},
+{		L"temp-file",				fn_temp_file				},
+{		L"to-lower",				fn_to_lower					},
+{		L"to-upper",				fn_to_upper					},
 	
 {		NULL,			NULL				}
 };
@@ -594,6 +604,19 @@ muse_cell fn_fn_p( muse_env *env, void *context, muse_cell args )
 	muse_cell arg = _evalnext(&args);
 	
 	return _isfn(arg) ? arg : MUSE_NIL;
+}
+
+/**
+ * @code (lambda? x) @endcode
+ * Evaluates to x if x is a lambda function.
+ * Evaluates to () if it is not.
+ * @see fn_fn_p
+ */
+muse_cell fn_lambda_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell arg = _evalnext(&args);
+	
+	return (_cellt(arg) == MUSE_LAMBDA_CELL) ? arg : MUSE_NIL;
 }
 
 /**
@@ -1045,7 +1068,7 @@ muse_cell fn_substring( muse_env *env, void *context, muse_cell args )
 			if ( start_index + count > str_length )
 				count = str_length - start_index;
 
-			return muse_mk_text( env, str_text + start_index, str_text + start_index + count );
+			return muse_add_recent_item( env, (muse_int)fn_substring, muse_mk_text( env, str_text + start_index, str_text + start_index + count ) );
 		} else {
 			muse_message( env, L"(substring str >>start-index<< [count])", L"Expected an integer, got [%m]", start_index_c );
 			return muse_raise_error( env, _csymbol(L"error:integer-expected"), _cons(start_index_c,MUSE_NIL) );
@@ -1510,3 +1533,57 @@ muse_cell fn_system( muse_env *env, void *context, muse_cell args )
 	
 }
 
+static muse_boolean symbol_on_stack( muse_env *env, muse_cell sym )
+{
+	muse_stack *s = &env->current_process->bindings_stack;
+	muse_cell *from = s->bottom, *top = s->top;
+	while ( from < top ) {
+		if ( (*from) == sym )
+			return MUSE_TRUE;
+		from += 2;
+	}
+	return MUSE_FALSE;
+}
+
+muse_cell module_find_symbol_with_value( muse_env *env, void *obj, muse_cell value );
+
+/**
+ * @code (symbol-whose-value-is value) @endcode
+ *
+ * Looks up the symbol table and gives the symbol which is currently 
+ * (in dynamic scope) defined to the given value.
+ */
+muse_cell fn_symbol_whose_value_is( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell value = _evalnext(&args);
+
+	/* Traverse the symbol table and find the symbol that
+	has the given cell as its value. */
+
+	muse_stack symbols = env->symbol_stack;
+	int i;
+	for ( i = 0; i < symbols.size; ++i )
+	{
+		muse_cell symlist = symbols.bottom[i];
+		
+		while ( symlist )
+		{
+			muse_cell sym = _next(&symlist);
+
+			if ( _symval(sym) == value ) {
+				if ( !symbol_on_stack(env,sym) ) /* Value found. */
+					return sym;
+			} else {
+				/* Recursively search any modules for such a value. */
+				void *data = muse_functional_object_data( env, _symval(sym), 'mmod' );
+				if ( data ) {
+					muse_cell found = module_find_symbol_with_value( env, data, value );
+					if ( found )
+						return _cons( sym, found );
+				}
+			}
+		}
+	}
+
+	return MUSE_NIL;
+}

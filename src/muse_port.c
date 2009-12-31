@@ -82,6 +82,17 @@ void port_destroy( muse_port_base_t *p )
 }
 
 /**
+ * Frees the whole port. Not for use within muSE function implementations.
+ * Only for use from C-API.
+ */
+void port_free( muse_port_t p )
+{
+	port_close(p);
+	port_destroy(p);
+	free(p);
+}
+
+/**
  * Same protocol as the system \c getc function,
  * but works with the given port.
  */
@@ -369,6 +380,60 @@ int port_flush( muse_port_base_t *port )
 		return portfn(port,flush)( port );
 	else
 		return 0;
+}
+
+/**
+ * Reads a unicode character from the port.
+ */
+muse_char port_getchar( muse_port_t p )
+{
+	unsigned char buffer[4] = {0,0,0,0};
+	muse_char c16 = 0;
+	int c = port_getc(p);
+	if ( c == EOF ) return (muse_char)EOF;
+	buffer[0] = (unsigned char)c;
+
+	/* It is a property of utf8 that the number of
+	bytes needed to construct a unicode character
+	(1, 2 or 3) can be told by looking solely at
+	the first byte of the character. For reference,
+	see utf8_to_uc16() function. */
+	switch ( utf8_to_uc16( buffer, &c16 ) )
+	{
+	case 1: return c16;
+	case 2: buffer[1] = (unsigned char)port_getc(p); 
+			utf8_to_uc16( buffer, &c16 ); 
+			return c16;
+	case 3:	buffer[1] = (unsigned char)port_getc(p); 
+			buffer[2] = (unsigned char)port_getc(p); 
+			utf8_to_uc16( buffer, &c16 ); 
+			return c16;
+	}
+
+	return (muse_char)EOF;
+}
+
+/**
+ * Writes the given unicode character to the port.
+ */
+muse_char port_putchar( muse_char c, muse_port_t p )
+{
+	unsigned char buffer[4];
+	int numchars = uc16_to_utf8( c, buffer, 4 );
+	port_write( buffer, numchars, p );
+	return c;
+}
+
+/**
+ * Writes back a unicode character to the port buffer.
+ */
+muse_char port_ungetchar( muse_char c, muse_port_t p )
+{
+	unsigned char buffer[4];
+	int numchars = uc16_to_utf8( c, buffer, 4 );
+	while ( numchars )
+		port_ungetc( buffer[--numchars], p );
+	return c;
 }
 
 #undef portfn

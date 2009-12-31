@@ -476,30 +476,40 @@ void muse_unassign_port( muse_port_t p )
 MUSEAPI muse_cell muse_load( muse_env *env, FILE *f )
 {
 	muse_port_t in = muse_assign_port(env, f, MUSE_PORT_TRUSTED_INPUT );
+	muse_cell result = muse_pload( in );
+	muse_unassign_port(in);
+	return result;
+}
+
+/**
+ * Similar to \ref muse_load but works on the given port.
+ */
+MUSEAPI muse_cell muse_pload( muse_port_t p )
+{
+	muse_env *env = p->env;
 	int sp = _spos();
 	muse_cell result = MUSE_NIL;
-	muse_port_t prevIn = muse_current_port( env, MUSE_INPUT_PORT, in );
-	
-	while ( port_eof(in) == 0 )
+	muse_port_t prevIn = muse_current_port( env, MUSE_INPUT_PORT, p );
+
+	while ( port_eof(p) == 0 )
 	{
 		muse_cell expr = MUSE_NIL;
 
-		expr = muse_pread(in);
+		expr = muse_pread(p);
 
 		if ( expr >= 0 )
 		{
 			_unwind(sp);
 			_spush(expr);
-			result = _eval( expr );
+			result = _eval(expr);
 			_unwind(sp);
 			_spush(result);
 		}
 		else
 			break;
 	}
-	
+
 	muse_current_port( env, MUSE_INPUT_PORT, prevIn );
-	muse_unassign_port(in);
 	return result;
 }
 
@@ -516,6 +526,52 @@ static void write_utf8_header( muse_env *env, fileport_t *p )
 		write( p->desc, k_utf8_header, sizeof(k_utf8_header) );
 	}
 #endif
+}
+
+void discard_utf8_header_port( muse_port_t p )
+{
+	muse_env *env = p->env;
+
+	/* We're at the head. Check if the file has the UTF8 3-byte indicator.
+	If so, strip it out, since we don't need it. We only accept UTF8 anyway. 
+	This is Windows specific really, but it helps for unix implementations
+	to read windows generated files as well, so I'm keeping it for all 
+	platforms. */
+
+	unsigned char c[3];
+	size_t nbytes = port_read( c, 2, p );
+
+	if ( nbytes == 2 )
+	{
+		if ( c[0] == 0xff && c[1] == 0xfe )
+		{
+			/* 16-bit unicode file! Change its type. */
+			p->base.type_info = (muse_functional_object_type_t*)&g_uc16_fileport_type;
+			nbytes = 0;
+		}
+		else if ( c[1] == 0x00 )
+		{
+			/* Guessing that it is a 16-bit unicode stream, unix style. */
+			p->base.type_info = (muse_functional_object_type_t*)&g_uc16_fileport_type;
+		}
+		else if ( c[0] == 0xef && c[1] == 0xbb )
+		{
+			/* Could be utf8. */
+			nbytes += port_read( c+2, 1, p );
+			if ( nbytes == 3 && c[2] == 0xbf )
+			{
+				/* Yes it is utf8. Discard it. */
+				nbytes = 0;
+			}
+		}
+	}
+
+	if ( nbytes > 0 )
+	{
+		muse_assert( p->in.pos == 0 && p->in.avail == 0 );
+		memcpy( p->in.bytes, c, nbytes );
+		p->in.avail += (int)nbytes;
+	}
 }
 
 static void discard_utf8_header( muse_env *env, fileport_t *p )

@@ -91,7 +91,16 @@ static void object_write( muse_env *env, void *_self, void *_port )
 	muse_port_t port = (muse_port_t)_port;
 
 	port_write( "{object ", 8, port );
-	muse_pwrite( port, self->supers );
+	if ( self->supers )
+	{
+		port_putc( '\'', port );
+		muse_pwrite( port, self->supers );
+	}
+	else
+	{
+		port_putc( '(', port );
+		port_putc( ')', port );
+	}
 
 	{
 		muse_cell plist = self->plist;

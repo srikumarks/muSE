@@ -731,7 +731,14 @@ MUSEAPI void muse_message( muse_env *env, const muse_char *context, const muse_c
 	#if MUSE_PLATFORM_WINDOWS
 		switch ( MessageBoxW( NULL, text, L"muSE", MB_ABORTRETRYIGNORE | MB_SETFOREGROUND | MB_TOPMOST | MB_ICONWARNING ) )
 		{
-		case IDABORT: exit(0);
+		case IDABORT: 
+			#ifdef NDEBUG
+			exit(0);
+			#else
+			DebugBreak();
+			break;
+			#endif
+
 		case IDRETRY: 
 			muse_raise_error(env, MUSE_NIL, MUSE_NIL); 
 		default:;
@@ -1365,7 +1372,7 @@ muse_cell buffer_substring( buffer_t *b, muse_env *env, int from, int len )
 		return MUSE_NIL;
 	else {
 		muse_cell text = muse_mk_text( env, (const muse_char *)0, ((const muse_char *)0) + len );
-		muse_char *ctext = muse_text_contents( env, text, NULL );
+		muse_char *ctext = (muse_char *)muse_text_contents( env, text, NULL );
 		int fromFrag = from / MAXFRAGLEN;
 		int toFrag = (from + len) / MAXFRAGLEN;
 		int i = 0;

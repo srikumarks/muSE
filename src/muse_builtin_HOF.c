@@ -104,6 +104,7 @@ static muse_cell lazy_mapper( muse_env *env, void *context, muse_cell args )
 	
 	if ( list ) {
 		muse_cell h = muse_head( env, list );
+		_spush(h);
 		_seth( args, muse_tail( env, list ) );
 		return _cons( _apply( fn, _cons( h, MUSE_NIL ), MUSE_TRUE ), 
 		             _setcellt( _cons( me, orig ), MUSE_LAZY_CELL ) );
@@ -279,16 +280,17 @@ static muse_cell lazy_collect( muse_env *env, void *context, muse_cell args )
 	list = _quq(_head(args));
 
 	if ( list ) {
-		muse_cell thing = _cons( _head(list), MUSE_NIL );
+		muse_cell thing = _cons( muse_head(env,list), MUSE_NIL );
 		muse_cell lazy_tail = _setcellt( _cons( me, orig ), MUSE_LAZY_CELL );
+		muse_push_recent_scope(env);
 		if ( !predicate || _apply( predicate, thing, MUSE_TRUE ) ) {
 			if ( mapper )
 				_seth( thing, _apply( mapper, thing, MUSE_TRUE ) );
-			_seth( args, _tail(list) );
-			return _cons( _head(thing), lazy_tail );
+			_seth( args, muse_tail(env,list) );
+			return muse_pop_recent_scope( env, 0, _cons( _head(thing), lazy_tail ) );
 		} else {
-			_seth( args, _tail(list) );
-			return lazy_tail;
+			_seth( args, muse_tail(env,list) );
+			return muse_pop_recent_scope( env, 0, lazy_tail );
 		}
 	} else {
 		return MUSE_NIL;

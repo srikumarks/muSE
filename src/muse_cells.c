@@ -649,6 +649,7 @@ static muse_cell format_list_item( muse_env *env, format_list_state_t *state, in
 			case 't' : return muse_mk_ctext_utf8( env, va_arg(*args, const char *) );
 			case 'S' : return _csymbol( va_arg(*args, const muse_char *) );
 			case 's' : return muse_csymbol_utf8( env, va_arg(*args, const char *) );
+			case '=' : return _eval( format_list_item( env, state, i, eol ) ); // Evaluate the next item.
 			case '\'': return muse_quote( env, format_list_item( env, state, i, eol ) ); // Quote the next item.
 			case '(' : return muse_generate_list( env, (muse_list_generator_t)format_list_item, state ); // Nested list.
 			case ')' : break; // End of list.
@@ -682,6 +683,9 @@ static muse_cell format_list_item( muse_env *env, format_list_state_t *state, in
  * 	- s -> utf8 symbol string
  *
  * Multiple character codes -
+ *	- =<format-code> -> An '=' character followed by a format code will
+ *						cause the expression passed in that field to be
+ *						stored into the list after evaluation.
  *	- '<format-code> -> A quote character followed by a format code will place 
  *						a value according to the format code in quoted form
  *						into the list. 2 characters consumed, 1 item generated.

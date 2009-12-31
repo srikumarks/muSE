@@ -123,6 +123,65 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args )
 }
 
 /**
+ * @code (read-line [port]) @endcode
+ *
+ * Reads a single line from the given port or the standard input stream
+ * and returns it as a single string.
+ *
+ * Supports \ref fn_the "the"
+ */
+muse_cell fn_read_line( muse_env *env, void *context, muse_cell args )
+{
+	muse_port_t port = NULL;
+	
+	if ( args )
+	{
+		port = _port( _evalnext(&args) );
+		muse_assert( port != NULL && "Read can only take a port argument.");
+	}
+	else
+		port = _stdport( MUSE_STDIN_PORT );
+
+	{
+		buffer_t *b = buffer_alloc();
+		while ( !port_eof(port) )
+		{
+			muse_char c = port_getchar(port);
+			if ( c == 0x0a || c == (muse_char)EOF )
+			{
+				muse_assert( 0x0a == '\n' );
+
+				/* Line feed character indicates end of line. */
+				break;
+			}
+			else if ( c == 0x0d )
+			{
+				muse_assert( 0x0d == '\r' );
+
+				/* Skip carriage return characters. */
+			}
+			else
+			{
+				/* Keep the character. */
+				buffer_putc( b, c );
+			}
+		}
+
+		if ( port_eof(port) && buffer_length(b) == 0 )
+		{
+			buffer_free(b);
+			return MUSE_NIL;
+		}
+		else
+		{
+			muse_cell result = muse_add_recent_item( env, (muse_int)fn_read_line, buffer_to_string( b, env ) );
+			buffer_free(b);
+			return result;
+		}
+	}
+}
+
+/**
  * @code (close port) @endcode
  * Closes the given port.
  */
@@ -170,11 +229,21 @@ muse_cell fn_flush( muse_env *env, void *context, muse_cell args )
 	return portcell;
 }
 
+muse_cell fn_with_bytes_as_port( muse_env *env, void *context, muse_cell args );
+
 /**
  * @code (load "file.lisp") @endcode
+ * @code (load port) @endcode
+ * @code (load #nnn[...bytes...]) @endcode
  *
  * Reads and evaluates all expressions in the given file
- * and returns the value of the last expression.
+ * and returns the value of the last expression. You can
+ * pass it either a filename, or a port or a byte array.
+ * If you pass a filename, the file will be read in and loaded.
+ * If you pass a port, the port will be read in and loaded
+ * until you reach end-of-port. If you pass a byte array,
+ * it will be loaded just as though it were the byte contents
+ * of some file.
  *
  * @exception error:load
  * Handler format: @code (fn (resume 'error:load path) ...) @endcode
@@ -189,36 +258,63 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 {
 	int sp				= _spos();
 	muse_cell filename	= _evalnext(&args);
-	FILE *f				= NULL;
-	
-	MUSE_DIAGNOSTICS({
-		muse_expect( env, L"(load >>file<<)", L"v?", filename, MUSE_TEXT_CELL );
-	});
 
-	while ( f == NULL ) {
-		f = muse_fopen( _text_contents(filename,NULL), L"rb" );
-		if ( f == NULL ) {
-			/* Allow continuation by trying another file. */
-			filename = muse_raise_error( env, _csymbol(L"error:load"), _cons( filename, MUSE_NIL ) );
-		}
-	}
-
-	if ( f )
+	if ( _cellt(filename) == MUSE_TEXT_CELL )
 	{
-		muse_cell result = muse_load( env, f );
-		fclose(f);
-		_unwind(sp);
-		return _spush(result);
+		/* We're given a filename. So we read the file and load it. */
+
+		FILE *f				= NULL;
+		
+		while ( f == NULL ) {
+			f = muse_fopen( _text_contents(filename,NULL), L"rb" );
+			if ( f == NULL ) {
+				/* Allow continuation by trying another file. */
+				filename = muse_raise_error( env, _csymbol(L"error:load"), _cons( filename, MUSE_NIL ) );
+			}
+		}
+
+		if ( f )
+		{
+			muse_cell result = muse_load( env, f );
+			fclose(f);
+			_unwind(sp);
+			return _spush(result);
+		}
+		else
+		{
+			_unwind(sp);
+
+			MUSE_DIAGNOSTICS({
+				muse_message( env,L"(load >>file<<)", L"The file [%m] doesn't exist!", filename );
+			});
+
+			return MUSE_NIL;
+		}
 	}
 	else
 	{
-		_unwind(sp);
+		/* Test whether the argument is a port. If so, load it directly. */
 
-		MUSE_DIAGNOSTICS({
-			muse_message( env,L"(load >>file<<)", L"The file [%m] doesn't exist!", filename );
-		});
+		muse_port_t p = muse_port( env, filename );
 
-		return MUSE_NIL;
+		if ( p )
+		{
+			muse_cell result = muse_pload( p );
+			_unwind(sp);
+			return _spush(result);
+		}
+		else if ( muse_functional_object_data( env, filename, 'barr' ) )
+		{
+			/* Test whether the argument is a byte array. If so,
+			treat the byte array as the contents of a file and load it. */
+			return fn_with_bytes_as_port( env, NULL, _cons( filename, _cons( _mk_nativefn( fn_load, NULL ), MUSE_NIL ) ) );
+		}
+		else
+		{
+			/* Invalid argument. */
+			_unwind(sp);
+			return muse_raise_error( env, _csymbol(L"error:object-not-loadable"), _cons(filename,MUSE_NIL) );
+		}
 	}
 }
 

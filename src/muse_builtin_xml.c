@@ -21,7 +21,7 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
 
 /**
- * @code (write-xml [port] xml-node [flags]) @endcode
+ * @code (write-xml [port] xml-node [object] [flags]) @endcode
  * Converts an s-expr representation of an XML node (a tag, not
  * an arbitrary node such as attribute nodes) into XML form
  * and writes it out to the given port. The XML node representation
@@ -33,6 +33,18 @@ static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
  *    ...
  *    )
  * @endcode
+ *
+ * If the xml-node is given as a function, the next argument will
+ * be checked whether it is an object and if so, the function will
+ * be applied to the object as the sole argument. If no object is
+ * given, the function will be applied to () as the sole argument.
+ * This is handy to work with templated XML, in particular with
+ * constant XML expressions where you don't need to give an object.
+ * The templated portions of the xml can also evaluate to functions
+ * instead of s-xml expressions. Such functions will be applied to
+ * () automatically to derive the object. This handy within the
+ * templating functions to return bits of XML written using XML
+ * syntax itself.
  *
  * The flags is a list of symbols that indicate features to use.
  * The only one feature you can indicate is 'with-header
@@ -63,9 +75,32 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args )
 		port		= _stdport(1); /* Use stdout if no port is specified. */
 	}
 
-	/* The last optional flags argument. */
-	if ( args )
+	if ( _isfn(xmlnode) )
 	{
+		/* The xml node is given as a function of an object instead of
+		as an s-xml tree. We'll need to apply it to an object value
+		to get the s-xml tree. */
+		muse_cell obj = _evalnext(&args);
+
+		if ( muse_functional_object_data( env, obj, 'mobj' ) )
+		{
+			/* An object value has been given. Apply it. */
+			xmlnode = _apply( xmlnode, _cons(obj,MUSE_NIL), MUSE_TRUE );
+
+			/* Now check whether the following object is a flags list. */
+			flags = _evalnext(&args);
+		}
+		else
+		{
+			/* No object value. Apply to () instead. This is handy 
+			for constant XML expressions. */
+			xmlnode = _apply( xmlnode, _cons(MUSE_NIL,MUSE_NIL), MUSE_TRUE );
+			flags = obj;
+		}
+	}
+	else
+	{
+		/* The last optional flags argument. */
 		flags = _evalnext(&args);
 	}
 
@@ -100,55 +135,85 @@ static void indent( muse_env *env, muse_port_t port, int depth )
 
 static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, int depth )
 {
-	muse_assert( _cellt(xmlnode) == MUSE_CONS_CELL );
-
-	if ( xmlnode )
+	if ( _isfn(xmlnode) )
 	{
-		muse_cell tag		= _head(xmlnode);
+		write_xml_node( env, port, _apply(xmlnode,_cons(MUSE_NIL,MUSE_NIL), MUSE_TRUE), depth );
+	}
+	else
+	{
+		muse_assert( _cellt(xmlnode) == MUSE_CONS_CELL );
 
-		if ( _cellt(tag) == MUSE_CONS_CELL )
+		if ( xmlnode )
 		{
-			while ( xmlnode )
+			muse_cell tag		= _head(xmlnode);
+
+			if ( _cellt(tag) == MUSE_CONS_CELL )
 			{
-				write_xml_node( env, port, _head(xmlnode), depth );
-				xmlnode = _tail(xmlnode);
-			}
-		}
-		else
-		{
-			muse_cell attrs		= _head(_tail(xmlnode));
-			muse_cell children	= _tail(_tail(xmlnode));
-
-			indent( env,port,depth);
-			port_putc( '<', port );
-			muse_pwrite( port, tag ); 
-
-			if ( attrs )
-				port_putc( ' ', port );
-
-			write_tag_attrs( env, port, attrs );
-
-			if ( children )
-			{
-				int nested_tag_count = 0;
-				port_putc( '>', port );
-				while ( children )
+				while ( xmlnode )
 				{
-					nested_tag_count += write_xml_child_node( env, port, _next(&children), depth+1 );
+					write_xml_node( env, port, _head(xmlnode), depth );
+					xmlnode = _tail(xmlnode);
 				}
-				if ( nested_tag_count > 0 )
-					indent( env,port,depth);
-				port_putc( '<', port );
-				port_putc( '/', port );
-				muse_pwrite( port, tag );
-				port_putc( '>', port );
 			}
 			else
 			{
-				port_putc( '/', port );
-				port_putc( '>', port );
+				muse_cell attrs		= _head(_tail(xmlnode));
+				muse_cell children	= _tail(_tail(xmlnode));
+
+				indent( env,port,depth);
+				port_putc( '<', port );
+				muse_pwrite( port, tag ); 
+
+				if ( attrs )
+					port_putc( ' ', port );
+
+				write_tag_attrs( env, port, attrs );
+
+				if ( children )
+				{
+					int nested_tag_count = 0;
+					port_putc( '>', port );
+					while ( children )
+					{
+						nested_tag_count += write_xml_child_node( env, port, _next(&children), depth+1 );
+					}
+					if ( nested_tag_count > 0 )
+						indent( env,port,depth);
+					port_putc( '<', port );
+					port_putc( '/', port );
+					muse_pwrite( port, tag );
+					port_putc( '>', port );
+				}
+				else
+				{
+					port_putc( '/', port );
+					port_putc( '>', port );
+				}
 			}
 		}
+	}
+}
+
+static void write_tag_attr_value( muse_env *env, muse_port_t port, muse_cell value )
+{
+	switch ( _cellt(value) )
+	{
+	case MUSE_INT_CELL:
+	case MUSE_FLOAT_CELL:
+	case MUSE_SYMBOL_CELL:
+		port_putc( '"', port );
+		muse_pwrite( port, value );
+		port_putc( '"', port );
+		return;
+	case MUSE_TEXT_CELL:
+		muse_pwrite( port, value );
+		return;
+	case MUSE_CONS_CELL:
+		write_tag_attr_value( env, port, _eval(value) );
+		return;
+	default:
+		muse_raise_error( env, _csymbol(L"xml:bad-attr-value"), _cons(value,MUSE_NIL) );
+		return;
 	}
 }
 
@@ -160,25 +225,12 @@ static void write_tag_attrs( muse_env *env, muse_port_t port, muse_cell attrs )
 
 		/* Write the attribute name. */
 		muse_pwrite( port, _head(attr) );
-		port_putc( '=', port );
 
+		if ( _tail(attr) != _builtin_symbol(MUSE_T) )
 		{
-			muse_cell value = _tail(attr);
-			switch ( _cellt(value) )
-			{
-			case MUSE_INT_CELL:
-			case MUSE_FLOAT_CELL:
-			case MUSE_SYMBOL_CELL:
-				port_putc( '"', port );
-				muse_pwrite( port, value );
-				port_putc( '"', port );
-				break;
-			case MUSE_TEXT_CELL:
-				muse_pwrite( port, value );
-				break;
-			default:
-				MUSE_DIAGNOSTICS3({ fprintf( stderr, "XML error: Invalid attribute value of type %s\n", _typename(value) ); });
-			}
+			port_putc( '=', port );
+
+			write_tag_attr_value( env, port, _tail(attr) );
 		}
 
 		if ( attrs )
@@ -210,6 +262,24 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 		}
 		return 0;
 	}
+	else if ( _cellt(xmlnode) == MUSE_CONS_CELL && _head(xmlnode) == _builtin_symbol(MUSE_XMLSPLICE) )
+	{
+		/* Placing "++" at the head of the list is a special instruction to
+		splice in the rest of the list at write time. This saves precious join
+		calculations and helps reduce garbage. 
+		
+		Note that splice expressions are incompatible with the parsing routines
+		in XML.scm. So do not use them if the output is going to be processed
+		by the combinators in XML.scm. */
+		muse_cell nodes = _tail(xmlnode);
+		int count = 0;
+		while ( nodes )
+		{
+			write_xml_node( env, p, _next(&nodes), depth );
+			++count;
+		}
+		return count;
+	}
 	else
 	{
 		write_xml_node( env, p, xmlnode, depth );
@@ -237,11 +307,25 @@ static muse_boolean xml_DOCTYPE_start( muse_port_t p );
 static muse_boolean xml_skip_DOCTYPE( muse_port_t p );
 static muse_boolean xml_proc_start( muse_port_t p );
 static muse_boolean xml_skip_proc( muse_port_t p );
-static muse_cell xml_read_tag( muse_env *env, muse_port_t p );
-static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol );
-static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p );
-static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol );
-static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag );
+static muse_cell xml_read_tag( muse_env *env, muse_port_t p, int *shareable );
+
+typedef struct 
+{
+	muse_port_t p;
+	int shareable;
+} xml_tag_attrib_gen_info_t;
+
+static muse_cell xml_tag_attrib_gen( muse_env *env, xml_tag_attrib_gen_info_t *info, int i, muse_boolean *eol );
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable );
+
+typedef struct 
+{
+	muse_port_t p;
+	int shareable;
+} xml_tag_body_gen_info_t;
+
+static muse_cell xml_tag_body_gen( muse_env *env, xml_tag_body_gen_info_t *info, int i, muse_boolean *eol );
+static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag, int *shareable );
 
 /**
  * {xml}
@@ -252,7 +336,7 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag 
  */
 muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
 {
-	return muse_quote( env, xml_read_tag( env, muse_current_port( env, MUSE_INPUT_PORT, NULL ) ) );
+	return muse_read_xml_node( muse_current_port( env, MUSE_INPUT_PORT, NULL ) );
 }
 
 
@@ -298,7 +382,7 @@ muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 		port = muse_stdport( env, MUSE_STDIN_PORT );
 	}
 
-	return muse_add_recent_item( env, (muse_int)fn_read_xml, xml_read_tag( env, port ) );
+	return muse_add_recent_item( env, (muse_int)fn_read_xml, muse_read_xml_node(port) );
 }
 
 static void xml_skip_ignorables( muse_port_t p )
@@ -488,10 +572,32 @@ static muse_boolean xml_skip_proc( muse_port_t p )
 
 MUSEAPI muse_cell muse_read_xml_node( muse_port_t p )
 {
-	return xml_read_tag( p->env, p );
+	muse_env *env = p->env;
+	int shareable = 1;
+	return _eval( muse_list( env, "=S(S)c", L"fn", L"@", xml_read_tag( env, p, &shareable ) ) );
 }
 
-static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
+static muse_cell xml_unquote_body_gen( muse_env *env, muse_cell *attrs, int i, muse_boolean *eol )
+{
+	if ( *attrs ) {
+		muse_cell item = _next(attrs);
+		(*eol) = MUSE_FALSE;
+		if ( _cellt(item) == MUSE_CONS_CELL )
+			return _tail(item);
+		else
+			return item;
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell xml_unquote_body( muse_env *env, muse_cell body )
+{
+	return muse_generate_list( env, (muse_list_generator_t)xml_unquote_body_gen, &body );
+}
+
+static muse_cell xml_read_tag( muse_env *env, muse_port_t p, int *shareable )
 {
 	int c;
 
@@ -519,13 +625,23 @@ static muse_cell xml_read_tag( muse_env *env, muse_port_t p )
 
 		{
 			int sp = _spos();
+			int localshareable = 1;
 			muse_cell tag = muse_csymbol_utf8(env,sym);
-			muse_cell attribs = xml_read_tag_attribs(env,p);
-			muse_cell body = xml_read_tag_body(env,p,tag);
-			muse_cell tagexpr = _cons(tag,_cons(attribs,body));
+			muse_cell attribs = xml_read_tag_attribs(env,p,&localshareable);
+			muse_cell body = xml_read_tag_body(env,p,tag,&localshareable);
+			muse_cell result = MUSE_NIL;
+			if ( sym[0] == '@' ) {
+				(*shareable) = 0;
+				result = _cons( _csymbol(L"@"), _cons(_quote(tag), _cons(attribs, body)) );
+			} else if ( localshareable ) {
+				result = _quote(_cons(tag,_cons(_tail(attribs),xml_unquote_body(env,body))));
+			} else {
+				(*shareable) = 0;
+				result = _cons( _symval(_csymbol(L"list")), _cons( _quote(tag), _cons(attribs, body) ) );
+			}
 			_unwind(sp);
-			_spush(tagexpr);
-			return tagexpr;
+			_spush(result);
+			return result;
 		}
 	}
 	else
@@ -597,8 +713,9 @@ static int read_unquoted_attrib_value(muse_port_t p, char val[256])
 	return n;
 }
 
-static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
+static muse_cell xml_tag_attrib_gen( muse_env *env, xml_tag_attrib_gen_info_t *info, int i, muse_boolean *eol )
 {
+	muse_port_t p = info->p;
 	int c;
 
 	if ( port_eof(p) || p->error != 0 )
@@ -668,14 +785,21 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_b
 				xml_skip_whitespace(p);
 				{
 					int q = port_getc(p);
-					if ( q == '"' || q == '\'' )
+					if ( q == '(' || q == '{' )
+					{
+						/* Allow s-expressions as values and read them in literally. */
+						port_ungetc( q, p );
+						info->shareable = 0;
+						return muse_list( env, "=S'cc", L"cons", msym, muse_pread(p) );
+					}
+					else if ( q == '"' || q == '\'' )
 					{
 						int length = 0;
 						char *val = xml_read_utf8_until( q, &length, p );
 						muse_cell mval = muse_mk_text_utf8( env, val, val + length );
 						free(val);
 
-						return _cons( msym, mval );
+						return _quote(_cons(msym,mval));
 					}
 					else
 					{
@@ -689,10 +813,8 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_b
 						{
 							char val[256];
 							int n = read_unquoted_attrib_value(p, val);
-							return _cons( msym, muse_mk_text_utf8( env, val, val + n ) );
+							return _quote(_cons(msym, muse_mk_text_utf8( env, val, val + n )));
 						}
-
-						return _cons(msym, muse_builtin_symbol(env,MUSE_T));						
 					}
 				}
 			}
@@ -700,15 +822,38 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, muse_port_t p, int i, muse_b
 			{
 				/* Flag. */
 				port_ungetc(nc,p);
-				return _cons(msym, muse_builtin_symbol(env,MUSE_T));
+				return _quote(_cons(msym, muse_builtin_symbol(env,MUSE_T)));
 			}
 		}
 	}
 }
 
-static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p )
+static muse_cell xml_take_tail_gen( muse_env *env, muse_cell *attrs, int i, muse_boolean *eol )
 {
-	return muse_generate_list( env, (muse_list_generator_t)xml_tag_attrib_gen, p );
+	if ( *attrs ) {
+		muse_cell item = _next(attrs);
+		(*eol) = MUSE_FALSE;
+		return _tail(item);
+	} else {
+		(*eol) = MUSE_TRUE;
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell xml_take_tail( muse_env *env, muse_cell attrs )
+{
+	return muse_generate_list( env, (muse_list_generator_t)xml_take_tail_gen, &attrs );
+}
+
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable )
+{
+	xml_tag_attrib_gen_info_t info = { p, 1 };
+	muse_cell attrs = muse_generate_list( env, (muse_list_generator_t)xml_tag_attrib_gen, &info );
+	(*shareable) &= info.shareable;
+	if ( info.shareable )
+		return _quote(xml_take_tail(env,attrs));
+	else
+		return _cons( _symval(_csymbol(L"list")), attrs );
 }
 
 static void xml_trim_text_whitespace( char **text, size_t *len )
@@ -731,7 +876,6 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 		if ( isspace((unsigned char)((*text)[(*len)-1])) )
 		{
 			(*len)--;
-			(*text)[(*len)] = '\0';
 		}
 		else
 			break;
@@ -769,8 +913,10 @@ static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
 	}
 }
 
-static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boolean *eol )
+static muse_cell xml_tag_body_gen( muse_env *env, xml_tag_body_gen_info_t *info, int i, muse_boolean *eol )
 {
+	muse_port_t p = info->p;
+
 	if ( port_eof(p) || p->error != 0 )
 	{
 		(*eol) = MUSE_TRUE;
@@ -796,7 +942,7 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 				port_ungetc(c2,p);
 				port_ungetc(c,p);
 				(*eol) = MUSE_FALSE;
-				return xml_read_tag(env,p);
+				return xml_read_tag(env,p,&(info->shareable));
 			}
 		}
 		else
@@ -834,6 +980,8 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 							muse_cell result;
 							char *trimmedtext = text;
 							size_t trimmedtextlen = textsize;
+							int c2 = port_getc(p);
+							port_ungetc(c2,p);
 							port_ungetc(c,p);
 							text[textsize] = '\0';
 							xml_trim_text_whitespace( &trimmedtext, &trimmedtextlen );
@@ -841,11 +989,19 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 							{
 								/* If text is entirely white space, skip it. */
 								free(text);
-								return xml_tag_body_gen( env, p, i, eol );
+								return xml_tag_body_gen( env, info, i, eol );
+							}
+							else if ( c2 == '/' ) 
+							{
+								/* End tag, not sub tag, so skip trailing spaces. */
+								result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen);
+								free(text);
+								(*eol) = MUSE_FALSE;
+								return result;
 							}
 							else
 							{
-								result = muse_mk_text_utf8( env, trimmedtext, trimmedtext+trimmedtextlen );
+								result = muse_mk_text_utf8( env, text, text+textsize);
 								free(text);
 								(*eol) = MUSE_FALSE;
 								return result;
@@ -877,9 +1033,14 @@ static muse_cell xml_tag_body_gen( muse_env *env, muse_port_t p, int i, muse_boo
 	}
 }
 
-static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag )
+static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag, int *shareable )
 {
 	xml_skip_ignorables(p);
-	return muse_generate_list( env, (muse_list_generator_t)xml_tag_body_gen, p );
+	{
+		xml_tag_body_gen_info_t info = {p, 1};
+		muse_cell result = muse_generate_list( env, (muse_list_generator_t)xml_tag_body_gen, &info );
+		(*shareable) &= info.shareable;
+		return result;
+	}
 }
 

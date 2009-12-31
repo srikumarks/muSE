@@ -153,8 +153,8 @@ static muse_cell json_read( muse_port_t p )
 	json_skip_whitespace(p);
 
 	if ( !port_eof(p) ) {
-		muse_char c = port_getc(p);
-		port_ungetc(c,p);
+		muse_char c = port_getchar(p);
+		port_ungetchar(c,p);
 		switch ( c ) {
 			case '"': return json_read_string(p);
 			case '-': 
@@ -187,8 +187,8 @@ static muse_cell json_read_expr( muse_port_t p )
 	json_skip_whitespace(p);
 
 	if ( !port_eof(p) ) {
-		muse_char c = port_getc(p);
-		port_ungetc(c,p);
+		muse_char c = port_getchar(p);
+		port_ungetchar(c,p);
 		switch ( c ) {
 			case '"': return json_read_string(p);
 			case '-': 
@@ -231,11 +231,11 @@ static void json_skip_whitespace( muse_port_t p )
 	if ( port_eof(p) )
 		return;
 	else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' )
 			json_skip_whitespace(p);
 		else
-			port_ungetc( c, p );
+			port_ungetchar( c, p );
 	}
 }
 
@@ -281,18 +281,18 @@ static muse_cell json_read_key( muse_port_t p )
 
 static muse_cell json_read_string( muse_port_t p )
 {
-	muse_char c = port_getc(p);
+	muse_char c = port_getchar(p);
 	assert( c == '"' );
 
 	{
 		buffer_t *b = buffer_alloc();
 	
 		while ( !port_eof(p) ) {
-			c = port_getc(p);
+			c = port_getchar(p);
 			if ( c == '"' ) 
 				break;
 			else if ( c == '\\' ) {
-				c = port_getc(p);
+				c = port_getchar(p);
 				switch( c ) {
 					case '"':	buffer_putc( b, c ); break;
 					case '\\':	buffer_putc( b, c ); break;
@@ -305,10 +305,10 @@ static muse_cell json_read_string( muse_port_t p )
 					case 'u':
 						{
 							muse_char d[4];
-							d[0] = port_getc(p);
-							d[1] = port_getc(p);
-							d[2] = port_getc(p);
-							d[3] = port_getc(p);
+							d[0] = port_getchar(p);
+							d[1] = port_getchar(p);
+							d[2] = port_getchar(p);
+							d[3] = port_getchar(p);
 							buffer_putc( b, hexchar(d) );
 							break;								
 						}
@@ -345,7 +345,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 static muse_cell json_read_array( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getc(p);
+	muse_char c = port_getchar(p);
 	assert( c == '[' );
 	json_skip_whitespace(p);
 	return json_read_array_items( env, p, MUSE_NIL, MUSE_NIL, 0 );
@@ -357,7 +357,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 	if ( port_eof(p) ) {
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-array"), MUSE_NIL );
 	} else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == ']' ) {
 			muse_cell v = muse_mk_vector( env, N );
 			for ( i = 0; i < N; ++i ) {
@@ -365,7 +365,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 			}
 			return v;
 		} else {
-			port_ungetc( c, p );
+			port_ungetchar( c, p );
 		}
 	}
 
@@ -384,7 +384,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 	if ( port_eof(p) ) {
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-array"), h );
 	} else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == ',' ) {
 			return json_read_array_items( env, p, h, t, N+1 );
 		} else if ( c == ']' ) {
@@ -402,7 +402,7 @@ muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_array_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getc(p);
+	muse_char c = port_getchar(p);
 	assert( c == '[' );
 	json_skip_whitespace(p);
 	return json_share_array_expr( 
@@ -417,11 +417,11 @@ static muse_cell json_read_array_expr_items( muse_env *env, muse_port_t p, muse_
 	if ( port_eof(p) ) {
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-array"), MUSE_NIL );
 	} else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == ']' ) {
 			return h;
 		} else {
-			port_ungetc( c, p );
+			port_ungetchar( c, p );
 		}
 	}
 
@@ -440,11 +440,11 @@ static muse_cell json_read_array_expr_items( muse_env *env, muse_port_t p, muse_
 	if ( port_eof(p) ) {
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-array"), h );
 	} else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == ',' ) {
 			return json_read_array_expr_items( env, p, h, t, N+1 );
 		} else if ( c == ']' ) {
-			port_ungetc( c, p );
+			port_ungetchar( c, p );
 			return json_read_array_expr_items( env, p, h, t, N+1 );
 		} else {
 			return muse_raise_error( env, _csymbol(L"json:array-syntax-error"), h );
@@ -492,7 +492,7 @@ static muse_cell json_read_object_items( muse_env *env, muse_port_t p, muse_cell
 static muse_cell json_read_object( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getc(p);
+	muse_char c = port_getchar(p);
 	assert( c == '{' );
 	json_skip_whitespace(p);
 	return json_read_object_items( env, p, muse_mk_hashtable( env, 8 ) );
@@ -505,27 +505,27 @@ static muse_cell json_read_object_items( muse_env *env, muse_port_t p, muse_cell
 	if ( port_eof(p) ) 
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-object"), MUSE_NIL );
 	else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == '}' ) {
 			return table;
 		} else {
 			int sp = _spos();
 			muse_cell key, value;
-			port_ungetc(c,p);
+			port_ungetchar(c,p);
 
 			key = json_read_key(p);
 			json_skip_whitespace(p);
 			if ( port_eof(p) ) {
 				return muse_raise_error( env, _csymbol(L"json:end-of-file-in-object"), MUSE_NIL );
 			} else {
-				muse_char c = port_getc(p);
+				muse_char c = port_getchar(p);
 				if ( c == ':' ) {
 					value = json_read(p);
 					muse_hashtable_put( env, table, key, value );
 					_unwind(sp);
 
 					{
-						muse_char c = port_getc(p);
+						muse_char c = port_getchar(p);
 						if ( c == ',' ) {
 							return json_read_object_items( env, p, table );
 						} else if ( c == '}' ) {
@@ -548,7 +548,7 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_object_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getc(p);
+	muse_char c = port_getchar(p);
 	assert( c == '{' );
 	json_skip_whitespace(p);
 	
@@ -569,19 +569,19 @@ static muse_cell json_read_object_expr_items( muse_env *env, muse_port_t p, muse
 	if ( port_eof(p) ) 
 		return muse_raise_error( env, _csymbol(L"json:end-of-file-in-object"), MUSE_NIL );
 	else {
-		muse_char c = port_getc(p);
+		muse_char c = port_getchar(p);
 		if ( c == '}' ) {
 			return h;
 		} else {
 			muse_cell key, value;
-			port_ungetc(c,p);
+			port_ungetchar(c,p);
 
 			key = json_read_key(p);
 			json_skip_whitespace(p);
 			if ( port_eof(p) ) {
 				return muse_raise_error( env, _csymbol(L"json:end-of-file-in-object"), MUSE_NIL );
 			} else {
-				muse_char c = port_getc(p);
+				muse_char c = port_getchar(p);
 				if ( c == ':' ) {
 					muse_cell assoc;
 					value = json_read_expr(p);
@@ -597,7 +597,7 @@ static muse_cell json_read_object_expr_items( muse_env *env, muse_port_t p, muse
 					json_skip_whitespace(p);
 
 					{
-						muse_char c = port_getc(p);
+						muse_char c = port_getchar(p);
 						if ( c == ',' ) {
 							return json_read_object_expr_items( env, p, h, t, sp );
 						} else if ( c == '}' ) {

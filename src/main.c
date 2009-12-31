@@ -40,6 +40,7 @@ static const char *k_footer_signature				= "muSEexec";
 static const char *k_footer_print_format			= ";%010d muSEexec";
 static const char *k_footer_scan_format			= ";%d muSEexec";
 static const muse_char *k_main_function_name		= L"main";
+static const muse_char *k_program_string_name		= L"*program*";
 
 /**
  * A muSE executable is a binary file to the end of which souce code is
@@ -145,23 +146,10 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 		fwrite( buffer, 1, e_size, o );
 		free( buffer );
 
-		if ( new_exec ) 
-		{
-			/* Write out the beginning. */
-			int n = fprintf( o, 
-						"(define *PRELOADED-FILES* (hashtable))"
-						"(define *ORIGINAL-LOADER* load)"
-						"(set! load (fn (f)"
-						              "(if (*PRELOADED-FILES* f) 'T (*ORIGINAL-LOADER* f))))\n" 
-						);
-			e_size += n;
-			s_totalsize += n;
-		}
-
 		fclose(e);
 	}
 	
-	/* Copy the source files to the end. */
+	/* Copy the source files to the end. Each file is put into a (load #nnn[...]) expression. */
 	{
 		int ix = 1;
 		for ( ; ix < argc; ++ix )
@@ -170,22 +158,15 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 			
 			if ( s != NULL )
 			{
-				{
-					int n = fprintf( o, "\n;----------------------\n"
-						                "(put *PRELOADED-FILES* \"%s\" 'T)"
-										"\n;----------------------\n", argv[ix]  );
-					s_totalsize += n;
-				}
-
-				{
-					int s_size = fsize(s);
-					buffer = malloc( s_size );
-					fread( buffer, 1, s_size, s );
-					fwrite( buffer, 1, s_size, o );
-					free( buffer );
-					fclose(s);		
-					s_totalsize += s_size;
-				}
+				int s_size = fsize(s);
+				int n = fprintf( o, "(load #%d[", s_size );
+				buffer = malloc( s_size );
+				fread( buffer, 1, s_size, s );
+				fwrite( buffer, 1, s_size, o );
+				free( buffer );
+				fclose( s );
+				n += fprintf( o, "])\n" );
+				s_totalsize += n + s_size;
 			}
 		}
 	}
@@ -352,8 +333,21 @@ static muse_cell fn_repl( muse_env *env, args_t *context, muse_cell args )
 
 	if ( enable_repl )
 		muse_repl(env); 
+	else {
+		muse_cell sym_main = _csymbol(L"main");
+		muse_cell main = _symval(sym_main);
+
+		if ( (main != sym_main) && _isfn(main) ) {
+			_apply( main, MUSE_NIL, MUSE_TRUE );
+		}
+	}
+
 	return MUSE_NIL; 
 }
+
+#if defined(MUSE_PLATFORM_WINDOWS) && defined(MUSE_WINAPP)
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+#endif
 
 /**
  * Usage:
@@ -405,6 +399,10 @@ int main( int argc, char **argv )
 		{
 			muse_cell args = MUSE_NIL;
 			args_list_generator_data_t data;
+			
+			/* Set the "*program*" symbol to the string of the program name - i.e. argv[0]. */
+			_define( _csymbol(k_program_string_name), muse_mk_ctext_utf8( env, argv[0] ) );
+
 			data.argc = argc-1; /* Skip the first entry, which is the executable's path. */
 			data.argv = argv+1;
 			
@@ -426,8 +424,13 @@ int main( int argc, char **argv )
 	{
 		/* Its not an executable. Start the REPL. */
 		args_t args;
-		args.argc = argc-1;
+
+		/* Set the "*program*" symbol to the string of the program name - i.e. argv[0]. */
+		_define( _csymbol(k_program_string_name), muse_mk_ctext_utf8( env, argv[0] ) );
+
+		args.argc = argc-1; /* Skip the first entry, which is the executable's path. */
 		args.argv = argv+1;
+
 		muse_apply_top_level( env, _mk_nativefn((muse_nativefn_t)fn_repl,&args), MUSE_NIL );
 	}
 

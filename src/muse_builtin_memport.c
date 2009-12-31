@@ -202,7 +202,7 @@ static memport_type_t g_memport_type =
 
 MUSEAPI muse_port_t muse_create_memport( muse_env *env )
 {
-	return (muse_port_t)muse_create_object( env, (muse_functional_object_type_t*)&g_memport_type, MUSE_NIL );
+	return (muse_port_t)muse_create_and_init_object( env, (muse_functional_object_type_t*)&g_memport_type, MUSE_NIL );
 }
 
 /**

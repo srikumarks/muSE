@@ -45,6 +45,32 @@ typedef struct _module_t
 	muse_cell main;
 } module_t;
 
+/**
+ * Searches this module's symbols for a symbol defined to the given value.
+ * If any of the module's symbols is itself is a module, then it recursively
+ * searches the sub modules. The returned value is a list that gives the
+ * path through the module hierarchy to the value.
+ */
+muse_cell module_find_symbol_with_value( muse_env *env, void *obj, muse_cell value )
+{
+	module_t *m = (module_t*)obj;
+	int i = 0, N = m->length;
+	for ( ; i < N; ++i ) {
+		module_binding_t b = m->bindings[i];
+		if ( b.value == value )
+			return _cons( b.name, MUSE_NIL );
+		else {
+			module_t *m2 = (module_t*)muse_functional_object_data( env, b.value, 'mmod' );
+			if ( m2 ) {
+				muse_cell found = module_find_symbol_with_value( env, m2, value );
+				return found ? _cons( b.name, found ) : MUSE_NIL;
+			}
+		}
+	}
+
+	return MUSE_NIL;
+}
+
 static void module_init( muse_env *env, void *ptr, muse_cell args )
 {
 	int bsp = _bspos();

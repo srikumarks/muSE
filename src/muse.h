@@ -142,7 +142,7 @@ BEGIN_MUSE_C_FUNCTIONS
  * @subsection ML_IO Input and output
  *	- \ref PortIO
  *	- \ref fn_open_file "open-file", \ref fn_memport "memport", \ref fn_close "close"
- * 	- \ref fn_print "print", \ref fn_write "write", \ref fn_read "read", \ref fn_close "close"
+ * 	- \ref fn_print "print", \ref fn_write "write", \ref fn_read "read", \ref fn_read_line "read-line", \ref fn_close "close"
  *	- \ref fn_json "json", \ref fn_read_json "read-json" and \ref fn_write_json "write-json"
  *	- \ref fn_xml "xml", \ref fn_read_xml "read-xml" and \ref fn_write_xml "write-xml"
  *
@@ -295,6 +295,7 @@ typedef enum
 	MUSE_IT,							/**< it */
 	MUSE_THE,							/**< the */
 	MUSE_TIMEOUTVAR,					/**< [internal] */
+	MUSE_XMLSPLICE,						/**< ++ */
 	
 	MUSE_NUM_BUILTIN_SYMBOLS /**< Not a symbol. */
 } muse_builtin_symbol_t;
@@ -601,7 +602,7 @@ typedef struct
 	muse_cell self;
 } muse_functional_object_t;
 
-MUSEAPI muse_functional_object_t *muse_create_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
+MUSEAPI muse_functional_object_t *muse_create_and_init_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
 MUSEAPI void muse_destroy_object( muse_env *env, muse_functional_object_t *obj );
 MUSEAPI muse_cell muse_mk_functional_object( muse_env *env, muse_functional_object_type_t *type_info, muse_cell init_args );
 MUSEAPI muse_functional_object_t *muse_functional_object_data( muse_env *env, muse_cell fobj, int type_word );
@@ -699,6 +700,7 @@ MUSEAPI void		muse_mickey( muse_port_t in, muse_port_t out );
 MUSEAPI muse_port_t muse_create_memport( muse_env *env );
 MUSEAPI muse_cell	muse_read_xml_node( muse_port_t in );
 MUSEAPI muse_port_t muse_current_port( muse_env *env, muse_stdport_t which, muse_port_t port );
+MUSEAPI muse_cell	muse_pload( muse_port_t port );
 /*@}*/
 
 /**

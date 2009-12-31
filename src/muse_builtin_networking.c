@@ -156,7 +156,14 @@ static void prepare_for_network_poll( muse_env *env, SOCKET s, int cat )
 	FD_CLR( s, &(env->net->fdsets[2]) );
 }
 
-static muse_boolean poll_network( muse_env *env, SOCKET s, int cat )
+typedef enum 
+{
+	POLL_SOCKET_FAILED,
+	POLL_SOCKET_ERROR,
+	POLL_SOCKET_SET
+} poll_socket_status_t;
+
+static poll_socket_status_t poll_network( muse_env *env, SOCKET s, int cat )
 {
 	while ( !FD_ISSET(s, &(env->net->fdsets[cat])) )
 	{
@@ -179,7 +186,7 @@ static muse_boolean poll_network( muse_env *env, SOCKET s, int cat )
 					FD_ZERO( &(env->net->fdsets[0]) );
 					FD_ZERO( &(env->net->fdsets[1]) );
 					FD_ZERO( &(env->net->fdsets[2]) );
-					return MUSE_FALSE;
+					return POLL_SOCKET_FAILED;
 				}
 			}
 			else
@@ -188,11 +195,11 @@ static muse_boolean poll_network( muse_env *env, SOCKET s, int cat )
 			}
 
 			if ( FD_ISSET( s, &(env->net->fdsets[2]) ) )
-				return MUSE_FALSE;
+				return POLL_SOCKET_ERROR;
 		}
 	}
 
-	return MUSE_TRUE;
+	return POLL_SOCKET_SET;
 }
 
 /**
@@ -235,6 +242,7 @@ static void socket_close( void *s )
 	{
 		closesocket( p->socket );
 		p->socket = 0;
+		port_destroy( (muse_port_t)s );
 	}
 }
 
@@ -244,7 +252,7 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 	
 	muse_int result = SOCKET_ERROR;
 	
-	while ( result < 0 && poll_network( p->base.env, p->socket, 0 ) )
+	while ( result < 0 && poll_network( p->base.env, p->socket, 0 ) == POLL_SOCKET_SET )
 	{
 		result = recv( p->socket, buffer, (int)nbytes, 0 );
 		if ( result == 0 ) {
@@ -279,7 +287,7 @@ static size_t socket_write( void *buffer, size_t nbytes, void *s )
 	
 	while ( b < b_end )
 	{
-		bytes_sent = poll_network( p->base.env, p->socket, 1 ) ? send( p->socket, b, (int)(b_end - b), 0 ) : SOCKET_ERROR;
+		bytes_sent = (poll_network( p->base.env, p->socket, 1 ) == POLL_SOCKET_SET) ? send( p->socket, b, (int)(b_end - b), 0 ) : SOCKET_ERROR;
 		
 		if ( bytes_sent <= 0 )
 		{
@@ -394,7 +402,7 @@ muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 	prepare_for_network_poll( env, port->socket, 1 );
 	connect( port->socket, (struct sockaddr*)&(port->address), sizeof(port->address) );
 	
-	if ( !poll_network( env, port->socket, 1 ) ) 
+	if ( poll_network( env, port->socket, 1 ) != POLL_SOCKET_SET ) 
 	{
 		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Connection to server '%s:%d' failed!\n", serverStringAddress, portshort ); });
 		goto UNDO_CONN;
@@ -434,6 +442,8 @@ typedef struct muse_server_stream_socket__
  * @code
  * (with-incoming-connections-to-port 1234
  *   (fn (port client-info)
+ *      ...)
+ *   (fn ()   ; The "OnListening" function.
  *      ...))
  * @endcode
  * If the service function returns (), the server is terminated,
@@ -445,10 +455,13 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 {
 	short listenPort		= (short)_intvalue( _evalnext(&args) );
 	muse_cell handler		= _evalnext(&args);
+	muse_cell onlistening	= _evalnext(&args);
 	int sp					= _spos();
 	muse_server_stream_socket_t *conn = (muse_server_stream_socket_t*)calloc( 1, sizeof(muse_server_stream_socket_t) );
 	muse_cell result = MUSE_NIL;
-	
+		
+	TRY_AGAIN_FROM_THE_BEGINNING:
+
 	/* Create the socket we should listen to. */
 	conn->listenSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if ( conn->listenSocket == INVALID_SOCKET )
@@ -470,14 +483,14 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 		== SOCKET_ERROR
 		)
 	{
-		MUSE_DIAGNOSTICS3({ fprintf( stderr, "Couldn't bind listen-socket to local address.\n" ); });
+		muse_raise_error( env, _csymbol(L"error:bind-socket"), _cons( _mk_int(WSAGetLastError()), MUSE_NIL ) );
 		goto SHUTDOWN_SERVER;
 	}
 	
 	/* Use "listen" to set the connection backlog buffer. */
 	if ( listen( conn->listenSocket, SOMAXCONN ) == SOCKET_ERROR )
 	{
-		MUSE_DIAGNOSTICS3({ fprintf( stderr, "'listen' failed.\n" ); });
+		muse_raise_error( env, _csymbol(L"error:listen"), _cons( _mk_int(WSAGetLastError()), MUSE_NIL ) );
 		goto SHUTDOWN_SERVER;
 	}
 	
@@ -486,7 +499,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	 * won't listen for any more. 
 	 */
 	ACCEPT_CONNECTIONS:
-	MUSE_DIAGNOSTICS3({ fprintf( stderr, "Waiting for connections to port %d ...\n", ntohs(conn->localSocketAddress.sin_port) ); });
+	// Waiting for connections to port conn->localSocketAddress.sin_port
 	{
 		u_long nbmode = 1;
 		ioctlsocket( conn->listenSocket, FIONBIO, &nbmode );
@@ -497,11 +510,29 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 		struct sockaddr_in client_address;
 		SOCKET client = INVALID_SOCKET;
 		
-		prepare_for_network_poll( env, conn->listenSocket, 0 );
 		client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
-		if ( client == INVALID_SOCKET && poll_network( env, conn->listenSocket, 0 ) )
-		{
-			client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
+		
+		if ( onlistening ) {
+			int sp = _spos();
+			muse_apply( env, onlistening, MUSE_NIL, MUSE_TRUE, MUSE_FALSE );
+			_unwind(sp);
+			onlistening = MUSE_NIL;
+		}
+
+		POLL_AGAIN:
+		if ( client == INVALID_SOCKET ) {
+			prepare_for_network_poll( env, conn->listenSocket, 0 );
+			switch ( poll_network( env, conn->listenSocket, 0 ) ) {
+				case POLL_SOCKET_SET:
+					client = accept( conn->listenSocket, (struct sockaddr *)&client_address, &sockAddrSize );
+					break;
+				case POLL_SOCKET_FAILED:
+					goto POLL_AGAIN;
+				case POLL_SOCKET_ERROR:
+					if ( conn->listenSocket ) closesocket(conn->listenSocket);
+					memset( conn, 0, sizeof(muse_server_stream_socket_t) );
+					goto TRY_AGAIN_FROM_THE_BEGINNING;
+			}
 		}
 
 		if ( client != INVALID_SOCKET )
@@ -525,6 +556,8 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 			client_port->base.eof = 0;
 			client_port->base.error = 0;
 
+			muse_push_recent_scope(env);
+
 			/* Client connection accepted successfully. Call the handler. */
 			{
 				muse_cell handlerArgs = muse_list( env, "ct", 
@@ -539,10 +572,17 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 				_unwind(sp);
 				_spush(result);
 			}
+
+			muse_pop_recent_scope(env,handler,result);
+		}
+		else
+		{
+			result = muse_raise_error( env, _csymbol(L"error:invalid-socket"), _cons( _mk_int(WSAGetLastError()), MUSE_NIL ) );
 		}
 		
 		if ( result )
 		{
+			_unwind(sp);
 			goto ACCEPT_CONNECTIONS;
 		}
 	}
@@ -746,7 +786,7 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 
 	{
 		int result = 
-			poll_network( env, s->socket, 0 )
+			poll_network( env, s->socket, 0 ) == POLL_SOCKET_SET
 				? recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len )
 				: SOCKET_ERROR;
 
@@ -771,7 +811,7 @@ static size_t multicast_socket_write( void *buffer, size_t nbytes, void *p )
 	const struct sockaddr *addr = (const struct sockaddr *)(s->reply ? &s->src_addr : &s->dst_addr);
 	int addr_len = s->reply ? s->src_addr_len : sizeof(s->dst_addr);
 	int result = 
-			poll_network( env, s->socket, 1 )
+			poll_network( env, s->socket, 1 ) == POLL_SOCKET_SET
 				? sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len )
 				: SOCKET_ERROR;
 
@@ -1474,14 +1514,9 @@ static void lowercase_text( muse_env *env, muse_cell text )
 
 muse_cell fn_symbol( muse_env *env, void *context, muse_cell args );
 
-/**
- * @code (http-parse port) -> (('GET url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
- * @code (http-parse port) -> (('POST url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
- */
-muse_cell fn_http_parse( muse_env *env, void *context, muse_cell args )
+static muse_cell http_parse( muse_port_t p )
 {
-	muse_cell pcell = _evalnext(&args);
-	muse_port_t p = _port(pcell);
+	muse_env *env = p->env;
 
 	int sp = _spos();
 	buffer_t *reqline = buffer_alloc();
@@ -1541,12 +1576,133 @@ muse_cell fn_http_parse( muse_env *env, void *context, muse_cell args )
 				}
 			}
 
+			buffer_free(reqline);
 			return req;
 		}
 	} else {
 		buffer_free(reqline);
 		return MUSE_NIL;
 	}
+}
+
+/**
+ * @code (http-parse port) -> (('GET url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
+ * @code (http-parse port) -> (('POST url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
+ */
+muse_cell fn_http_parse( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell pcell = _evalnext(&args);
+	muse_port_t p = _port(pcell);
+
+	return http_parse(p);
+}
+
+static const char *http_codedesc( int code )
+{
+	switch ( code ) {
+      case 100: return "Continue";
+      case 101: return "Switching Protocols";
+      case 200: return "OK";
+      case 201: return "Created";
+      case 202: return "Accepted";
+      case 203: return "Non-Authoritative Information";
+      case 204: return "No Content";
+      case 205: return "Reset Content";
+      case 206: return "Partial Content";
+      case 300: return "Multiple Choices";
+      case 301: return "Moved Permanently";
+      case 302: return "Found";
+      case 303: return "See Other";
+      case 304: return "Not Modified";
+      case 305: return "Use Proxy";
+      case 307: return "Temporary Redirect";
+      case 400: return "Bad Request";
+      case 401: return "Unauthorized";
+      case 402: return "Payment Required";
+      case 403: return "Forbidden";
+      case 404: return "Not Found";
+      case 405: return "Method Not Allowed";
+      case 406: return "Not Acceptable";
+      case 407: return "Proxy Authentication Required";
+      case 408: return "Request Time-out";
+      case 409: return "Conflict";
+      case 410: return "Gone";
+      case 411: return "Length Required";
+      case 412: return "Precondition Failed";
+      case 413: return "Request Entity Too Large";
+      case 414: return "Request-URI Too Large";
+      case 415: return "Unsupported Media Type";
+      case 416: return "Requested range not satisfiable";
+      case 417: return "Expectation Failed";
+      case 500: return "Internal Server Error";
+      case 501: return "Not Implemented";
+      case 502: return "Bad Gateway";
+      case 503: return "Service Unavailable";
+      case 504: return "Gateway Time-out";
+      case 505: return "HTTP Version not supported";
+	  default: return NULL;
+	}
+}
+
+static void crlf( muse_port_t p )
+{
+	port_putc( 0x0d, p );
+	port_putc( 0x0a, p );
+}
+
+muse_cell fn_format( muse_env *env, void *context, muse_cell args );
+
+/**
+ * @code (http-respond port code headers-alist crlf?) @endcode
+ * Pass 0 for the code in to skip the response line
+ * and only write out headers.
+ */
+muse_cell fn_http_respond( muse_env *env, void *context, muse_cell args )
+{
+	muse_port_t p = (muse_port_t)muse_port( env, _evalnext(&args) );
+	int code = (int)muse_int_value( env, _evalnext(&args) );
+	muse_cell headers = _evalnext(&args);
+
+	/* Write the response line first. */
+	{
+		const char *codedesc = http_codedesc(code);
+		if ( codedesc ) {
+			char buffer[256];
+			int n = _snprintf( buffer, 256, "HTTP/1.1 %d %s", code, codedesc );
+			port_write( buffer, n, p ); 
+			crlf(p);
+		}
+	}
+
+	/* Write out all the headers given. */
+	{
+		int sp = _spos();
+		while ( headers ) {
+			muse_cell h = _next(&headers);
+			muse_cell key = _head(h);
+			muse_cell value = fn_format( env, NULL, _cons(_tail(h),MUSE_NIL) );
+			
+			if ( _cellt(key) != MUSE_SYMBOL_CELL ) continue; // Silently ignore the header.
+			if ( _cellt(value) != MUSE_TEXT_CELL ) continue; // Silenty ignore the header;
+
+			{
+				const muse_char *s = muse_symbol_name( env, key );
+				while (*s) { port_putc( *s++, p ); } 
+				port_putc( ':', p );
+				port_putc( ' ', p );
+				s = muse_text_contents( env, value, NULL );
+				while (*s) { port_putc( *s++, p ); }
+				crlf(p);
+			}
+
+			_unwind(sp);
+		}
+	}
+
+	if ( _evalnext(&args) )
+		crlf(p);
+
+	return MUSE_NIL;
 }
 
 void muse_define_builtin_networking(muse_env *env)
@@ -1563,6 +1719,7 @@ void muse_define_builtin_networking(muse_env *env)
 		{		L"multicast-group?",					fn_multicast_group_p					},
 		{		L"fetch-uri",							fn_fetch_uri							},
 		{		L"http-parse",							fn_http_parse							},
+		{		L"http-respond",						fn_http_respond							},
 		{		NULL,									NULL									}
 	};
 

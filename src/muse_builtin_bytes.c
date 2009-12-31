@@ -665,7 +665,7 @@ muse_cell fn_read_bytes( muse_env *env, void *context, muse_cell args )
 		{
 			if ( chunks_iter - chunks >= maxChunks )
 			{
-				int chunkIterIx = chunks_iter - chunks;
+				size_t chunkIterIx = chunks_iter - chunks;
 				maxChunks *= 2;
 				chunks = (bytes_t*)realloc( chunks, sizeof(bytes_t) * maxChunks );
 				chunks_iter = chunks + chunkIterIx;
@@ -781,6 +781,36 @@ muse_cell fn_string_to_bytes( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+void discard_utf8_header_port( muse_port_t p );
+
+/**
+ * @code (with-bytes-as-port bytes (fn (port) ...)) @endcode
+ *
+ * Applies the given function passing it a port object containing the
+ * data in the given bytes object. The port argument cannot be used
+ * outside the function call.
+ */
+muse_cell fn_with_bytes_as_port( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell bytes = _evalnext(&args);
+	muse_cell fn = _evalnext(&args);
+
+	void *data = muse_bytes_data( env, bytes, 0 );
+	size_t data_size = muse_bytes_size( env, bytes );
+	muse_port_t p = muse_create_memport( env );
+	muse_cell pcell = muse_mk_nativefn( env, p->base.type_info->fn, p );
+	p->mode |= MUSE_PORT_TRUSTED_INPUT;
+	port_write( data, data_size, p );
+	discard_utf8_header_port(p);
+
+	{
+		muse_cell result = _apply( fn, _cons(pcell,MUSE_NIL), MUSE_TRUE );
+		port_free(p);
+		_ptr(pcell)->fn.context = NULL;
+		return result;
+	}
+}
+
 MUSEAPI muse_cell muse_mk_bytes( muse_env *env, size_t s )
 {
 	return fn_bytes( env, NULL, _cons( _mk_int(s), MUSE_NIL ) );
@@ -814,6 +844,7 @@ void muse_define_builtin_type_bytes( muse_env *env )
 		{ fn_read_bytes,	L"read-bytes"	},
 		{ fn_copy_bytes,	L"copy-bytes"	},
 		{ fn_string_to_bytes, L"string->bytes" },
+		{ fn_with_bytes_as_port, L"with-bytes-as-port" },
 		{ NULL,				NULL			}
 	};
 

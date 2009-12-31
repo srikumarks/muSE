@@ -118,6 +118,7 @@ void muse_define_builtin_fileport(muse_env *env);
 /*@{*/
 void	port_init( muse_env *env, muse_port_base_t *p );
 void	port_destroy( muse_port_base_t *p );
+void	port_free( muse_port_t p );
 
 int		port_getc( muse_port_base_t *p );
 int		port_ungetc( int c, muse_port_base_t *p );
@@ -127,6 +128,9 @@ int		port_eof( muse_port_base_t *port );
 size_t	port_read( void *buffer, size_t nbytes, muse_port_base_t *port );
 size_t	port_write( void *buffer, size_t nbytes, muse_port_base_t *port );
 int		port_flush( muse_port_base_t *port );
+muse_char port_getchar( muse_port_base_t *p );
+muse_char port_putchar( muse_char c, muse_port_base_t *p );
+muse_char port_ungetchar( muse_char c, muse_port_base_t *p );
 /*@}*/
 
 /** @name Pretty printing */
