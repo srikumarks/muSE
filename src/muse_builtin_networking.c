@@ -1320,6 +1320,235 @@ static muse_cell fn_network_shutdown( muse_env *env, void *context, muse_cell ar
 	return MUSE_NIL;
 }
 
+static int http_readline( muse_port_t p, buffer_t *b, int limit )
+{
+	while ( !port_eof(p) && limit > 0 ) {
+		int c = port_getc(p);
+		if ( c == 0x0D ) {
+			c = port_getc(p);
+			if ( c == 0x0A )
+				return limit;
+			else {
+				buffer_putc( b, 0x0D );
+				--limit;
+			}
+		} else if ( c == 0x0A )
+			return limit;
+		else {
+			buffer_putc( b, (muse_char)c );
+			--limit;
+		}
+	}
+
+	return limit;
+}
+
+static int http_readheader( muse_port_t p, buffer_t *b, int limit )
+{
+	int count = 0;
+	while ( !port_eof(p) && limit > 3 ) {
+		int c = port_getc(p);
+		if ( c == 0x0D ) {
+			c = port_getc(p);
+			if ( c == 0x0A ) {
+				if ( count > 0 ) {
+					c = port_getc(p);
+					if ( c == ' ' || c == '\t' ) {
+						/* Continue. */
+						buffer_putc( b, 0x0D );
+						buffer_putc( b, 0x0A );
+						buffer_putc( b, c );
+						limit -= 3;
+						count += 3;
+					} else {
+						/* End of header. */
+						port_ungetc( c, p );
+						return limit;
+					}
+				} else {
+					/* New line reached right at start. */
+					return limit;
+				}
+			} else {
+				buffer_putc( b, 0x0D );
+				buffer_putc( b, c );
+				limit -= 2;
+				count += 2;
+			}
+		} else if ( c == 0x0A ) {
+			if ( count > 0 ) {
+				c = port_getc(p);
+				if ( c == ' ' || c == '\t' ) {
+					/* Continue. */
+					buffer_putc( b, 0x0A );
+					buffer_putc( b, c );
+					limit -= 2;
+					count += 2;
+				} else {
+					/* End of header. */
+					port_ungetc( c, p );
+					return limit;
+				}
+			} else {
+				/* New line reached right at start. */
+				return limit;
+			}
+		} else {
+			buffer_putc( b, c );
+			--limit;
+			++count;
+		}
+	}
+
+	return (limit > 3) ? limit : 0;
+}
+
+static int http_headerkey( buffer_t *b )
+{
+	int len = buffer_length(b);
+	int i = 0;
+	while ( i < len ) {
+		muse_char c = buffer_char( b, i );
+		if ( c == ':' )
+			return i;
+		else
+			++i;
+	}
+
+	return i;
+}
+
+static int http_headerval( buffer_t *b, int colon_pos ) 
+{
+	int len = buffer_length(b);
+	int i = colon_pos;
+	if ( buffer_char( b, i ) != ':' )
+		return len;
+	else {
+		++i;
+		while ( i < len ) {
+			muse_char c = buffer_char( b, i );
+			if ( c == ' ' || c == '\t' )
+				++i;
+			else 
+				return i;
+		}
+		return i;
+	}
+}
+
+static int http_readword( buffer_t *in, int from, buffer_t *out )
+{
+	int inlen = buffer_length(in);
+	while ( from < inlen ) {
+		muse_char c = buffer_char( in, from );
+		if ( c == ' ' || c == '\t' || c == 0x0D || c == 0x0A ) {
+			while ( c == ' ' || c == '\t' || c == 0x0D || c == 0x0A ) {
+				++from;
+				if ( from+1 < inlen ) 
+					c = buffer_char( in, from );
+				else
+					return from;
+			}
+			return from;
+		} else {
+			buffer_putc( out, c );
+			++from;
+		}
+	}
+
+	return from;
+}
+
+static void lowercase_text( muse_env *env, muse_cell text )
+{
+	int len = 0;
+	muse_char *str = (muse_char*)muse_text_contents( env, text, &len );
+	int i = 0;
+	for ( i = 0; i < len; ++i ) {
+		muse_char c = str[i];
+		if ( c >= 'A' && c <= 'Z' )
+			str[i] = (c - 'A') + 'a';
+	}
+}
+
+muse_cell fn_symbol( muse_env *env, void *context, muse_cell args );
+
+/**
+ * @code (http-parse port) -> (('GET url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
+ * @code (http-parse port) -> (('POST url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
+ */
+muse_cell fn_http_parse( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell pcell = _evalnext(&args);
+	muse_port_t p = _port(pcell);
+
+	int sp = _spos();
+	buffer_t *reqline = buffer_alloc();
+	if ( http_readline( p, reqline, 4096 ) > 0 ) {
+		muse_cell req = MUSE_NIL;
+
+		/* Parse the request line into its components. */
+		{
+			muse_cell get_or_post, url, ver;
+			buffer_t *word = buffer_alloc();
+			int nextWord = http_readword( reqline, 0, word );
+			get_or_post = buffer_to_symbol( word, env );
+			buffer_free(word); word = buffer_alloc();
+			nextWord = http_readword( reqline, nextWord, word );
+			url = buffer_to_string( word, env );
+			buffer_free(word); word = buffer_alloc();
+			nextWord = http_readword( reqline, nextWord, word );
+			ver = buffer_to_string( word, env );
+			buffer_free(word);
+			req = muse_cons( env, muse_list( env, "ccc", get_or_post, url, ver ), MUSE_NIL );
+			_unwind(sp);
+			_spush(req);
+		}
+
+		buffer_free(reqline);
+
+		{
+			muse_cell reqlast = req;
+			
+			/* Parse each header and append to the list. */
+			reqline = buffer_alloc();
+			while ( http_readheader( p, reqline, 4096 ) > 0 ) {
+				int len = buffer_length(reqline);
+				if ( len > 0 ) {
+					/* Valid header line read in. */
+					int pos = http_headerkey(reqline);
+					if ( pos < len ) {
+						muse_cell header = buffer_substring( reqline, env, 0, pos );
+						muse_cell value;
+						lowercase_text( env, header );
+						pos = http_headerval( reqline, pos );
+						value = buffer_substring( reqline, env, pos, len - pos );
+						header = _cons( _cons( fn_symbol( env, NULL, _cons(header,MUSE_NIL) ), value ), MUSE_NIL );
+						_sett( reqlast, header );
+						reqlast = header;
+						_unwind(sp);
+						_spush(req);
+						buffer_free(reqline);
+						reqline = buffer_alloc();
+					} else {
+						break;
+					}
+				} else {
+					/* Current read position is end of all headers 
+					   including the trailing extra newline. */
+					break;
+				}
+			}
+
+			return req;
+		}
+	} else {
+		buffer_free(reqline);
+		return MUSE_NIL;
+	}
+}
+
 void muse_define_builtin_networking(muse_env *env)
 {
 	struct funs_t { const muse_char *name; muse_nativefn_t fn; };
@@ -1333,6 +1562,7 @@ void muse_define_builtin_networking(muse_env *env)
 		{		L"reply",								fn_reply								},
 		{		L"multicast-group?",					fn_multicast_group_p					},
 		{		L"fetch-uri",							fn_fetch_uri							},
+		{		L"http-parse",							fn_http_parse							},
 		{		NULL,									NULL									}
 	};
 
