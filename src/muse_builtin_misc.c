@@ -322,6 +322,32 @@ muse_cell fn_alert( muse_env *env, void *context, muse_cell args )
 	return MUSE_NIL;
 }
 
+/**
+ * Returns a non-zero integer if the character doesn't need to
+ * be encoded for use in a URL. Otherwise it returns 0.
+ */
+static int urlclearchar( muse_char c )
+{
+	static int g_chartable_prepared = 0;
+	static unsigned char g_chartable[32];
+
+	if ( !g_chartable_prepared ) {
+		static const char *clearchars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.:/";
+		const char *ci = clearchars;
+		memset( g_chartable, 0, sizeof(g_chartable) );
+		for ( ; *ci; ++ci ) {
+			g_chartable[(*ci)>>3] |= (1 << ((*ci) & 7));
+		}
+		g_chartable_prepared = 1;
+	}
+
+	if ( (c & 0x7f) == c ) {
+		return g_chartable[c >> 3] & (1 << (c & 7));
+	} else {
+		return 0;
+	}
+}
+
 static muse_char hexdigit( int digit )
 {
 	if ( digit >= 0 && digit <= 9 )
@@ -374,7 +400,9 @@ muse_cell fn_urlencode( muse_env *env, void *context, muse_cell args )
 				return muse_raise_error( env, _csymbol(L"error:bad-url-component"), _cons(str, MUSE_NIL) );
 			}
 
-			if ( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '.' ) {
+			if ( c == ' ' ) {
+				ocstr[out++] = '+';
+			} else if ( urlclearchar(c) ) {
 				ocstr[out++] = c;
 			} else {
 				/* Encode the character. */
