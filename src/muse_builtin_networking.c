@@ -47,6 +47,8 @@ muse_cell fn_multicast_group_p( muse_env *env, void *context, muse_cell args );
 #	define closesocket(x) close(x)
 #	define ioctlsocket(a,b,c) ioctl(a,b,c)
 extern int errno;
+#	define WSAGetLastError() errno
+#	define _snprintf snprintf
 #else
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
@@ -178,7 +180,7 @@ static poll_socket_status_t poll_network( muse_env *env, SOCKET s, int cat )
 			{
 				/* We have to do the reduction. */
 				static const struct timeval g_tv = {0,500};
-				int nfds = select( FD_SETSIZE, &(env->net->fdsets[0]), &(env->net->fdsets[1]), &(env->net->fdsets[2]), &g_tv );
+				int nfds = select( FD_SETSIZE, &(env->net->fdsets[0]), &(env->net->fdsets[1]), &(env->net->fdsets[2]), (struct timeval *)&g_tv );
 				env->net->reductions++;
 
 				if ( nfds == SOCKET_ERROR )
@@ -341,7 +343,6 @@ static muse_port_type_t g_socket_type =
 muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 {
 	int sp					= _spos();
-	muse_cell result		= MUSE_NIL;
 	muse_cell servername	= _evalnext(&args);
 	muse_cell portnum		= _evalnext(&args);
 
@@ -623,7 +624,7 @@ typedef struct
 	SOCKET socket;
 	struct sockaddr_in dst_addr;
 	struct sockaddr_in src_addr;
-	int src_addr_len;
+	socklen_t src_addr_len;
 	struct ip_mreq mreq;
 	int reply;
 } multicast_socket_port_t;

@@ -126,7 +126,7 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 }
 
 #else // POSIX
-
+#include <sys/time.h>
 
 static muse_cell generate_files( muse_env *env, FILE *info, int i, muse_boolean *eol )
 {
@@ -546,6 +546,8 @@ static muse_cell whatis_0( muse_env *env, muse_cell thing )
 	}
 }
 
+#if MUSE_PLATFORM_WINDOWS
+
 static const muse_char *guess_mime_type( const muse_char *path )
 {
 	const muse_char *ext = PathFindExtensionW(path);
@@ -641,6 +643,18 @@ static muse_cell whatis_2( muse_env *env, muse_cell thing, muse_cell level1 )
 {
 	return level1;
 }
+#else
+
+static muse_cell whatis_1( muse_env *env, muse_cell thing )
+{
+	return whatis_0( env, thing );
+}
+
+static muse_cell whatis_2( muse_env *env, muse_cell thing, muse_cell level1 )
+{
+	return level1;
+}
+#endif
 
 /**
  * @code (whatis thing level) @endcode
@@ -879,7 +893,7 @@ muse_cell fn_temp_folder( muse_env *env, void *context, muse_cell args )
 		return MUSE_NIL;
 	}
 #else
-	return muse_add_recent_item( env, (muse_inf)fn_temp_folder, muse_mk_ctext( env, L"/tmp/" ) ) );
+	return muse_add_recent_item( env, (muse_int)fn_temp_folder, muse_mk_ctext( env, L"/tmp/" ) );
 #endif
 }
 
