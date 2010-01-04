@@ -131,12 +131,32 @@ muse_cell object_plist( muse_env *env, muse_cell obj )
 	return ((object_t*)muse_functional_object_data( env, obj, 'mobj' ))->plist;
 }
 
+/**
+ * This function is called whenever the object is used in the function
+ * position and invokes a method on the object. The first argument is 
+ * the method name to invoke (a symbol) and is followed by the arguments
+ * passed to the method.
+ *
+ * If a method with the given name is not found, then the property with
+ * key \c *invoke* is looked up and if found, it is placed in the function
+ * position with the entire expression as its argument list - with the
+ * object as the first argument, the invalid method key as the second
+ * argument with the given methods arguments following.
+ */
 static muse_cell fn_object_fn( muse_env *env, object_t *obj, muse_cell args )
 {
 	muse_cell key = _evalnext(&args);
 	muse_cell method = object_get_prop( env, obj, key, MUSE_NIL );
 
-	return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->base.self, args ), MUSE_FALSE, MUSE_FALSE ) );
+	if ( method )
+		return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->base.self, args ), MUSE_FALSE, MUSE_FALSE ) );
+	else {
+		method = object_get_prop( env, obj, _builtin_symbol(MUSE_GENERIC_INVOKE), MUSE_NIL );
+		if ( method )
+			return muse_add_recent_item( env, key, muse_apply( env, method, _cons( obj->base.self, _cons( key, args ) ), MUSE_FALSE, MUSE_FALSE ) );
+		else
+			return muse_raise_error( env, _csymbol(L"error:method-not-found"), _cons( obj->base.self, _cons( key, args ) ) );
+	}
 }
 
 static muse_functional_object_type_t g_object_type =
