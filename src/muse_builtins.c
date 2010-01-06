@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
+#if MUSE_PLATFORM_WINDOWS
+#include <windows.h>
+#endif
 
 static const struct _builtins 
 	{
@@ -1490,6 +1493,45 @@ muse_cell fn_trace( muse_env *env, void *context, muse_cell args )
 	}
 }
 
+#if MUSE_PLATFORM_WINDOWS
+/**
+ * Special code for Win32 to do roughly the same thing 
+ * as system() except that no console window should be opened.
+ * If you want to execute a command like "dir" or "copy",
+ * you need to do -
+ *   (system "cmd /c" "copy a.txt b.txt")
+ *
+ * Thanks to http://www.codeproject.com/KB/winsdk/runsilent.aspx
+ */
+static int muse_shell_execute( char *command_line )
+{
+	STARTUPINFOA si;
+	PROCESS_INFORMATION pi;
+	int exitCode = 0;
+
+	memset(&si, 0, sizeof(si));
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+
+	if ( !CreateProcessA( NULL, command_line, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi ) )
+		return -1;
+
+	WaitForSingleObject( pi.hProcess, INFINITE );
+	if ( !GetExitCodeProcess( pi.hProcess, &exitCode ) )
+		exitCode = 0;
+
+	CloseHandle( pi.hThread );
+	CloseHandle( pi.hProcess );
+	return exitCode;
+}
+#else
+/**
+ * For unix-like systems, we just use system().
+ */
+#define muse_shell_execute system
+#endif
+
 /**
  * (system cmd arg1 arg2 ...)
  * Executes the system command passing the given args.
@@ -1528,7 +1570,7 @@ muse_cell fn_system( muse_env *env, void *context, muse_cell args )
 		N += snprintf( command_line + N, 1024 - N, " \"%ls\"", muse_text_contents( env, val, NULL ) );
 	}
 	
-	return muse_mk_int( env, system( command_line ) );
+	return muse_mk_int( env, muse_shell_execute( command_line ) );
 #endif
 	
 }

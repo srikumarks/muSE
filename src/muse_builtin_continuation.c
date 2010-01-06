@@ -1115,6 +1115,6 @@ MUSEAPI muse_cell muse_apply_top_level( muse_env *env, muse_cell fn, muse_cell a
 										_mk_nativefn(fn_top_level_handler,NULL),
 										L"_"
 										);
-	port_putc('\n',p);
+//	port_putc('\n',p);
 	return _force(_eval(wrapped_expr));
 }
