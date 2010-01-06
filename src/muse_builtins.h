@@ -252,6 +252,8 @@ muse_cell fn_temp_folder( muse_env *env, void *context, muse_cell args );
 muse_cell fn_temp_file( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_lower( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_upper( muse_env *env, void *context, muse_cell args );
+muse_cell fn_sha1_hash( muse_env *env, void *context, muse_cell args );
+
 void muse_load_builtin_fns( muse_env *env );
 void muse_define_put_macro( muse_env *env );
 /*@}*/

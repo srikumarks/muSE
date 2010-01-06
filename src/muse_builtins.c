@@ -213,6 +213,7 @@ static const struct _builtins
 {		L"temp-file",				fn_temp_file				},
 {		L"to-lower",				fn_to_lower					},
 {		L"to-upper",				fn_to_upper					},
+{		L"sha1-hash",				fn_sha1_hash				},
 	
 {		NULL,			NULL				}
 };
