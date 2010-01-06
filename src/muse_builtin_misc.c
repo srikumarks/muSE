@@ -382,10 +382,10 @@ static int urlclearchar( muse_char c )
 
 static muse_char hexdigit( int digit )
 {
-	if ( digit >= 0 && digit <= 9 )
+	if ( digit >= 0 && digit < 10 )
 		return '0' + digit;
-	else if ( digit > 9 && digit <= 15 )
-		return 'a' + (digit - 9);
+	else if ( digit >= 10 && digit <= 15 )
+		return 'a' + (digit - 10);
 	else
 		return (muse_char)0;
 }
