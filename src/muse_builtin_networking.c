@@ -451,16 +451,76 @@ typedef struct muse_server_stream_socket__
  * If the service function returns (), the server is terminated,
  * otherwise the server will accept the next connection and service it.
  *
+ * @param port-number The port-number can be one of a few things -
+ *		- An integer giving the port number on which to accept connections
+ *		  from any internet address.
+ *		- A string such as "12345" giving a port number serving the same prupose as above.
+ *		- A string of the form "1.2.3.4:12345" where the portion before the
+ *		  colon ':' gives the IP address from which connections are accepted
+ *		  and the portion after the colon gives the port number on which
+ *		  connections are accepted. For example, if you pass "127.0.0.1:12345",
+ *		  then the server will only accept connections from the local machine
+ *		  on the port 12345.
+ *
  * @see fn_open()
  */
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args )
 {
-	short listenPort		= (short)_intvalue( _evalnext(&args) );
-	muse_cell handler		= _evalnext(&args);
-	muse_cell onlistening	= _evalnext(&args);
-	int sp					= _spos();
-	muse_server_stream_socket_t *conn = (muse_server_stream_socket_t*)calloc( 1, sizeof(muse_server_stream_socket_t) );
-	muse_cell result = MUSE_NIL;
+	muse_cell portSpec, handler, onlistening, result;
+	short listenPort; 
+	unsigned long bindAddr;
+	int sp;
+	muse_server_stream_socket_t *conn;
+
+
+	portSpec		= _evalnext(&args);
+	bindAddr		= htonl(INADDR_ANY);
+	switch ( _cellt(portSpec) ) {
+		case MUSE_INT_CELL: 
+			/* A simple port number. Allow binding to any address. */
+			listenPort = (short)_intvalue(portSpec); 
+			break;
+		case MUSE_TEXT_CELL:
+			/* A string in "1.2.3.4:12345" format giving the IP address
+			from which connections are allowed and the port on which to listen. */
+			{
+				char address[128];
+				int portSpecLen;
+				const muse_char *portSpecStr = _text_contents( portSpec, &portSpecLen );
+				size_t len = muse_unicode_to_utf8( address, 128, portSpecStr, portSpecLen ); 
+				address[len] = '\0';
+				{
+					char *colon = strchr( address, ':' );
+					if ( colon ) {
+						colon[0] = '\0';
+						++colon;
+						listenPort = atoi(colon);
+						bindAddr = inet_addr(address);
+						if ( bindAddr == INADDR_NONE ) {
+							/* Address not in 123.234.12.23 form. Treat it as a name and look it up in the name server. */
+							struct hostent *ent = gethostbyname( address );
+
+							if ( ent == NULL || ent->h_length == 0 )
+								return muse_raise_error( env, _csymbol(L"error:invalid-port-spec"), _cons( portSpec, MUSE_NIL ) );
+
+							bindAddr = *(in_addr_t*)ent->h_addr;
+						}
+					} else {
+						listenPort = atoi(address);
+					}
+				}
+				break;
+			}
+			break;
+		default:
+			return muse_raise_error( env, _csymbol(L"error:invalid-port-spec"), _cons( portSpec, MUSE_NIL ) );
+	}
+
+	handler		= _evalnext(&args);
+	onlistening	= _evalnext(&args);
+	sp			= _spos();
+	conn		= (muse_server_stream_socket_t*)calloc( 1, sizeof(muse_server_stream_socket_t) );
+	result		= MUSE_NIL;
 		
 	TRY_AGAIN_FROM_THE_BEGINNING:
 
@@ -477,7 +537,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	
 	/* Setup the localSocketAddress */
 	conn->localSocketAddress.sin_family			= AF_INET;
-	conn->localSocketAddress.sin_addr.s_addr	= htonl(INADDR_ANY);
+	conn->localSocketAddress.sin_addr.s_addr	= bindAddr;
 	conn->localSocketAddress.sin_port			= htons(listenPort);
 	
 	/* Bind listenSocket to the local address/port combo. */
