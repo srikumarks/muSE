@@ -12,6 +12,7 @@
 
 #include "muse_opcodes.h"
 #include "muse_port.h"
+#include "muse_utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

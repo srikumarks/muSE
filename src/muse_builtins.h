@@ -19,6 +19,8 @@
 #include "muse_builtin_math.h"
 #endif
 
+BEGIN_MUSE_C_FUNCTIONS
+
 /** @addtogroup CoreLanguage Core language */
 /*@{*/
 muse_cell fn_quote( muse_env *env, void *context, muse_cell args );
@@ -252,7 +254,6 @@ muse_cell fn_temp_folder( muse_env *env, void *context, muse_cell args );
 muse_cell fn_temp_file( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_lower( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_upper( muse_env *env, void *context, muse_cell args );
-muse_cell fn_sha1_hash( muse_env *env, void *context, muse_cell args );
 
 void muse_load_builtin_fns( muse_env *env );
 void muse_define_put_macro( muse_env *env );
@@ -285,5 +286,6 @@ void muse_define_builtin_local(muse_env *env);
 void muse_register_com_support( muse_env *env );
 void muse_define_xml_codes(muse_env *env);
 
+END_MUSE_C_FUNCTIONS
 
 #endif /* __MUSE_BUILTINS_H__ */

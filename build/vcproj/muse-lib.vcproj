@@ -462,6 +462,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_builtin_crypto.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_builtin_fileport.c"
 				>
 			</File>
@@ -554,6 +558,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\muse_utils.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\muse_win32_com.c"
 				>
 			</File>
@@ -589,6 +597,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\muse_port.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\muse_utils.h"
 				>
 			</File>
 			<File

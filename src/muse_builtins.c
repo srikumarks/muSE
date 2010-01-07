@@ -213,13 +213,13 @@ static const struct _builtins
 {		L"temp-file",				fn_temp_file				},
 {		L"to-lower",				fn_to_lower					},
 {		L"to-upper",				fn_to_upper					},
-{		L"sha1-hash",				fn_sha1_hash				},
 	
 {		NULL,			NULL				}
 };
 
 void muse_define_builtin_memport(muse_env *env);
 void muse_define_image_properties( muse_env *env );
+void muse_define_crypto( muse_env *env );
 
 void muse_load_builtin_fns(muse_env *env)
 {
@@ -248,6 +248,7 @@ void muse_load_builtin_fns(muse_env *env)
 	muse_register_com_support(env);
 	muse_define_image_properties(env);
 	muse_define_xml_codes(env);
+	muse_define_crypto(env);
 }
 
 /**

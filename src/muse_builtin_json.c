@@ -14,6 +14,7 @@
 
 #include "muse_builtins.h"
 #include "muse_port.h"
+#include "muse_utils.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -244,28 +245,6 @@ static muse_cell json_read_number( muse_port_t p )
 	return muse_pread(p);
 }
 
-static int hexdigit( muse_char c )
-{
-	if ( c >= '0' && c <= '9' )
-		return (int)(c - '0');
-	else if ( c >= 'a' && c <= 'f' )
-		return 10 + (int)(c - 'a');
-	else if (c >= 'A' && c <= 'F' )
-		return 10 + (int)(c - 'A');
-	else {
-		assert( 0 && "invalid hex digit" );
-		return -1;
-	}
-}
-
-static int hexchar( muse_char hex4[4] )
-{
-	return (hexdigit(hex4[0]) << 12) +
-			(hexdigit(hex4[1]) << 8) +
-			(hexdigit(hex4[2]) << 4) +
-			hexdigit(hex4[3]);
-}
-
 static muse_cell json_read_key( muse_port_t p )
 {
 	muse_env *env = p->env;
@@ -309,7 +288,7 @@ static muse_cell json_read_string( muse_port_t p )
 							d[1] = port_getchar(p);
 							d[2] = port_getchar(p);
 							d[3] = port_getchar(p);
-							buffer_putc( b, hexchar(d) );
+							buffer_putc( b, hex2word(d) );
 							break;								
 						}
 					default:
