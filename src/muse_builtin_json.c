@@ -324,7 +324,7 @@ static muse_cell json_read_array_items( muse_env *env, muse_port_t p, muse_cell 
 static muse_cell json_read_array( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getchar(p);
+	muse_debug_only(muse_char c =) port_getchar(p);
 	assert( c == '[' );
 	json_skip_whitespace(p);
 	return json_read_array_items( env, p, MUSE_NIL, MUSE_NIL, 0 );
@@ -381,7 +381,7 @@ muse_cell fn_vector_from_args( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_array_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getchar(p);
+	muse_debug_only(muse_char c =) port_getchar(p);
 	assert( c == '[' );
 	json_skip_whitespace(p);
 	return json_share_array_expr( 
@@ -471,7 +471,7 @@ static muse_cell json_read_object_items( muse_env *env, muse_port_t p, muse_cell
 static muse_cell json_read_object( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getchar(p);
+	muse_debug_only(muse_char c =) port_getchar(p);
 	assert( c == '{' );
 	json_skip_whitespace(p);
 	return json_read_object_items( env, p, muse_mk_hashtable( env, 8 ) );
@@ -527,7 +527,7 @@ muse_cell fn_alist_to_hashtable( muse_env *env, void *context, muse_cell args );
 static muse_cell json_read_object_expr( muse_port_t p )
 {
 	muse_env *env = p->env;
-	muse_char c = port_getchar(p);
+	muse_debug_only(muse_char c =) port_getchar(p);
 	assert( c == '{' );
 	json_skip_whitespace(p);
 	

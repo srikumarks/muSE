@@ -168,7 +168,6 @@ muse_cell muse_bind_copy_expr( muse_env *env, muse_cell body, muse_boolean list_
 						/* Note that in the case of fn_define, we don't unwind the bindings
 						stack because the new definition should be in effect for the 
 						rest of the body that contains the definition. */
-						muse_cell c = MUSE_NIL;
 						muse_cell name = _head(_tail(body));
 						anonymize_formals( env, name );
 						return _cons( h, _cons( name, muse_bind_copy_expr( env, _tail(_tail(body)), MUSE_FALSE ) ) );

@@ -381,7 +381,7 @@ static muse_cell symbol_isa_fn( muse_env *env, void *context, muse_cell symbol )
 	return _isfn(_symval(symbol)) ? _builtin_symbol(MUSE_T) : MUSE_NIL;
 }
 
-static inline intmin( int m, int n )
+static inline int intmin( int m, int n )
 {
 	return (m < n) ? m : n;
 }

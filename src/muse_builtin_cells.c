@@ -537,6 +537,7 @@ void muse_define_builtin_local(muse_env *env)
 {
 	int sp = _spos();
 	_define( _csymbol(L"local"), muse_mk_functional_object( env, &g_local_declaration_type, MUSE_NIL ) );
+	_unwind(sp);
 }
 
 /*@}*/

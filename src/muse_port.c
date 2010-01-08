@@ -191,7 +191,7 @@ int port_ungetc( int c, muse_port_base_t *p )
  */
 int port_putc( int c, muse_port_base_t *p )
 {
-	muse_env *env = p->env;
+	muse_debug_only(muse_env *env = p->env;)
 
 	muse_port_buffer_t *b = &p->out;
 	
@@ -252,7 +252,7 @@ void port_close( muse_port_base_t *p )
  */
 size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
 {
-	muse_env *env = port->env;
+	muse_debug_only(muse_env *env = port->env;)
 
 	muse_port_buffer_t *in	= &port->in;
 	unsigned char *b		= (unsigned char *)buffer;
@@ -322,7 +322,7 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
  */
 size_t port_write( void *buffer, size_t nbytes, muse_port_base_t *port )
 {
-	muse_env *env = port->env;
+	muse_debug_only(muse_env *env = port->env;)
 	muse_port_buffer_t *out	= &port->out;
 	
 	if ( port->error || nbytes == 0 )
@@ -468,7 +468,6 @@ void pretty_printer_indent( muse_port_t p )
 {
 	if ( p->pretty_print )
 	{
-		muse_env *env = p->env;
 		if ( p->pp_align_level + 1 >= p->pp_max_indent_cols )
 		{
 			p->pp_max_indent_cols *= 2;
@@ -483,7 +482,7 @@ void pretty_printer_unindent( muse_port_t p )
 {
 	if ( p->pretty_print )
 	{
-		muse_env *env = p->env;
+		muse_debug_only(muse_env *env = p->env;)
 		muse_assert( p->pp_align_level > 0 );
 		--(p->pp_align_level);
 	}
@@ -833,7 +832,7 @@ static ez_result_t _read_hex( muse_port_t f, int col )
  */
 static ez_result_t _read_string( muse_port_t f, int col )
 {
-	muse_env *env = f->env;
+	muse_debug_only(muse_env *env = f->env;)
 
 	int col_end = col;
 	char c = port_getc(f);
@@ -1561,7 +1560,7 @@ static size_t muse_print_text( muse_port_t f, muse_cell t, muse_boolean quote )
 			}
 			else
 			{
-				char utf8[4];
+				unsigned char utf8[4];
 				int n = uc16_to_utf8( *c, utf8, 4 );
 				port_write( utf8, n, f );
 				++total;
@@ -1856,7 +1855,8 @@ ez_result_t ez_parse_atom( muse_port_t p, int col )
 ez_result_t ez_parse_group( muse_port_t p, int col )
 {
 	muse_env *env = p->env;
-	int c = port_getc(p);
+
+	muse_debug_only(int c =) port_getc(p);
 	
 	muse_assert( c == '(' || c == '{' );
 	
@@ -1941,7 +1941,8 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 ez_result_t ez_parse_list( muse_port_t p, int col )
 {
 	muse_env *env = p->env;
-	int c = port_getc(p);
+
+	muse_debug_only(int c =) port_getc(p);
 	
 	muse_assert( c == '[' );
 	

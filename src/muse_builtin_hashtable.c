@@ -198,7 +198,6 @@ static void hashtable_rehash( muse_env *env, hashtable_t *h, int new_bucket_coun
 	h->buckets = new_buckets;
 }
 
-#ifndef NDEBUG
 muse_cell fn_hashtable_stats( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell ht = _evalnext(&args);
@@ -228,7 +227,6 @@ muse_cell fn_hashtable_stats( muse_env *env, void *context, muse_cell args )
 	
 	return MUSE_NIL;
 }
-#endif
 
 static muse_cell *hashtable_add( muse_env *env, hashtable_t *h, muse_cell key, muse_cell value, muse_int *hash_opt )
 {
@@ -751,7 +749,6 @@ static muse_cell h2a_generator( muse_env *env, h2a_data_t *data, int i, muse_boo
  */
 muse_cell fn_hashtable_to_alist( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell result = MUSE_NIL;
 	muse_cell ht = _evalnext(&args);
 	hashtable_t *h = (hashtable_t*)_functional_object_data(ht,'hash');
 	
@@ -776,9 +773,7 @@ static const struct _defs
 	{	L"hashtable-size",	fn_hashtable_size		},
 	{	L"hashtable",			fn_alist_to_hashtable	},
 	{	L"hashtable->alist",	fn_hashtable_to_alist	},
-#ifndef NDEBUG
 	{	L"hashtable-stats",	fn_hashtable_stats		},
-#endif
 	{	NULL,					NULL					}
 };
 

@@ -1461,7 +1461,7 @@ muse_cell fn_the( muse_env *env, void *context, muse_cell args )
 	muse_int ikey = key;
 
 	if ( _cellt(key) == MUSE_NATIVEFN_CELL ) {
-		ikey = (muse_int)(_ptr(key)->fn.fn);
+		ikey = (muse_int)(size_t)(_ptr(key)->fn.fn);
 	}
 
 	{

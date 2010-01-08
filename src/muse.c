@@ -898,7 +898,6 @@ MUSEAPI muse_cell muse_symbol( muse_env *env, const muse_char *start, const muse
 		return sym;
 	else
 	{
-		muse_stack *ss = _symstack();
 		int local_ix = _newlocal();
 		
 		/* sym -> ( . ) */
@@ -991,7 +990,6 @@ MUSEAPI muse_cell muse_mk_anon_symbol(muse_env *env)
 	
 	int p = _spos();
 	
-	muse_cell symval	= sym;
 	muse_cell symplist	= _cons( _cons( _mk_int(sym),
 												MUSE_NIL ),
 									 MUSE_NIL );

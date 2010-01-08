@@ -13,6 +13,7 @@
 
 #include "muse_builtins.h"
 #include <string.h>
+#include <stdlib.h>
 #include "muse_port.h"
 #include "muse_utils.h"
 
@@ -330,8 +331,7 @@ muse_cell fn_split( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell strc = _evalnext(&args);
 	muse_cell sep = _evalnext(&args);
-	muse_cell result = MUSE_NIL;
-	
+
 	struct separator_state_t state;
 	state.str = _text_contents(strc,NULL);
 	state.sep = _text_contents(sep,NULL);
@@ -526,11 +526,9 @@ static muse_cell whatis_0( muse_env *env, muse_cell thing )
 	}
 }
 
-#if MUSE_PLATFORM_WINDOWS
-
 static const muse_char *guess_mime_type( const muse_char *path )
 {
-	const muse_char *ext = PathFindExtensionW(path);
+	const muse_char *ext = wcsrchr( path, '.' );
 	if ( ext && ext[0] == '.' ) {
 		static const muse_char *s_mime_type_map[] = 
 		{
@@ -568,6 +566,8 @@ static const muse_char *guess_mime_type( const muse_char *path )
 
 	return NULL;
 }
+
+#if MUSE_PLATFORM_WINDOWS
 
 muse_cell fn_new( muse_env *env, void *context, muse_cell args );
 

@@ -136,11 +136,11 @@ typedef struct
 	muse_char chars[BUFFER_MAXFRAGLEN];
 } fragment_t;
 
-typedef struct __buffer_t__
+struct __buffer_t__
 {
 	int N;
 	fragment_t **frags;
-} buffer_t;
+};
 
 
 /**
@@ -304,7 +304,6 @@ muse_cell buffer_substring( buffer_t *b, muse_env *env, int from, int len )
 		muse_char *ctext = (muse_char *)muse_text_contents( env, text, NULL );
 		int fromFrag = from / BUFFER_MAXFRAGLEN;
 		int toFrag = (from + len) / BUFFER_MAXFRAGLEN;
-		int i = 0;
 
 		while ( fromFrag < toFrag ) {
 			int fromIx = from % BUFFER_MAXFRAGLEN;

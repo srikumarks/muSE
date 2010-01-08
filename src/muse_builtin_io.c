@@ -378,8 +378,6 @@ static void mickey_mode( muse_port_t in, muse_port_t out );
  */
 MUSEAPI void muse_mickey( muse_port_t in, muse_port_t out )
 {
-	muse_env *env = in->env;
-
 	while ( !port_eof(in) && in->error == 0 )
 	{
 		/* Free state - no mickey expression.

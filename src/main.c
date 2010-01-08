@@ -180,7 +180,7 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 	When loading source, this sequence will be ignored
 	because it will appear as a comment. */
 	{
-		int n = fprintf( o, k_footer_print_format, s_totalsize );
+		muse_debug_only(int n =) fprintf( o, k_footer_print_format, s_totalsize );
 		muse_assert( n == MUSE_FOOTER_SIZE );
 		fclose(o);
 	}

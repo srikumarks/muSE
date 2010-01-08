@@ -38,7 +38,7 @@ static void notify( muse_env *env, muse_cell key, NSString *keyStr, id obj, SEL 
 	
 	if ( main_scm ) {
 		// Load it.
-		FILE *f = fopen( [main_scm cString], "rb" );
+		FILE *f = fopen( [main_scm UTF8String], "rb" );
 		muse_assert( f != NULL );
 		muse_load( env, f );
 		fclose(f);

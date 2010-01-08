@@ -120,8 +120,10 @@ static void objcobj_write( muse_env *env, void *ptr, void *port )
 			muse_pwrite( port, ((MuseObject*)obj->obj)->obj );
 		} else {
 			NSString *desc = [obj->obj description];
+			const char *utf8sz = [desc UTF8String];
+			size_t utf8sz_len = strlen(utf8sz);
 			port_putc( ' ', port );
-			port_write( [desc cString], [desc cStringLength], port );
+			port_write( utf8sz, utf8sz_len, port );
 		}
 	}
 	port_putc( '}', port );

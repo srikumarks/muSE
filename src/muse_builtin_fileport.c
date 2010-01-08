@@ -530,8 +530,6 @@ static void write_utf8_header( muse_env *env, fileport_t *p )
 
 void discard_utf8_header_port( muse_port_t p )
 {
-	muse_env *env = p->env;
-
 	/* We're at the head. Check if the file has the UTF8 3-byte indicator.
 	If so, strip it out, since we don't need it. We only accept UTF8 anyway. 
 	This is Windows specific really, but it helps for unix implementations
@@ -568,7 +566,10 @@ void discard_utf8_header_port( muse_port_t p )
 
 	if ( nbytes > 0 )
 	{
-		muse_assert( p->in.pos == 0 && p->in.avail == 0 );
+		muse_debug_only({
+			muse_env *env = p->env;
+			muse_assert( p->in.pos == 0 && p->in.avail == 0 );
+		});
 		memcpy( p->in.bytes, c, nbytes );
 		p->in.avail += (int)nbytes;
 	}

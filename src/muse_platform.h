@@ -79,8 +79,10 @@ BEGIN_MUSE_C_FUNCTIONS
 	MUSEAPI void muse_assert_failed( void *env, const char *file, int line, const char *condtext );
 END_MUSE_C_FUNCTIONS
 #	define muse_assert( cond ) { if ( !(cond) ) muse_assert_failed( env, __FILE__, __LINE__, #cond ); }
+#	define muse_debug_only(expr) expr
 #else
 #	define muse_assert( cond )
+#	define muse_debug_only(expr)
 #endif
 
 #if MUSE_DIAGNOSTICS_LEVEL > 0

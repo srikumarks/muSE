@@ -253,7 +253,6 @@ muse_cell fn_new( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_supers( muse_env *env, void *context, muse_cell args )
 {
-	muse_cell orig_args = args;
 	muse_cell obj = _evalnext(&args);
 	object_t *it = (object_t*)muse_functional_object_data( env, obj, 'mobj' );
 	if ( it ) {

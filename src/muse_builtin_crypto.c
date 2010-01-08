@@ -218,9 +218,9 @@ muse_cell fn_sha1_hash( muse_env *env, void *context, muse_cell args )
 		int len = 0;
 		const muse_char *str = muse_text_contents( env, thing, &len );
 		size_t usz = muse_utf8_size( str, len );
-		unsigned char *buffer = (unsigned char *)calloc( usz, 1 );
+		char *buffer = (char *)calloc( usz, 1 );
 		usz = muse_unicode_to_utf8( buffer, usz, str, len );
-		s = sha1_hash_bytes( buffer, usz );
+		s = sha1_hash_bytes( (const unsigned char *)buffer, usz );
 		free(buffer);
 	} else {
 		return muse_raise_error( env, _csymbol(L"error:bad-sha1-data-source"), _cons( thing, MUSE_NIL ) );
@@ -450,9 +450,9 @@ muse_cell fn_md5_hash( muse_env *env, void *context, muse_cell args )
 		int len = 0;
 		const muse_char *str = muse_text_contents( env, thing, &len );
 		size_t usz = muse_utf8_size( str, len );
-		unsigned char *buffer = (unsigned char *)calloc( usz, 1 );
+		char *buffer = (char *)calloc( usz, 1 );
 		usz = muse_unicode_to_utf8( buffer, usz, str, len );
-		m = md5_hash_bytes( buffer, usz );
+		m = md5_hash_bytes( (const unsigned char *)buffer, usz );
 		free(buffer);
 	} else {
 		return muse_raise_error( env, _csymbol(L"error:bad-md5-data-source"), _cons( thing, MUSE_NIL ) );

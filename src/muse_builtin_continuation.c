@@ -85,7 +85,6 @@ static muse_cell *copy_current_bindings( muse_env *env, int *size )
 {
 	muse_stack *s = &(env->current_process->locals);
 	muse_cell *copy = NULL;
-	int i = 0;
 
 	(*size) = env->num_symbols;
 	copy = (muse_cell*)malloc( sizeof(muse_cell) * (*size) );
@@ -97,8 +96,6 @@ static muse_cell *copy_current_bindings( muse_env *env, int *size )
 
 static void restore_bindings( muse_env *env, muse_cell *bindings, int size )
 {
-	muse_cell *end = bindings + size;
-	
 	muse_assert( size >= 0 );
 
 	memcpy( env->current_process->locals.bottom, bindings, sizeof(muse_cell) * size );
@@ -1106,7 +1103,6 @@ muse_cell fn_top_level_handler( muse_env *env, void *context, muse_cell args )
  */
 MUSEAPI muse_cell muse_apply_top_level( muse_env *env, muse_cell fn, muse_cell args )
 {
-	muse_port_t p = muse_stdport(env,MUSE_STDERR_PORT);
 	muse_cell wrapped_expr = muse_list( env, "Sc(Sc(cS))", 
 										L"try",
 										_cons( fn, args ),
@@ -1115,6 +1111,6 @@ MUSEAPI muse_cell muse_apply_top_level( muse_env *env, muse_cell fn, muse_cell a
 										_mk_nativefn(fn_top_level_handler,NULL),
 										L"_"
 										);
-//	port_putc('\n',p);
+
 	return _force(_eval(wrapped_expr));
 }
