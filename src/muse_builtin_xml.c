@@ -34,17 +34,16 @@ static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
  *    )
  * @endcode
  *
- * If the xml-node is given as a function, the next argument will
- * be checked whether it is an object and if so, the function will
- * be applied to the object as the sole argument. If no object is
- * given, the function will be applied to () as the sole argument.
- * This is handy to work with templated XML, in particular with
- * constant XML expressions where you don't need to give an object.
- * The templated portions of the xml can also evaluate to functions
- * instead of s-xml expressions. Such functions will be applied to
- * () automatically to derive the object. This handy within the
- * templating functions to return bits of XML written using XML
- * syntax itself.
+ *	-	The xml-node can be a list of the form shown above or
+ *		a function of a single object that yields such a list.
+ *	-	If xml-node is a function, it is applied to the object
+ *		passed as the next argument, or nil if no such argument 
+ *		has been given.
+ *	-	If the function yields another function, that function
+ *		is applied to nil to get the xml tree to write out.
+ *		This is done as many times as necessary to get at the
+ *		xml tree. Doing it this way allows functions to yield
+ *		constant xml expressions using inline xml syntax.
  *
  * The flags is a list of symbols that indicate features to use.
  * The only one feature you can indicate is 'with-header
@@ -333,6 +332,8 @@ static muse_cell xml_read_tag_body( muse_env *env, muse_port_t p, muse_cell tag,
  * Reads the XML expression immediately following {xml}
  * as a value. This way you can use XML data inline in
  * muSE code. 
+ *
+ * @see fn_read_xml
  */
 muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
 {
@@ -344,7 +345,8 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
  * @code (read-xml [port]) @endcode
  *
  * Reads one xml node (a simple subset of xml) and returns it in the 
- * canonical form.
+ * canonical form: A function of an object that yields a list
+ * of the form -
  * @code
  * <tag attr1="v1" attr2="v2">hello <b>world</b></tag>
  * @endcode
@@ -353,6 +355,7 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
  * (tag ((attr1 . "v1") (attr2 . "v2")) "hello" (b () "world"))
  * @endcode
  *
+ * For constant xml expressions, the following simple rules apply -
  *	- Comments are skipped,
  *	- processing instructions are skipped,
  *	- only UTF-8 is supported,
@@ -364,6 +367,25 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
  *	- attr='value' and attr="value" notations are the only ones supported.
  *	- read-xml followed by write-xml should essentially be an identity operation,
  *	- if you don't give a port argument, it reads a node from the standard input.
+ *
+ * For constant xml expressions, the overhead of calling the function
+ * with nil argument is negligible since the entire constant part
+ * appears quoted. 
+ *
+ * For variable xml expressions, the function serves as a compiler 
+ * for the xml template. The following templating facilities are available -
+ *	- The value part of attribute specifications, if they start with an open
+ *	  parenthesis '(' is taken to mean an s-expression which has to be evaluated
+ *	  to get the value of the attribute. The result is coerced into a string.
+ *	  The expression may use any standard muSE function and can refer to the
+ *	  context object using the symbol '@' (without the quotes).
+ *	- An xml tag whose tag symbol starts with the '@' character such as
+ *	  @code <@style-string label="STYLENAME"/> @endcode is treated
+ *	  specially. The context object is queried for a function using the key
+ *	  such as @code '@style-string @endcode. That function is then applied to a list whose
+ *	  first argument is the context object, the second argument is an a-list
+ *	  giving the attributes and values and the rest of the arguments are the
+ *	  the tag's body.
  *
  * Supports \ref fn_the "the"
  */
