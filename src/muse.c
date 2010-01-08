@@ -2073,7 +2073,7 @@ void muse_mark_recent_context( muse_env *env, recent_t *r, int ctxt )
 void muse_mark_recent( muse_env *env, recent_t *r )
 {
 	int i;
-	for ( i = 0; i <= r->entries.top; ++i ) {
+	for ( i = 0; i < r->entries.top; ++i ) {
 		muse_mark( env, r->entries.vec[i].value );
 	}
 }
