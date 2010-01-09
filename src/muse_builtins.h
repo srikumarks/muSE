@@ -123,7 +123,7 @@ muse_cell syntax_cond( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_do( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_while( muse_env *env, void *context, muse_cell args );
 muse_cell syntax_for( muse_env *env, void *context, muse_cell args );
-muse_cell fn_stats( muse_env *env, void *context, muse_cell args );
+muse_cell fn_the( muse_env *env, void *context, muse_cell args );
 /*@}*/
 
 /** @addtogroup TypeChecking Type checking */
@@ -144,6 +144,7 @@ muse_cell fn_whatis( muse_env *env, void *context, muse_cell args );
 muse_cell fn_int( muse_env *env, void *context, muse_cell args );
 muse_cell fn_float( muse_env *env, void *context, muse_cell args );
 muse_cell fn_number( muse_env *env, void *context, muse_cell args );
+muse_cell fn_format( muse_env *env, void *context, muse_cell args ); 
 /*@}*/
 
 /** @addtogroup ObjectSystem Object system */
@@ -254,10 +255,11 @@ muse_cell fn_temp_folder( muse_env *env, void *context, muse_cell args );
 muse_cell fn_temp_file( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_lower( muse_env *env, void *context, muse_cell args );
 muse_cell fn_to_upper( muse_env *env, void *context, muse_cell args );
+muse_cell fn_stats( muse_env *env, void *context, muse_cell args );
+/*@}*/
 
 void muse_load_builtin_fns( muse_env *env );
 void muse_define_put_macro( muse_env *env );
-/*@}*/
 
 /** 
  * @addtogroup FunctionalObjects Functional objects 

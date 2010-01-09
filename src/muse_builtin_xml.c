@@ -345,14 +345,13 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
  * @code (read-xml [port]) @endcode
  *
  * Reads one xml node (a simple subset of xml) and returns it in the 
- * canonical form: A function of an object that yields a list
- * of the form -
+ * canonical form: 
  * @code
  * <tag attr1="v1" attr2="v2">hello <b>world</b></tag>
  * @endcode
- * gets returned as
+ * is read in as -
  * @code
- * (tag ((attr1 . "v1") (attr2 . "v2")) "hello" (b () "world"))
+ * (fn (@) '(tag ((attr1 . "v1") (attr2 . "v2")) "hello" (b () "world")))
  * @endcode
  *
  * For constant xml expressions, the following simple rules apply -
@@ -378,14 +377,18 @@ muse_cell fn_xml( muse_env *env, void *context, muse_cell args )
  *	  parenthesis '(' is taken to mean an s-expression which has to be evaluated
  *	  to get the value of the attribute. The result is coerced into a string.
  *	  The expression may use any standard muSE function and can refer to the
- *	  context object using the symbol '@' (without the quotes).
+ *	  context object using the symbol '@' (without the quotes). For example -
+ *		@code <tag attr=(format @.count)/> @endcode
+ *	  is read as the function -
+ *		@code (fn (@) (list 'tag (list (cons 'attr (format @.count))))) @endcode
  *	- An xml tag whose tag symbol starts with the '@' character such as
  *	  @code <@style-string label="STYLENAME"/> @endcode is treated
  *	  specially. The context object is queried for a function using the key
  *	  such as @code '@style-string @endcode. That function is then applied to a list whose
  *	  first argument is the context object, the second argument is an a-list
  *	  giving the attributes and values and the rest of the arguments are the
- *	  the tag's body.
+ *	  the tag's body. For example, the above xml expression is read in as the function -
+ *		@code (fn (@) (@ '@style-string '((label . "STYLENAME")))) @endcode
  *
  * Supports \ref fn_the "the"
  */

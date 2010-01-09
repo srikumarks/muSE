@@ -21,7 +21,7 @@
 /*@{*/
 muse_boolean muse_network_startup( muse_env *env );
 void muse_network_shutdown( muse_env *env );
-muse_cell fn_open( muse_env *env, void *context, muse_cell args );
+muse_cell fn_open_connection( muse_env *env, void *context, muse_cell args );
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args );
 muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args );
 muse_cell fn_multicast_group( muse_env *env, void *context, muse_cell args );
@@ -332,16 +332,18 @@ static muse_port_type_t g_socket_type =
 };
 
 /**
- * @code (open "server.somewhere.com" port)
- * (open "231.41.59.26" 31415) @endcode
+ * @code (open-connection "server.somewhere.com" port)
+ * (open-connection "231.41.59.26" 31415) @endcode
  *
  * Opens a TCP connection to the given server on the given port
  * and returns a port object using which you can communicate with
  * the server. The port can be closed by calling (close p). If a
  * port number is omitted, 31415 (= \p MUSE_DEFAULT_MULTICAST_PORT)
  * is used as the default.
+ *
+ * Supports \ref fn_the "the"
  */
-muse_cell fn_open( muse_env *env, void *context, muse_cell args )
+muse_cell fn_open_connection( muse_env *env, void *context, muse_cell args )
 {
 	int sp					= _spos();
 	muse_cell servername	= _evalnext(&args);
@@ -415,7 +417,7 @@ muse_cell fn_open( muse_env *env, void *context, muse_cell args )
 	/* Connection succeeded. Return the port. */
 	_unwind(sp);
 	_spush(portcell);
-	return portcell;
+	return muse_add_recent_item( env, (muse_int)fn_open_connection, portcell );
 
 UNDO_CONN:
 	_unwind(sp);
@@ -425,7 +427,8 @@ UNDO_CONN:
 		port_close( (muse_port_t)port );
 	}
 	
-	return MUSE_NIL;
+	return muse_add_recent_item( env, (muse_int)fn_open_connection, 
+		muse_raise_error( env, _csymbol(L"error:open-connection"), _cons( servername, _cons( portnum, MUSE_NIL ) ) ) );
 }
 
 
@@ -462,7 +465,7 @@ typedef struct muse_server_stream_socket__
  *		  then the server will only accept connections from the local machine
  *		  on the port 12345.
  *
- * @see fn_open()
+ * @see fn_open_connection()
  */
 muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, muse_cell args )
 {
@@ -1650,13 +1653,18 @@ static muse_cell http_parse( muse_port_t p )
 /**
  * @code (http-parse port) -> (('GET url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
  * @code (http-parse port) -> (('POST url "HTTP/1.1") ('Header1 "value1") ('Header2 "value2") ...) @endcode
+ *
+ * Parses the series of http headers from the given port (can be any port)
+ * and returns an association list as shown above.
+ *
+ * Supports \ref fn_the "the".
  */
 muse_cell fn_http_parse( muse_env *env, void *context, muse_cell args )
 {
 	muse_cell pcell = _evalnext(&args);
 	muse_port_t p = _port(pcell);
 
-	return http_parse(p);
+	return muse_add_recent_item( env, (muse_int)fn_http_parse, http_parse(p));
 }
 
 static const char *http_codedesc( int code )
@@ -1716,8 +1724,14 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args );
 
 /**
  * @code (http-respond port code headers-alist crlf?) @endcode
- * Pass 0 for the code in to skip the response line
- * and only write out headers.
+ * @param port The port to which to write out the headers.
+ * @param code A numeric response code such as 200. Pass 0 to skip the response line.
+ * @param headers-alist An a-list such as @code '((Content-Type . "text/html")) @endcode
+ * @param crlf? Pass \c T if you want a blank line to terminate the
+ *		list of headers. If you pass \c (), you can make another call
+ *		to \c http-respond to write out some more headers.
+ *
+ * Supports \ref fn_the "the"
  */
 muse_cell fn_http_respond( muse_env *env, void *context, muse_cell args )
 {
@@ -1773,7 +1787,7 @@ void muse_define_builtin_networking(muse_env *env)
 
 	static const struct funs_t k_networking_funs[] =
 	{
-		{		L"open",								fn_open									},
+		{		L"open-connection",						fn_open_connection						},
 		{		L"with-incoming-connections-to-port",	fn_with_incoming_connections_to_port	},
 		{		L"wait-for-input",						fn_wait_for_input						},
 		{		L"multicast-group",						fn_multicast_group						},

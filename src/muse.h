@@ -137,7 +137,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref fn_isa_p "isa?"
  *
  * @subsection ML_Modules Module system
- *	- \ref fn_module "module", \ref fn_import "import"
+ *	- \ref fn_module "module", \ref fn_import "import", \ref fn_require "require"
  * 
  * @subsection ML_IO Input and output
  *	- \ref PortIO
@@ -146,13 +146,28 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref fn_json "json", \ref fn_read_json "read-json" and \ref fn_write_json "write-json"
  *	- \ref fn_xml "xml", \ref fn_read_xml "read-xml" and \ref fn_write_xml "write-xml"
  *
+ * @subsection ML_Networking Networking
+ *	- \ref fn_open_connection "open-connection", \ref fn_with_incoming_connections_to_port "with-incoming-connections-to-port",
+ *	  \ref fn_multicast_group "multicast-group"
+ *	- \ref fn_wait_for_input "wait-for-input", \ref fn_reply "reply", \ref fn_multicast_group_p "multicast-group?"
+ *	- \ref fn_fetch_uri "fetch-uri", \ref fn_http_parse "http-parse", \ref fn_http_respond "http-respond"
+ *
  * @subsection ML_Processes Processes
  *	- \ref fn_spawn "spawn", \ref fn_receive "receive", \ref syntax_atomic "atomic", \ref fn_post "post"
  *	- \ref fn_run "run", \ref fn_this_process "this-process", \ref fn_process_p "process?"
  *	- \ref fn_with_timeout_us "with-timeout-us"
  *
+ * @subsection ML_Crypto Cryptographic utilities
+ *	- \ref fn_sha1_hash "sha1-hash", \ref fn_md5_hash "md5-hash"
+ *
  * @subsection ML_Utilities Utilities
+ *	- \ref fn_launch "launch"
+ *	- String case conversion - \ref fn_to_lower "to-lower", \ref fn_to_upper "to-upper"
+ *	- Temporary files - \ref fn_temp_folder "temp-folder", \ref fn_temp_file "temp-file"
+ *	- \ref fn_windows_registry_entry "windows-registry-entry"
+ *	- \ref fn_alert "alert"
  *	- \ref fn_image_properties "image-properties"
+ *	
  */
  
 /**
