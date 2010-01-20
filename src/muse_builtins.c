@@ -174,6 +174,7 @@ static const struct _builtins
 {		L"flush",		fn_flush			},
 {		L"mickey",		fn_mickey			},
 {		L"load",		fn_load				},
+{		L"file-has-attached-code?",		fn_file_has_attached_code_p	},
 {		L"write-xml",	fn_write_xml		},
 {		L"read-xml",	fn_read_xml			},
 {		L"xml",			fn_xml				},

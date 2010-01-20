@@ -324,6 +324,37 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 }
 
 /**
+ * @code (file-has-attached-code? path) @endcode
+ * 
+ * Some files such as exes, jpg and png can have muSE code
+ * attached at the end for special purposes. This function
+ * looks at the contents of the file and determines if the
+ * file has any attached code. If it does, the attached code
+ * can be loaded using \ref fn_load "load".
+ */
+muse_cell fn_file_has_attached_code_p( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell path = _evalnext(&args);
+
+	if ( _cellt(path) == MUSE_TEXT_CELL )
+	{
+		const muse_char *cpath = muse_text_contents( env, path, NULL );
+		if ( cpath )
+		{
+			FILE *f = muse_fopen( cpath, L"rb" );
+			if ( f )
+			{
+				int has = muSEexec_check( f, NULL, NULL, NULL );
+				fclose(f);
+				return has ? _builtin_symbol(MUSE_T) : MUSE_NIL;
+			}
+		}
+	}
+
+	return MUSE_NIL;
+}
+
+/**
  * @code (mickey inport outport) @endcode
  *
  * Reads in the stream from the input port, expands all 
