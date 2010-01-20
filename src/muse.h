@@ -486,6 +486,7 @@ MUSEAPI muse_int	muse_elapsed_us( void *timer );
 MUSEAPI muse_int	muse_tock( void *timer );
 MUSEAPI void		muse_sleep( muse_int time_us );
 MUSEAPI FILE*		muse_fopen( const muse_char *filename, const muse_char *options );
+MUSEAPI int			muse_fsize( FILE *f );
 /*@}*/
 
 /** @name Diagnostics */
@@ -505,6 +506,17 @@ MUSEAPI muse_cell	muse_symbol_is_defined( muse_env *env, void *context, muse_cel
 	MUSEAPI size_t	muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const char *in, size_t in_len );
 	MUSEAPI size_t	muse_utf8_size( const muse_char *wstr, size_t length );
 	MUSEAPI size_t	muse_unicode_size( const char *utf8, size_t nbytes );
+/*@}*/
+
+/**
+ * @name Attached code
+ * muSE code can be attached to the ends of some kinds of binary
+ * files such as executables, JPEG and PNG files. These functions
+ * are to handle such files.
+ */
+/*@{*/
+MUSEAPI int muSEexec_check( FILE *e, int *source_pos, int *source_size, int *footer_size );
+MUSEAPI int muSEexec_finish( FILE *e, int source_size );
 /*@}*/
 
 /** @name Dynamically loading plugins */

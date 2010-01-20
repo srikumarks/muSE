@@ -1177,3 +1177,110 @@ static size_t levenshtein_distance( const muse_char *s1, const muse_char *s2 )
 }
 
 
+enum {
+	MUSE_FOOTER_SIZE = 20,
+	MUSE_FOOTER_SIGNATURE_SIZE = 8
+};
+
+static const char *k_footer_signature			= "muSEexec";
+static const char *k_footer_print_format		= ";%010d muSEexec";
+static const char *k_footer_scan_format			= ";%d muSEexec";
+
+/**
+ * Computes the size of the given file using fseek.
+ */
+MUSEAPI int muse_fsize( FILE *f )
+{
+	int pos = 0;
+	int size = 0;
+	
+	pos = ftell( f );
+	fseek( f, 0, SEEK_END );
+	size = ftell( f );
+	fseek( f, pos, SEEK_SET );
+	
+	return size;
+}
+
+
+/**
+ * A muSE executable is a binary file to the end of which souce code is
+ * appended. This source code is expected to be loaded before any other
+ * operation is done. The way we determine whether such attached source
+ * code is available or not is to check the last 20 bytes which must have
+ * the following format -
+ *     ;<10-digit-decimal-number> muSEexec
+ * The decimal number gives the size in bytes of the source code stream
+ * that precedes this end code. The rationale for the above format for
+ * the ending code is that when the source code is loaded, this sequence
+ * will be ignored because it looks like a scheme comment.
+ *
+ * muSEexec_check checks whether such an end code is present in the given
+ * executable file and if so, returns the source start position and source
+ * size in the locations supplied as arguments.
+ *
+ * The return value is 1 if the file has such attached code and 0 if
+ * the file doesn't have attached code. In either case, the file's
+ * seek pointer is not modified.
+ */
+MUSEAPI int muSEexec_check( FILE *e, int *source_pos, int *source_size, int *footer_size )
+{
+	long original_pos = ftell(e);
+	int e_size = muse_fsize(e);
+	char signature[MUSE_FOOTER_SIGNATURE_SIZE+1];
+	int local_source_size = 0, local_source_pos = 0;
+
+	if ( e_size < MUSE_FOOTER_SIZE )
+		goto BAIL;
+
+	memset( signature, 0, MUSE_FOOTER_SIGNATURE_SIZE+1 );
+	fseek( e, e_size - MUSE_FOOTER_SIGNATURE_SIZE, SEEK_SET );	
+	fread( signature, 1, MUSE_FOOTER_SIGNATURE_SIZE, e );
+	if ( strcmp( signature, k_footer_signature ) != 0 )
+		goto BAIL;
+	
+	/* The last 8 characters are muSEexec indeed.
+	Parse for ";%d muSEexec" from the last 20 bytes. */
+	{
+		char ending[MUSE_FOOTER_SIZE+1];
+		memset( ending, 0, MUSE_FOOTER_SIZE+1 );
+		fseek( e, e_size - MUSE_FOOTER_SIZE, SEEK_SET );
+		fread( ending, 1, MUSE_FOOTER_SIZE, e );
+
+		if ( 1 != sscanf( ending, k_footer_scan_format, &local_source_size ) )
+			goto BAIL;
+	}
+	
+	/* The source size encoded does not include the 20-byte ending sequence. */
+	local_source_pos = e_size - MUSE_FOOTER_SIZE - local_source_size;
+	if ( local_source_pos < 0 ) goto BAIL;
+
+	if ( source_pos )	(*source_pos) = local_source_pos;
+	if ( source_size )	(*source_size) = local_source_size;
+	if ( footer_size )	(*footer_size) = MUSE_FOOTER_SIZE;
+
+	fseek( e, original_pos, SEEK_SET );
+	return 1;
+
+BAIL:
+	fseek( e, original_pos, SEEK_SET );
+	return 0;
+}
+
+/**
+ * Seeks to the end of the file and writes out the footer
+ * containing the number of bytes of source appended to the
+ * end of the given file. After writing out the footer,
+ * the file is closed.
+ */
+MUSEAPI int muSEexec_finish( FILE *e, int source_size )
+{
+	fflush(e);
+	fseek( e, 0, SEEK_END );
+
+	{
+		int n = fprintf( e, k_footer_print_format, source_size );
+		fclose(e);
+		return (n == MUSE_FOOTER_SIZE) ? 1 : 0;
+	}
+}

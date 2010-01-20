@@ -11,80 +11,13 @@
 
 #include "muse.h"
 #include "muse_opcodes.h"
+#include "muse_utils.h"
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * Computes the size of the given file using fseek.
- */
-static int fsize( FILE *f )
-{
-	int pos = 0;
-	int size = 0;
-	
-	pos = ftell( f );
-	fseek( f, 0, SEEK_END );
-	size = ftell( f );
-	fseek( f, pos, SEEK_SET );
-	
-	return size;
-}
-
-enum {
-	MUSE_FOOTER_SIZE = 20,
-	MUSE_FOOTER_SIGNATURE_SIZE = 8
-};
-
 static const char *k_args_exec_switch				= "--exec";
-static const char *k_footer_signature				= "muSEexec";
-static const char *k_footer_print_format			= ";%010d muSEexec";
-static const char *k_footer_scan_format			= ";%d muSEexec";
 static const muse_char *k_main_function_name		= L"main";
 static const muse_char *k_program_string_name		= L"*program*";
-
-/**
- * A muSE executable is a binary file to the end of which souce code is
- * appended. This source code is expected to be loaded before any other
- * operation is done. The way we determine whether such attached source
- * code is available or not is to check the last 20 bytes which must have
- * the following format -
- *     ;<10-digit-decimal-number> muSEexec
- * The decimal number gives the size in bytes of the source code stream
- * that precedes this end code. The rationale for the above format for
- * the ending code is that when the source code is loaded, this sequence
- * will be ignored because it looks like a scheme comment.
- *
- * is_muSEexec checks whether such an end code is present in the given
- * executable file and is so, returns the source start position and source
- * size in the locations supplied as arguments.
- */
-static int is_muSEexec( FILE *e, int *source_pos, int *source_size )
-{
-	int e_size = fsize(e);
-	char signature[MUSE_FOOTER_SIGNATURE_SIZE+1];
-	memset( signature, 0, MUSE_FOOTER_SIGNATURE_SIZE+1 );
-	
-	fseek( e, e_size - MUSE_FOOTER_SIGNATURE_SIZE, SEEK_SET );	
-	fread( signature, 1, MUSE_FOOTER_SIGNATURE_SIZE, e );
-	if ( strcmp( signature, k_footer_signature ) != 0 )
-	{
-		return 0;
-	}
-	
-	/* The last 8 characters are muSEexec indeed.
-	Parse for ";%d muSEexec" from the last 20 bytes. */
-	{
-		char ending[MUSE_FOOTER_SIZE+1];
-		memset( ending, 0, MUSE_FOOTER_SIZE+1 );
-		fseek( e, e_size - MUSE_FOOTER_SIZE, SEEK_SET );
-		fread( ending, 1, MUSE_FOOTER_SIZE, e );
-		sscanf( ending, k_footer_scan_format, source_size );
-	}
-	
-	/* The source size encoded does not include the 20-byte ending sequence. */
-	(*source_pos) = e_size - MUSE_FOOTER_SIZE - (*source_size);
-	return 1;
-}
 
 /**
  * Creates an executable from the given set of source files.
@@ -120,26 +53,27 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 		return 0;
 	}
 
-	e_size = fsize(e);
+	e_size = muse_fsize(e);
 	
 	/* Copy executable to output first. The executable itself may have 
 	source code at the end, so check for that. */
 	{
 		int s_pos = 0;
 		int s_size = 0;
+		int s_footer_size = 0;
 		muse_boolean new_exec = MUSE_TRUE;
 		
 		fseek( e, 0, SEEK_SET );
 		buffer = malloc( e_size );
 		fread( buffer, 1, e_size, e );
 
-		if ( is_muSEexec( e, &s_pos, &s_size ) )
+		if ( muSEexec_check( e, &s_pos, &s_size, &s_footer_size ) )
 		{
 			/* Skip the ending 20 bytes, which will be ";<source-size> muSEexec",
 			but tack on the source size to the total, so that the new source
 			will simply be appended to the old source. */
 			s_totalsize += s_size;
-			e_size -= MUSE_FOOTER_SIZE;
+			e_size -= s_footer_size;
 			new_exec = MUSE_FALSE;
 		}
 		
@@ -158,15 +92,21 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 			
 			if ( s != NULL )
 			{
-				int s_size = fsize(s);
-				int n = fprintf( o, "(load #%d[", s_size );
-				buffer = malloc( s_size );
-				fread( buffer, 1, s_size, s );
-				fwrite( buffer, 1, s_size, o );
+				int source_pos = 0, source_size = 0;
+
+				if ( muSEexec_check( s, &source_pos, &source_size, NULL ) )
+					fseek( s, source_pos, SEEK_SET );
+				else
+					source_size = muse_fsize(s);
+
+				s_totalsize += fprintf( o, "(load #%d[", source_size );
+				buffer = malloc( source_size );
+				fread( buffer, 1, source_size, s );
+				fwrite( buffer, 1, source_size, o );
 				free( buffer );
 				fclose( s );
-				n += fprintf( o, "])\n" );
-				s_totalsize += n + s_size;
+				s_totalsize += fprintf( o, "])\n" );
+				s_totalsize += source_size;
 			}
 		}
 	}
@@ -179,11 +119,7 @@ static int create_exec( muse_env *env, const char *execfile, int argc, char **ar
 	in order to make the ending sequence exactly 20 bytes.
 	When loading source, this sequence will be ignored
 	because it will appear as a comment. */
-	{
-		muse_debug_only(int n =) fprintf( o, k_footer_print_format, s_totalsize );
-		muse_assert( n == MUSE_FOOTER_SIZE );
-		fclose(o);
-	}
+	muSEexec_finish( o, s_totalsize );
 	
 	return 1;
 }
@@ -212,7 +148,7 @@ static int load_exec( muse_env *env, const char *execfile )
 	}
 	
 	/* Check that this is a muSE executable. */
-	if ( is_muSEexec( e, &s_pos, &s_size ) )
+	if ( muSEexec_check( e, &s_pos, &s_size, NULL ) )
 	{
 		/* Load the source portion of the executable. */
 		fseek( e, s_pos, SEEK_SET );
@@ -356,7 +292,7 @@ static muse_cell fn_repl( muse_env *env, args_t *context, muse_cell args )
  *		Creates an executable "execfile" of the given source files.
  *		When this executable is run, the source files attached to
  *		it will automatically be loaded.
- *		@see is_muSEexec() for details about identifying such source code.
+ *		@see muSEexec_check() for details about identifying such source code.
  *
  * B)	fullpath-to-muse/muse
  *		

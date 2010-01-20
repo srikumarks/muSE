@@ -276,7 +276,11 @@ muse_cell fn_load( muse_env *env, void *context, muse_cell args )
 
 		if ( f )
 		{
-			muse_cell result = muse_load( env, f );
+			muse_cell result;
+			int source_pos = 0;
+			if ( muSEexec_check( f, &source_pos, NULL, NULL ) )
+				fseek( f, source_pos, SEEK_SET );
+			result = muse_load( env, f );
 			fclose(f);
 			_unwind(sp);
 			return _spush(result);
