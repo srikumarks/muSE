@@ -144,6 +144,7 @@ muse_cell fn_whatis( muse_env *env, void *context, muse_cell args );
 muse_cell fn_int( muse_env *env, void *context, muse_cell args );
 muse_cell fn_float( muse_env *env, void *context, muse_cell args );
 muse_cell fn_number( muse_env *env, void *context, muse_cell args );
+muse_cell fn_string( muse_env *env, void *context, muse_cell args ); 
 muse_cell fn_format( muse_env *env, void *context, muse_cell args ); 
 /*@}*/
 

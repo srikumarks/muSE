@@ -146,6 +146,7 @@ static const struct _builtins
 {		L"int",			fn_int				},
 {		L"float",		fn_float			},
 {		L"number",		fn_number			},
+{		L"string",		fn_string			},
 
 /************** Algorithms ***************/
 {		L"sort!",		fn_sort_inplace		},
@@ -739,6 +740,60 @@ muse_cell fn_number( muse_env *env, void *context, muse_cell args )
 				return MUSE_NIL;
 		}
 	default: return MUSE_NIL;
+	}
+}
+
+/**
+ * @code (string thing) @endcode
+ *
+ * Behaves almost the same as \ref fn_format "format" when applied to
+ * \p thing. The difference is that \c format accepts any number of 
+ * arguments whose strings forms are concatenated into one big string.
+ * \c string only accepts one argument. 
+ *
+ * So why have a separate function? 
+ *
+ * When \p thing is a number, \c string takes an optional second
+ * argument that gives a \c printf style format specification string for
+ * converting the number to a string. For everything else, the
+ * second argument, if supplied, is ignored. The formatting should
+ * not result in generating a string that is longer than 128 characters,
+ * including the terminating null character.
+ */
+muse_cell fn_string( muse_env *env, void *context, muse_cell args )
+{
+	muse_boolean isfloat = MUSE_FALSE;
+	muse_cell thing = _evalnext(&args);
+
+	switch ( _cellt(thing) )
+	{
+	case MUSE_FLOAT_CELL : 
+		isfloat = MUSE_TRUE;
+	case MUSE_INT_CELL : 
+		{
+			const muse_char *number_format = isfloat ? L"%.10lg" : L"%lld";
+
+			if ( args )
+			{
+				muse_cell fmt = _evalnext(&args);
+				
+				if ( _cellt(fmt) == MUSE_TEXT_CELL )
+					number_format = muse_text_contents( env, fmt, NULL );
+			}
+
+			{
+				muse_char buffer[128];
+				if ( isfloat )
+					swprintf( buffer, 128, number_format, muse_float_value( env, thing ) );
+				else						
+					swprintf( buffer, 128, number_format, muse_int_value( env, thing ) );
+
+				return muse_mk_ctext( env, buffer );
+			}
+		}
+
+	default:
+		return fn_format( env, context, _cons( thing, MUSE_NIL ) );
 	}
 }
 
