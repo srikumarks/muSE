@@ -147,6 +147,8 @@ static const struct _builtins
 {		L"float",		fn_float			},
 {		L"number",		fn_number			},
 {		L"string",		fn_string			},
+{		L"char-code",	fn_char_code		},
+{		L"string-with-char-codes",		fn_string_with_char_codes },
 
 /************** Algorithms ***************/
 {		L"sort!",		fn_sort_inplace		},
@@ -797,6 +799,67 @@ muse_cell fn_string( muse_env *env, void *context, muse_cell args )
 		return fn_format( env, context, _cons( thing, MUSE_NIL ) );
 	}
 }
+
+/**
+ * @code (char-code string [n]) @endcode
+ * 
+ * Gives the numeric code of a character in the given string.
+ * The second optional integer argument gives the index of the
+ * character whose code is requested. The index defaults to 0.
+ */
+muse_cell fn_char_code( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell str = _evalnext(&args);
+	muse_cell n = _evalnext(&args);
+	int index = 0;
+
+	int len = 0;
+	const muse_char *text = muse_text_contents( env, str, &len );
+
+	if ( len == 0 )
+		return muse_raise_error( env, _csymbol(L"error:bad-character-index"), _cons( str, _cons( n, MUSE_NIL ) ) );
+
+	if ( n && _cellt(n) == MUSE_INT_CELL )
+		index = (int)_intvalue(n);
+
+	if ( index >= len ) index = len - 1;
+	if ( index < 0 ) index = 0;
+
+	return _mk_int(text[index]);
+}
+
+
+/**
+ * @code (string-with-char-codes code0 code1 code2 ...) @endcode
+ * 
+ * Builds a string whose characters are given by the integer
+ * codes in the argument list. If you give N arguments, the
+ * resultant string will be of length N.
+ */
+muse_cell fn_string_with_char_codes( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell codes = muse_eval_list( env, args );
+	int n = muse_list_length( env, codes ); ///< Forces the list to be non-lazy.
+
+	muse_cell str = muse_mk_text( env, (const muse_char *)0, ((const muse_char *)0) + n );
+	muse_char *text = (muse_char *)muse_text_contents( env, str, NULL );
+
+	static const muse_int k_mask = (((muse_int)1) << (sizeof(muse_char) * 8)) - 1;
+	int i;
+	for ( i = 0; i < n; ++i )
+	{
+		muse_int c = _intvalue(_next(&codes));
+		text[i] = (muse_char)(c & k_mask);
+	}
+	
+	///< Note that we're making use of the fact that the list of arguments
+	///< will have been forced by the call to muse_list_length() and therefore
+	///< the above step won't result in any calculations made by muSE
+	///< and therefore no modifications to the muSE stack.
+
+	return str; 
+}
+
 
 /**
  * @code (time-taken-us ...block...) @endcode

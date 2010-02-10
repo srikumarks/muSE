@@ -15,7 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *k_args_exec_switch				= "--exec";
+static const char *k_args_exec_switch1				= "--exec";
+static const char *k_args_exec_switch2				= "--exe";
+static const char *k_args_attach_switch				= "--attach";
 static const muse_char *k_main_function_name		= L"main";
 static const muse_char *k_program_string_name		= L"*program*";
 
@@ -315,11 +317,22 @@ int main( int argc, char **argv )
 	
 	get_execpath( env, argv[0], execpath, 1024 );
 
+
+	/* If we've been asked to attach source to a given binary file, do so. */
+	if ( argc > 1 && strcmp( argv[1], k_args_attach_switch ) == 0 )
+	{
+		strcpy( execpath, argv[2] );
+
+		/* When passing argument, skip the exec path, the "--attach" switch
+		as well as the source binary file path. */
+		create_exec( env, execpath, argc-3, argv+3 );
+	}
+
 	/* If we've been asked to create an executable, do so. */
-	if ( argc > 1 && strcmp( argv[1], k_args_exec_switch ) == 0 )
+	else if ( argc > 1 && (strcmp( argv[1], k_args_exec_switch1 ) == 0 || strcmp( argv[1], k_args_exec_switch2 ) == 0) )
 	{
 		/* When passing arguments, skip the exec path as well as the
-		   "--exec" switch. */
+		   "--exec" or "--exe" switch. */
 		create_exec( env, execpath, argc-2, argv+2 );
 	}
 	

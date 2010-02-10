@@ -146,6 +146,8 @@ muse_cell fn_float( muse_env *env, void *context, muse_cell args );
 muse_cell fn_number( muse_env *env, void *context, muse_cell args );
 muse_cell fn_string( muse_env *env, void *context, muse_cell args ); 
 muse_cell fn_format( muse_env *env, void *context, muse_cell args ); 
+muse_cell fn_char_code( muse_env *env, void *context, muse_cell args ); 
+muse_cell fn_string_with_char_codes( muse_env *env, void *context, muse_cell args ); 
 /*@}*/
 
 /** @addtogroup ObjectSystem Object system */
