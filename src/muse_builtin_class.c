@@ -519,7 +519,7 @@ muse_cell fn_isa_p( muse_env *env, void *context, muse_cell args )
 	if ( muse_functional_object_data( env, type, 'mobj' ) && muse_functional_object_data( env, x, 'mobj' ) ) {
 		return is_parent_of( env, type, x, x );		
 	} else {
-		return _cellt(x) == _cellt(type) ? type : MUSE_NIL;
+		return _cellt(x) == _cellt(type) ? x : MUSE_NIL;
 	}
 }
 
