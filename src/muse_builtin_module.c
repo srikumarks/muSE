@@ -75,20 +75,10 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 {
 	int bsp = _bspos();
 	module_t *m = (module_t*)ptr;
-	muse_cell mname, exports;
+	muse_cell exports;
 	muse_cell sym_main = _csymbol(L"main");
-	mname = _next(&args);
 	exports = _next(&args);
 	
-	MUSE_DIAGNOSTICS({
-		muse_expect( env, L"(module >>name<< ..)", L"v?", mname, MUSE_SYMBOL_CELL );
-		if ( _symval(mname) != mname ) {
-			/* Module already defined. */
-			muse_message( env, L"(module >>name<< ..)", L"Module name %m already in use.", mname ); 
-		}
-		muse_expect( env, L"(module name >>(exports..)<< ..)", L"v?", exports, MUSE_CONS_CELL );
-	});
-
 	m->length = muse_list_length( env, exports );
 	m->bindings = (module_binding_t*)calloc( m->length, sizeof(module_binding_t) );
 	m->main = _mk_nativefn( syntax_do, NULL );
@@ -399,13 +389,107 @@ muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 {
 	int bsp = _bspos();
 	muse_cell mname = _head(args);
-	muse_cell mod = muse_mk_functional_object( env, &g_module_type, args );
-	if ( bsp == 0 )
-		_define(mname,mod);
+	if ( _cellt(mname) == MUSE_SYMBOL_CELL )
+	{
+		muse_cell mod = muse_mk_functional_object( env, &g_module_type, _tail(args) );
+		if ( bsp == 0 )
+			_define(mname,mod);
+		else
+			_pushdef(mname,mod);
+		return mod;
+	}
+	else if ( _cellt(mname) == MUSE_CONS_CELL )
+	{
+		return muse_mk_functional_object( env, &g_module_type, args );
+	}
 	else
-		_pushdef(mname,mod);
-	return mod;
+	{
+		return muse_raise_error( env, _csymbol(L"error:module-syntax"), MUSE_NIL );
+	}
 }
+
+static muse_cell module_expr_scope_begin( muse_env *env, void *self, muse_cell expr )
+{
+	/* Introduce the modules and then vanish from the function body. */
+	muse_cell module, body, mname, exports, main_body;
+
+	module = _head(expr);
+	body = _tail(expr);
+	mname = _head(body);
+	if ( _cellt(mname) == MUSE_SYMBOL_CELL )
+	{
+		/* The module has a name. Save the name binding. */
+		_pushdef( mname, mname );
+
+		exports = _head(_tail(body));
+		main_body = _tail(_tail(body));
+	}
+	else if ( _cellt(mname) == MUSE_CONS_CELL )
+	{
+		exports = mname;
+		mname = MUSE_NIL;
+		main_body = _tail(body);
+	}
+	else
+	{
+		return muse_raise_error( env, _csymbol(L"error:module-syntax"), MUSE_NIL );
+	}
+
+
+	{
+		int bsp = _bspos();
+
+		/* Save the bindings of all the module-local symbols. */
+		{
+			muse_cell exports = _head(_tail(body));
+			muse_assert( _cellt(exports) == MUSE_CONS_CELL );
+			while ( exports ) 
+			{
+				muse_cell sym = _next(&exports);
+				_pushdef(sym,sym);
+			}
+		}
+
+		/* Bind-copy the rest of the module body. */
+		{
+			muse_cell rest_of_body = muse_bind_copy_expr( env, main_body, MUSE_FALSE );
+			_unwind_bindings(bsp);
+			if ( mname )
+				return _cons( module, _cons( mname, _cons( exports, rest_of_body ) ) );
+			else
+				return _cons( module, _cons( exports, rest_of_body ) );
+		}
+	}
+}
+
+static void module_expr_scope_end( muse_env *env, void *self, int bsp )
+{
+}
+
+static muse_scope_view_t g_module_expr_scope_view = { module_expr_scope_begin, module_expr_scope_end };
+
+static void *module_expr_view( muse_env *env, int id )
+{
+	switch (id) {
+		case 'scop':	return &g_module_expr_scope_view;
+		default:			return NULL;
+	}
+}
+
+/* When module is used within the body of a closure creation expression
+using (fn ..), the module can capture values from the environment. */
+static muse_functional_object_type_t g_module_expr_scope_type = {
+	'muSE',
+	'(mod',
+	sizeof(muse_functional_object_t),
+	fn_module,
+	module_expr_view,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
 
 static void introduce_module_global( muse_env *env, module_t *m )
 {
@@ -574,7 +658,7 @@ static muse_functional_object_type_t g_import_type = {
 void muse_define_builtin_type_module( muse_env *env )
 {
 	int sp = _spos();
-	_define( _csymbol(L"module"), _mk_nativefn( fn_module, NULL ) );
+	_define( _csymbol(L"module"), _mk_functional_object( &g_module_expr_scope_type, MUSE_NIL ) );
 	_define( _csymbol(L"import"), _mk_functional_object( &g_import_type, MUSE_NIL ) );
 	_define( _csymbol(L"require"), _mk_nativefn( fn_require, NULL ) );
 	_unwind(sp);
