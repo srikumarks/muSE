@@ -208,6 +208,25 @@ void muse_define_put_macro( muse_env *env )
 }
 
 /**
+ * The API call muse_assoc doesn't support lazy alists.
+ * This function supports it by using muse_head() and muse_tail()
+ * instead of _head() and _tail(). This function is used
+ * by fn_assoc.
+ */
+static muse_cell muse_assoc_with_lazy_support( muse_env *env, muse_cell alist, muse_cell prop )
+{
+	if ( !alist )
+		return MUSE_NIL;
+	else {
+		muse_cell h = muse_head( env, alist );
+		if ( muse_equal( env, muse_head( env, h ), prop ) )
+			return h;
+		else
+			return muse_assoc_with_lazy_support( env, muse_tail( env, alist ), prop );
+	}
+}
+
+/**
  * @code (assoc plist key) @endcode
  * @see muse_assoc()
  */
@@ -215,7 +234,7 @@ muse_cell fn_assoc( muse_env *env, void *context, muse_cell args)
 {
 	muse_cell alist = _evalnext(&args);
 	muse_cell prop = _evalnext(&args);
-	return muse_assoc(env,alist,prop);
+	return muse_assoc_with_lazy_support(env,alist,prop);
 }
 
 /**
