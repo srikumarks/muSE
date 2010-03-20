@@ -1855,6 +1855,7 @@ ez_result_t ez_parse_atom( muse_port_t p, int col )
 ez_result_t ez_parse_group( muse_port_t p, int col )
 {
 	muse_env *env = p->env;
+	int orig_col = col;
 
 	muse_debug_only(int c =) port_getc(p);
 	
@@ -1883,9 +1884,9 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 				if ( h )
 				{
 					if ( _tail(h) )
-						return ez_expr( p, h, col, r.col_end, 0 );
+						return ez_expr( p, h, orig_col, r.col_end, 0 );
 					else
-						return ez_expr( p, _head(h), col, r.col_end, 0 );
+						return ez_expr( p, _head(h), orig_col, r.col_end, 0 );
 				}
 				else
 				{
