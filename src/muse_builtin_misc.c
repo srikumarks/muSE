@@ -554,8 +554,13 @@ static const muse_char *guess_mime_type( const muse_char *path )
 
 		const muse_char **mt = s_mime_type_map;
 		for ( ; mt[0]; mt += 2 ) {
+#if MUSE_PLATFORM_WINDOWS
 			if ( _wcsicmp( ext, mt[0] ) == 0 )
 				return mt[1];
+#else
+			if ( wcscmp( ext, mt[0] ) == 0 )
+				return mt[1];
+#endif
 		}
 
 		/* No extension matched. Treat as generic binary. */
