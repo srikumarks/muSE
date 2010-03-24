@@ -289,7 +289,7 @@ MUSEAPI size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const 
 MUSEAPI size_t muse_utf8_size( const muse_char *wstr, size_t length )
 {
 	assert( length >= 0 );
-	return (length + 1) * 2 * sizeof(muse_char);
+	return (length + 1) * 4 * sizeof(muse_char);
 }
 
 
