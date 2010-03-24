@@ -408,6 +408,11 @@ muse_char port_getchar( muse_port_t p )
 			buffer[2] = (unsigned char)port_getc(p); 
 			utf8_to_uc16( buffer, &c16 ); 
 			return c16;
+	case 4:	buffer[1] = (unsigned char)port_getc(p); 
+			buffer[2] = (unsigned char)port_getc(p); 
+			buffer[3] = (unsigned char)port_getc(p); 
+			utf8_to_uc16( buffer, &c16 ); 
+			return c16;
 	}
 
 	return (muse_char)EOF;
