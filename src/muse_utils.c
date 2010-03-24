@@ -90,6 +90,17 @@ int uc16_to_utf8( int c, unsigned char *utf8, int nbytes )
 		utf8[2] = (unsigned char)(c & 0x3F) | 0x80;
 		return 3;
 	}
+	else if ( c >= 0x10000 && c <= 0x10FFFF )
+	{
+		if ( nbytes < 4 )
+			return 0;
+		
+		utf8[0] = (unsigned char)(c >> 18) | 0xF0;
+		utf8[1] = (unsigned char)((c >> 12) & 0x3F) | 0x80;
+		utf8[2] = (unsigned char)((c >> 6) & 0x3F) | 0x80;
+		utf8[3] = (unsigned char)(c & 0x3F) | 0x80;
+		return 4;
+	}
 	else
 		return -1;
 }
@@ -104,7 +115,17 @@ int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 )
 	int c = utf8[0];
 	int result = 0;
 
-	if ( (c & 0xF0) == 0xE0 )
+	if ( (c & 0xF8) == 0xF0 )
+	{
+		/* 4-byte sequence. */
+		result |= (c & 0x07) << 18;
+		result |= (utf8[1] & 0x3F) << 12;
+		result |= (utf8[2] & 0x3F) << 6;
+		result |= (utf8[3] & 0x3F);
+		uc16[0] = (muse_char)result;
+		return 4;
+	}
+	else if ( (c & 0xF0) == 0xE0 )
 	{
 		/* 3-byte sequence. */
 		result |= (c & 0x0F) << 12;
@@ -123,6 +144,7 @@ int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 )
 	}
 	else
 	{
+		/* Ignore the most significant bit in the other cases. */
 		uc16[0] = (c & 0x7F);
 		return 1;
 	}
