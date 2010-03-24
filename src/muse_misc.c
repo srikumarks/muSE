@@ -213,7 +213,21 @@ MUSEAPI size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_ch
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = WideCharToMultiByte( CP_UTF8, 0, win, (int)win_len, out, (int)out_maxlen, NULL, NULL );
 #else
-	int result = (int)wcstombs( out, win, out_maxlen );
+	#if 0
+	int result = 0;
+	int win_offset = 0;
+	while ( win_offset < win_len && result < out_maxlen ) {
+		int n = uc16_to_utf8( win[win_offset], (unsigned char*)out + result, out_maxlen - result );
+		if ( n > 0 && result + n < out_maxlen ) {
+			win_offset++;
+			result += n;
+		} else {
+			break;
+		}
+	}
+	#else
+	int result = wcstombs( out, win, win_len );
+	#endif
 #endif
 
 	assert( win_len == 0 || result > 0 );
@@ -242,7 +256,21 @@ MUSEAPI size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const 
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = MultiByteToWideChar( CP_UTF8, 0, in, (int)in_len, wout, (int)(wout_maxlen * sizeof(muse_char)) );
 #else
-	int result = (int)mbstowcs( wout, in, wout_maxlen );
+	#if 0
+	int result = 0;
+	int in_offset = 0;
+	while ( in_offset < in_len && result < wout_maxlen ) {
+		int n = utf8_to_uc16( (const unsigned char*)in + in_offset, wout + result );
+		if ( n > 0 && in_offset + n <= in_len ) {
+			in_offset += n;
+			result++;
+		} else {
+			break;
+		}
+	}
+	#else
+	int result = mbstowcs( wout, in, in_len );
+	#endif
 #endif
 
 	assert( in_len == 0 || result > 0 );
