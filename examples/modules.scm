@@ -32,10 +32,10 @@
   ; Implementation of Complex class' methods.
   (put* Complex
 	'add  (fn (self value)
-		  (cons
+		  (cond
 		   ((number? value) (complex (+ self.real value) self.imag))
 		   ((complex? value) (complex (+ self.real value.real) 
-					      (+ self.image value.imag)))
+					      (+ self.imag value.imag)))
 		   (T (self 'add (raise 'NotANumberEx value)))))
         'mul (fn (self value)
 		 (cond
