@@ -323,6 +323,21 @@ MUSEAPI muse_env *muse_init_env( const int *parameters )
 	return env;
 }
 
+static void cleanup_slots( muse_env *env )
+{
+	// Do slot cleanup in reverse order of
+	// slot creation. Though we're not
+	// guaranteeing this, it is good to stick
+	// to it.
+	int i;
+	for ( i = env->num_slots-1; i >= 0; --i ) 
+	{
+		muse_slot_t *s = env->slots + i;
+		if ( s->cleanup_proc )
+			s->cleanup_proc( env, &(s->value) );
+	}
+}
+
 /**
  * Destroys the given environment. If the given
  * environment is the current environment, then
@@ -349,6 +364,7 @@ MUSEAPI void muse_destroy_env( muse_env *env )
 	}
 
 	muse_gc(env, 0);
+	cleanup_slots(env);
 	free_process( env->current_process );
 	muse_tock(env->timer);
 	free(env->builtin_symbols);
@@ -399,8 +415,35 @@ MUSEAPI muse_int *muse_slot( muse_env *env, int slotid )
 	{
 		int ix = env->num_slots++;
 		env->slots[ix].id = slotid;
+		env->slots[ix].cleanup_proc = NULL;
 		return &(env->slots[ix].value);
 	}
+}
+
+/**
+ * Associates a callback function with a slot that will
+ * be called when the muSE environment is destroyed.
+ * The callback is expected to perform any cleanup
+ * that might be necessary for the slot.
+ *
+ * The order in which slots get cleaned up is not
+ * guaranteed.
+ *
+ * The slot with the given id must already exist.
+ */
+MUSEAPI void muse_set_slot_cleanup_proc( muse_env *env, int slotid, muse_slot_cleanup_proc_t proc )
+{
+	/* Search the slots for an id match. */
+	int i = 0, N = env->num_slots;
+	for ( ; i < N; ++i ) {
+		if ( env->slots[i].id == slotid )
+		{
+			env->slots[i].cleanup_proc = proc;
+			return;
+		}
+	}
+
+	muse_assert( !"Can't set cleanup proc for unallocated slot" );
 }
 
 /**

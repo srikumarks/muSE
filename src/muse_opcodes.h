@@ -257,6 +257,7 @@ typedef struct
 {
 	int id;
 	muse_int value;
+	muse_slot_cleanup_proc_t cleanup_proc;
 } muse_slot_t;
 
 enum { MUSE_MAX_SLOTS = 16 };
