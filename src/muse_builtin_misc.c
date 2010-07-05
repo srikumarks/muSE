@@ -99,9 +99,9 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (list-folders parent-folder).
- * Returns a list of folder names for all the folders that exist under
- * the given parent folder.
+ * (list-folders [pattern]).
+ * Returns a list of folder names for all the folders that satisfy the 
+ * given pattern.
  * For example:
  * @code
  * (list-folders "../*")
@@ -227,12 +227,12 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (list-folders parent-folder).
- * Returns a list of folder names for all the folders that exist under
- * the given parent folder.
+ * (list-folders [pattern]).
+ * Returns a list of folder names for all the folders that satisfy the 
+ * given pattern.
  * For example:
  * @code
- * (list-folders "../")
+ * (list-folders "../*")
  * @endcode
  * will list the folders above the current folder.
  * Note that the returned list only has the folder names and not
