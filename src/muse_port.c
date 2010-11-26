@@ -535,9 +535,9 @@ int ez_update_col( muse_port_t f, int ch, int col )
 	}
 }
 
-static ez_result_t ez_result( muse_cell expr, int col_start, int col_end )
+static ez_result_t ez_result( muse_cell expr, int col_start, int col_end, int lines )
 {
-	ez_result_t r = { expr, col_start, col_end };
+	ez_result_t r = { expr, col_start, col_end, lines };
 	return r;
 }
 
@@ -627,7 +627,7 @@ static ez_result_t _read_number( muse_port_t f, int col )
 	char c = port_getc(f);
 
 	if ( c == EOF )
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 
 	/* Numbers don't begin with alphabets. If we don't
 	make this check here, the following code will accept
@@ -635,7 +635,7 @@ static ez_result_t _read_number( muse_port_t f, int col )
 	if ( isalpha(c) ) 
 	{
 		port_ungetc( c, f );
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 
 	/* Optional leading minus sign. */
@@ -738,20 +738,20 @@ static ez_result_t _read_number( muse_port_t f, int col )
 				fprintf( stderr, "Syntax error: Zero denominator used in literal fraction '%s'! Not a number!\n", buffer );
 			}
 			else
-				return ez_result( _mk_float( (muse_float)num / (muse_float)denom ), col, col + count );
+				return ez_result( _mk_float( (muse_float)num / (muse_float)denom ), col, col + count, 0 );
 		}
 		else
 		{
 			if ( is_fractional )
 			{
 				muse_float f = atof(buffer);
-				return ez_result( _mk_float(f), col, col + count );
+				return ez_result( _mk_float(f), col, col + count, 0 );
 			}
 			else
 			{
 				muse_int i;
 				sscanf( buffer, MUSE_FMT_INT, &i );
-				return ez_result( _mk_int(i), col, col + count );
+				return ez_result( _mk_int(i), col, col + count, 0 );
 			}
 		}
 	}
@@ -761,7 +761,7 @@ static ez_result_t _read_number( muse_port_t f, int col )
 		while ( count > 0 )
 			port_ungetc( buffer[--count], f );
 
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 }
 
@@ -790,7 +790,7 @@ static ez_result_t _read_hex( muse_port_t f, int col )
 	if ( c != '0' )
 	{
 		port_ungetc( c, f );
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 
 	c = port_getc(f);
@@ -799,7 +799,7 @@ static ez_result_t _read_hex( muse_port_t f, int col )
 	{
 		port_ungetc( c, f );
 		port_ungetc( '0', f );
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 
 	/* Lead sequence "0x" is satisfied. Read the hexadecimal
@@ -827,7 +827,7 @@ static ez_result_t _read_hex( muse_port_t f, int col )
 		}
 
 		muse_assert( len > 0 || !"No valid hex characters after '0x'!\n" );
-		return ez_result( _mk_int(n), col, col + len + 2 );
+		return ez_result( _mk_int(n), col, col + len + 2, 0 );
 	}
 }
 
@@ -844,12 +844,12 @@ static ez_result_t _read_string( muse_port_t f, int col )
 	if ( c != '"' )
 	{
 		port_ungetc(c,f);
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 	else if ( port_eof(f) )
 	{
 		muse_assert( !PARSE_ERROR_EXPECTED_STRING );
-		return ez_result( MUSE_NIL, col, col );
+		return ez_result( MUSE_NIL, col, col, 0 );
 	}
 	else
 	{
@@ -904,7 +904,7 @@ static ez_result_t _read_string( muse_port_t f, int col )
 		{
 			muse_cell result = muse_mk_text_utf8( f->env, s, s + endpos );
 			free(s);
-			return ez_result( result, col, col_end );
+			return ez_result( result, col, col_end, 0 );
 		}
 	}
 }
@@ -979,7 +979,7 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 	{
 		muse_cell sym = parse_dot_notation( f->env, f->mode, s, s + pos );
 		free(s);
-		return ez_result( sym, col, col + pos );
+		return ez_result( sym, col, col + pos, 0 );
 	}
 	else
 	{
@@ -999,7 +999,7 @@ static ez_result_t _read_symbol( muse_port_t f, int col )
 									 temp );
 		});
 
-		return ez_result( PARSE_ERROR_EXPECTED_SYMBOL, col, col + pos );
+		return ez_result( PARSE_ERROR_EXPECTED_SYMBOL, col, col + pos, 0 );
 	}
 }
 
@@ -1113,7 +1113,7 @@ static ez_result_t _read_atom( muse_port_t f, int col )
 	c = peekc(f);
 
 	if ( c == EOF )
-		return ez_result( PARSE_EOF, col, col );
+		return ez_result( PARSE_EOF, col, col, 0 );
 
 	/* Our checking order is
 		- string	-> ""
@@ -1871,11 +1871,12 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 		muse_cell t = MUSE_NIL;
 		ez_result_t r;
 		muse_boolean is_head = MUSE_TRUE;
+		int col_offset = 1;
 		
 		do
 		{
 			int sp = _spos();
-			white_space_t ws = ez_skip_whitespace( p, 0, col+1 );
+			white_space_t ws = ez_skip_whitespace( p, 0, col+col_offset );
 
 			if ( ws.lines > 0 )
 				is_head = MUSE_TRUE;
@@ -1896,7 +1897,7 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 				else
 				{
 					// "head()" in ezscheme == "(head)" in scheme
-					return ez_result( PARSE_EMPTY_GROUP, col, r.col_end );
+					return ez_result( PARSE_EMPTY_GROUP, col, r.col_end, r.wslines );
 				}
 			}
 			
@@ -1929,6 +1930,7 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 				
 				t = nt;
 				col = r.col_end;
+				col_offset = 0;
 			}
 		} while ( !port_eof(p) );
 		
@@ -2065,23 +2067,23 @@ ez_result_t ez_parse( muse_port_t p, int col, muse_boolean is_head )
 	int c = peekc(p);
 	
 	if ( c == EOF )
-		return ez_result( PARSE_EOF, col, col );
+		return ez_result( PARSE_EOF, col, ws.col, ws.lines );
 		
 	if ( c == ')' || c == '}' )
 	{
 		/* Keep the group end character visible until we escape to the
 		matching group declaration. */
-		return ez_result( PARSE_END_OF_GROUP, col, ws.col+1 );
+		return ez_result( PARSE_END_OF_GROUP, col, ws.col+1, ws.lines );
 	}
 	
 	if ( c == ']' )
 	{
-		return ez_result( PARSE_END_OF_LIST, col, ws.col+1 );
+		return ez_result( PARSE_END_OF_LIST, col, ws.col+1, ws.lines );
 	}
 		
 	if ( c == ',' )
 	{
-		return ez_result( PARSE_LIST_ITEM_SEPARATOR, col, ws.col+1 );
+		return ez_result( PARSE_LIST_ITEM_SEPARATOR, col, ws.col+1, ws.lines );
 	}
 
 	/* Parse a head expression. */
@@ -2194,12 +2196,12 @@ CONTINUE_TAIL_TERMS:
 							if ( wcscmp( name, L":" ) == 0 )
 							{
 								/* : is the cons operator. */
-								return ez_result( _cons( head.expr, arg.expr ), col, arg.col_end );								
+								return ez_result( _cons( head.expr, arg.expr ), col, arg.col_end, arg.wslines );								
 							}
 							else if ( wcscmp( name, L"::" ) == 0 )
 							{
 								/* :: creates a 2-element list. */
-								return ez_result( _cons( head.expr, _cons( arg.expr, MUSE_NIL ) ), col, arg.col_end );
+								return ez_result( _cons( head.expr, _cons( arg.expr, MUSE_NIL ) ), col, arg.col_end, arg.wslines );
 							}
 							else
 								/* Compose the infix operator with the lhs and rhs. */
@@ -2217,12 +2219,13 @@ CONTINUE_TAIL_TERMS:
 				{
 					if ( oparg.expr < 0 )
 					{
-						head.col_end = oparg.col_end;
+						head.col_end = oparg.col_start;
 						return head;
 					}
 					else
 					{
 						int sp = _spos();
+						int lines = oparg.wslines;
 						int col_end = oparg.col_end;
 						muse_cell t = _cons( oparg.expr, MUSE_NIL );
 						muse_cell h = _cons( head.expr, t );
@@ -2230,7 +2233,7 @@ CONTINUE_TAIL_TERMS:
 
 						do 
 						{
-							white_space_t ws3 = ez_skip_whitespace( p, 0, col_end );
+							white_space_t ws3 = ez_skip_whitespace( p, lines, col_end );
 							
 							/* Parse any more arguments to add on to this function call. */
 							if ( ws3.lines > 0 || ws3.col <= oparg.col_start )
@@ -2258,7 +2261,7 @@ CONTINUE_TAIL_TERMS:
 								if ( nextarg.expr == PARSE_EMPTY_GROUP )
 									_seth( t, _cons(_head(t),MUSE_NIL) );
 								else if ( nextarg.expr < 0 )
-									return ez_expr( p, h, col, nextarg.col_end, 0 );
+									return ez_expr( p, h, col, nextarg.col_start, 0 );
 
 								is_head = nextarg.wslines > 0 ? MUSE_TRUE : MUSE_FALSE;
 
@@ -2277,7 +2280,8 @@ CONTINUE_TAIL_TERMS:
 									/* Check if the next indent level is less than the current one. */
 									if ( nextarg.col_end > head.col_start )
 									{
-										col_end = nextarg.col_end;		
+										col_end = nextarg.col_end;	
+										lines = nextarg.wslines;
 									}
 									else
 										return ez_expr( p, h, col, nextarg.col_end, nextarg.wslines );
