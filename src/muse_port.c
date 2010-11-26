@@ -2136,6 +2136,7 @@ CONTINUE_TAIL_TERMS:
 					/* A line break occurred after the head expression.
 					Return the head as is if its group has ended. */
 					head.col_end = ws2.col;
+					head.wslines += ws2.lines;
 					return head;
 				}
 				else
@@ -2279,7 +2280,7 @@ CONTINUE_TAIL_TERMS:
 										col_end = nextarg.col_end;		
 									}
 									else
-										return ez_expr( p, h, col, nextarg.col_end, 0 );
+										return ez_expr( p, h, col, nextarg.col_end, nextarg.wslines );
 								}
 							}
 						} while ( !port_eof(p) );
