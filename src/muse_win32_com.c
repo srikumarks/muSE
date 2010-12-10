@@ -31,6 +31,20 @@ typedef struct
 	DISPID dispid;
 } name_dispid_assoc_t;
 
+typedef enum
+{
+	ComObjectEnumerabilityUnknown = 0,
+	ComObjectEnumerable = 1,
+	ComObjectNotEnumerable = -1
+} com_object_enumerability_t;
+
+typedef struct
+{
+	com_object_enumerability_t enumerability;
+	muse_cell sym_Count, sym_Item;
+	DISPID count, item;
+} com_object_enumerate;
+
 typedef struct 
 {
 	muse_functional_object_t base;
@@ -45,6 +59,8 @@ typedef struct
 	ITypeInfo *itypeinfo;	///< Typeinfo object obtained from the IDispatch implementation.
 	TYPEATTR *typeattr;
 
+	com_object_enumerate monad;
+					///< Indicates whether monadic stuff can be applied to this object.
 
 	int maxargs;	///< The maximum number of arguments you can pass to Invoke.
 	VARIANT *argv;	///< An argument array that you can use.
@@ -72,10 +88,27 @@ static void *com_view( muse_env *env, int id );
 muse_cell fn_com_create( muse_env *env, void *context, muse_cell args );
 muse_cell fn_com_release( muse_env *env, void *context, muse_cell args );
 
+// Monad view functions
+static muse_boolean com_object_enumerable( muse_env *env, com_object_t *self );
+static muse_cell com_size( muse_env *env, void *self );
+static muse_cell com_map( muse_env *env, void *self, muse_cell fn );
+static muse_cell com_join( muse_env *env, void *self, muse_cell objlist, muse_cell reduction_fn );
+static muse_cell com_collect( muse_env *env, void *self, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn );
+static muse_cell com_reduce( muse_env *env, void *self, muse_cell reduction_fn, muse_cell initial );
+static muse_cell com_iterator( muse_env *env, com_object_t *self, muse_iterator_callback_t callback, void *context );
 
 static muse_prop_view_t g_com_prop_view = {
 	com_get_prop,
 	com_put_prop
+};
+
+static muse_monad_view_t g_com_monad_view =
+{
+	com_size,
+	com_map,
+	com_join,
+	com_collect,
+	com_reduce
 };
 
 static muse_functional_object_type_t g_com_object_type =
@@ -101,6 +134,8 @@ static void *com_view( muse_env *env, int id )
 	switch ( id )
 	{
 	case 'prop' : return &g_com_prop_view;
+	case 'mnad' : return &g_com_monad_view;
+	case 'iter' : return com_iterator;
 	default : return NULL;
 	}
 }
@@ -555,7 +590,7 @@ static DISPID com_dispid( muse_env *env, com_object_t *obj, muse_cell name )
 		else
 		{
 			const muse_char *propname = muse_symbol_name( env, name );
-			DISPID propid = 0;
+			DISPID propid = DISPID_UNKNOWN;
 			HRESULT hr = obj->idispatch->lpVtbl->GetIDsOfNames( obj->idispatch, &IID_NULL, (LPOLESTR*)&propname, 1, 0, &propid );
 			if ( SUCCEEDED(hr) )
 			{
@@ -565,7 +600,7 @@ static DISPID com_dispid( muse_env *env, com_object_t *obj, muse_cell name )
 			}
 			else
 			{
-				return 0;
+				return DISPID_UNKNOWN;
 			}
 		}
 	}
@@ -581,7 +616,7 @@ static muse_cell com_get_prop( muse_env *env, void *self, muse_cell key, muse_ce
 	muse_cell val = MUSE_NIL;
 
 	DISPID propid = com_dispid( env, obj, key );
-	if ( propid )
+	if ( propid != DISPID_UNKNOWN )
 	{
 		HRESULT hr = S_OK;
 		VARIANT result;
@@ -638,7 +673,7 @@ static muse_cell com_put_prop( muse_env *env, void *self, muse_cell key, muse_ce
 	muse_cell value = muse_head( env, argv );
 
 	DISPID propid = com_dispid( env, obj, key );
-	if ( propid )
+	if ( propid != DISPID_UNKNOWN )
 	{
 		DISPPARAMS params;
 		DISPID dispidNamed = DISPID_PROPERTYPUT;
@@ -677,7 +712,7 @@ muse_cell fn_com_object( muse_env *env, com_object_t *obj, muse_cell args )
 
 	{
 		DISPID fnid = com_dispid( env, obj, method );
-		if ( fnid )
+		if ( fnid != DISPID_UNKNOWN )
 		{
 			DISPPARAMS dispparams;
 			muse_cell params = muse_eval_list( env, args );
@@ -730,6 +765,200 @@ muse_cell fn_com_object( muse_env *env, com_object_t *obj, muse_cell args )
 
 	return muse_add_recent_item( env, method, retval );
 }
+
+// Monad and iterator views
+static muse_boolean com_object_enumerable( muse_env *env, com_object_t *self )
+{
+	switch (self->monad.enumerability)
+	{
+	case ComObjectEnumerable:		return MUSE_TRUE;
+	case ComObjectNotEnumerable:	return MUSE_FALSE;
+	case ComObjectEnumerabilityUnknown:
+		// Find out. For enumerability, the Count()
+		// and Item() methods must be defined.
+		{
+			int sp = _spos();
+			DISPID count, item;
+			self->monad.sym_Count = _csymbol(L"Count");
+			self->monad.sym_Item = _csymbol(L"Item");
+			count = com_dispid( env, self, self->monad.sym_Count );
+			item = com_dispid( env, self, self->monad.sym_Item );
+			if ( count != DISPID_UNKNOWN && item != DISPID_UNKNOWN ) 
+			{
+				// Enumerable.
+				self->monad.enumerability = ComObjectEnumerable;
+				self->monad.count = count;
+				self->monad.item = item;
+			}
+			else
+			{
+				self->monad.enumerability = ComObjectNotEnumerable;
+			}						
+
+			return com_object_enumerable( env, self );
+		}
+	}
+
+	return MUSE_NIL;
+}
+
+static muse_cell com_object_item( muse_env *env, com_object_t *self, int i, int sp )
+{
+	muse_cell result = com_get_prop( env, self, self->monad.sym_Item, _cons( muse_mk_int(env,i), MUSE_NIL ) );
+	_unwind(sp);
+	_spush(result);
+	return result;
+}
+
+static muse_cell com_size( muse_env *env, void *obj )
+{
+	com_object_t *self = (com_object_t*)obj;
+
+	if ( com_object_enumerable(env,self) )
+	{
+		return com_get_prop( env, self, self->monad.sym_Count, MUSE_NIL );
+	}
+	else
+	{
+		return muse_mk_int( env, 0 );
+	}
+}
+
+static muse_cell com_map( muse_env *env, void *obj, muse_cell fn )
+{
+	com_object_t *self = (com_object_t*)obj;
+
+	if ( com_object_enumerable(env,self) )
+	{
+		muse_cell ncell = com_size( env, obj );
+		muse_int n = muse_int_value( env, ncell );
+		if ( n > MAXINT32 )
+			return muse_raise_error( env, _csymbol(L"error:too-many-items"), _cons( self->base.self, _cons( ncell, MUSE_NIL ) ) );
+		else
+		{
+			muse_cell vec = muse_mk_vector( env, (int)n );
+			int sp = _spos();
+			int i = 0;
+			for ( i = 0; i < n; ++i ) 
+			{
+				muse_cell item = com_object_item( env, self, i, sp );
+				if ( fn ) 
+				{
+					item = muse_apply( env, fn, _cons( item, MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
+				}
+				else
+				{
+					// If fn == MUSE_NIL, then just create a vector
+					// of the objects contained in the given COM object.
+				}
+
+				muse_vector_put( env, vec, i, item );
+				_unwind(sp);
+			}
+
+			return vec;
+		}
+	}
+	else
+	{
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell fn_com_vectorize( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell arg = _evalnext(&args);
+	com_object_t *obj = (com_object_t*)muse_functional_object_data( env, arg, 'wcom' );
+	if ( obj ) 
+		return com_map( env, obj, MUSE_NIL );
+	else
+		return muse_raise_error( env, _csymbol(L"com-error:invalid-object"), _cons( arg, MUSE_NIL ) );
+}
+
+static muse_cell com_vectorize_all( muse_env *env, muse_cell coms )
+{
+	return fn_map( env, NULL, _cons( muse_mk_nativefn( env, fn_com_vectorize, NULL ), _cons( coms, MUSE_NIL ) ) );
+}
+
+static muse_cell com_join( muse_env *env, void *obj, muse_cell objlist, muse_cell reduction_fn )
+{
+	com_object_t *self = (com_object_t*)obj;
+
+	if ( com_object_enumerable(env,self) )
+	{
+		// Convert all of the objects into vectors using com_map
+		// and join the vectors. A bit inefficient, but a lot of COM
+		// stuff is. So I'm not bothering to optimize this unless we
+		// need to deal with this kind of thing very frequently :P
+
+		return fn_join( env, NULL, com_vectorize_all( env, _cons( self->base.self, objlist ) ) );
+	}
+	else
+	{
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell com_collect( muse_env *env, void *obj, muse_cell predicate, muse_cell mapper, muse_cell reduction_fn )
+{
+	com_object_t *self = (com_object_t*)obj;
+
+	if ( com_object_enumerable(env,self) )
+	{
+		// Convert all COM objects to vectors and run Collect on them.
+		muse_cell asvector = com_map( env, obj, MUSE_NIL );
+
+		return fn_collect( env, NULL, _cons( asvector, _cons( predicate, _cons( mapper, _cons( reduction_fn, MUSE_NIL ) ) ) ) );
+	}
+	else
+	{
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell com_reduce( muse_env *env, void *obj, muse_cell reduction_fn, muse_cell initial )
+{
+	com_object_t *self = (com_object_t*)obj;
+
+	if ( com_object_enumerable(env,self) )
+	{
+		// Convert all COM objects to vectors and run Collect on them.
+		muse_cell asvector = com_map( env, obj, MUSE_NIL );
+
+		return fn_reduce( env, NULL, _cons( reduction_fn, _cons( initial, _cons( asvector, MUSE_NIL ) ) ) );
+	}
+	else
+	{
+		return MUSE_NIL;
+	}
+}
+
+static muse_cell com_iterator( muse_env *env, com_object_t *self, muse_iterator_callback_t callback, void *context )
+{
+	if ( com_object_enumerable(env,self) )
+	{
+		muse_cell ncell = com_size( env, self );
+		muse_int n = muse_int_value( env, ncell );
+		if ( n > MAXINT32 )
+			return muse_raise_error( env, _csymbol(L"error:too-many-items"), _cons( self->base.self, _cons( ncell, MUSE_NIL ) ) );
+		else
+		{
+			int sp = _spos();
+			int i = 0;
+			for ( i = 0; i < n; ++i ) 
+			{
+				muse_cell item = com_object_item( env, self, i, sp );
+				muse_boolean cont = callback( env, self, context, item );
+				_unwind(sp);
+				if ( !cont )
+					break;
+			}
+		}
+	}
+
+	return MUSE_NIL;
+}
+
 
 /**
  * @code (com-create "progid") @endcode
