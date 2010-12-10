@@ -41,7 +41,6 @@ typedef enum
 typedef struct
 {
 	com_object_enumerability_t enumerability;
-	muse_cell sym_Count, sym_Item;
 	DISPID count, item;
 } com_object_enumerate;
 
@@ -606,6 +605,61 @@ static DISPID com_dispid( muse_env *env, com_object_t *obj, muse_cell name )
 	}
 }
 
+static muse_cell com_get_prop_from_dispid( muse_env *env, com_object_t *obj, DISPID dispid, muse_cell argv, muse_cell opt_key )
+{
+	muse_cell val = MUSE_NIL;
+	HRESULT hr = S_OK;
+	VARIANT result;
+	DISPPARAMS params;
+
+	params.cArgs = muse_list_length( env, argv );
+	params.cNamedArgs = 0;
+	params.rgdispidNamedArgs = NULL;
+	params.rgvarg = NULL;
+
+	if ( params.cArgs > 0 )
+	{
+		com_prepare_args( obj, params.cArgs );
+		argv2variants( env, argv, obj->argv, params.cArgs );
+		params.rgvarg = obj->argv;
+	}
+
+	VariantInit(&result);
+	hr = obj->idispatch->lpVtbl->Invoke( obj->idispatch, dispid, &IID_NULL, 0, DISPATCH_PROPERTYGET, &params, &result, NULL, NULL );
+	if ( SUCCEEDED(hr) )
+	{
+		val = variant2cell( env, &result );
+
+		VariantClear(&result);
+		if ( params.cArgs > 0 )
+		{
+			com_unprepare_args( env, obj, params.cArgs );
+		}
+	}
+	else
+	{
+		VariantClear(&result);
+		if ( params.cArgs > 0 )
+		{
+			com_unprepare_args( env, obj, params.cArgs );
+		}
+
+		if ( opt_key == MUSE_NIL ) 
+		{
+			// opt_key will be MUSE_NIL only when called 
+			// for enumeration purposes by the monadic functions.
+			// In this case, either the key is Item or Count.
+			// Item has the dispid DISPID_VALUE which is 
+			// numerically = (int)0.
+			opt_key = (dispid == DISPID_VALUE ? _csymbol(L"Item") : _csymbol(L"Count"));
+		}
+
+		val = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( opt_key, MUSE_NIL ) ) );
+	}
+
+	return val;
+}
+
 /**
  * @code (get COMOBJECT 'property) @endcode
  * @code (get COMOBJECT 'arrayprop index) @endcode
@@ -617,46 +671,7 @@ static muse_cell com_get_prop( muse_env *env, void *self, muse_cell key, muse_ce
 
 	DISPID propid = com_dispid( env, obj, key );
 	if ( propid != DISPID_UNKNOWN )
-	{
-		HRESULT hr = S_OK;
-		VARIANT result;
-		DISPPARAMS params;
-
-		params.cArgs = muse_list_length( env, argv );
-		params.cNamedArgs = 0;
-		params.rgdispidNamedArgs = NULL;
-		params.rgvarg = NULL;
-
-		if ( params.cArgs > 0 )
-		{
-			com_prepare_args( obj, params.cArgs );
-			argv2variants( env, argv, obj->argv, params.cArgs );
-			params.rgvarg = obj->argv;
-		}
-
-		VariantInit(&result);
-		hr = obj->idispatch->lpVtbl->Invoke( obj->idispatch, propid, &IID_NULL, 0, DISPATCH_PROPERTYGET, &params, &result, NULL, NULL );
-		if ( SUCCEEDED(hr) )
-		{
-			val = variant2cell( env, &result );
-
-			VariantClear(&result);
-			if ( params.cArgs > 0 )
-			{
-				com_unprepare_args( env, obj, params.cArgs );
-			}
-		}
-		else
-		{
-			VariantClear(&result);
-			if ( params.cArgs > 0 )
-			{
-				com_unprepare_args( env, obj, params.cArgs );
-			}
-
-			val = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( key, MUSE_NIL ) ) );
-		}
-	}
+		val = com_get_prop_from_dispid( env, obj, propid, argv, key );
 	else
 		val = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( key, MUSE_NIL ) ) );
 
@@ -779,10 +794,10 @@ static muse_boolean com_object_enumerable( muse_env *env, com_object_t *self )
 		{
 			int sp = _spos();
 			DISPID count, item;
-			self->monad.sym_Count = _csymbol(L"Count");
-			self->monad.sym_Item = _csymbol(L"Item");
-			count = com_dispid( env, self, self->monad.sym_Count );
-			item = com_dispid( env, self, self->monad.sym_Item );
+			muse_cell sym_Count = _csymbol(L"Count");
+			muse_cell sym_Item = _csymbol(L"Item");
+			count = com_dispid( env, self, sym_Count );
+			item = com_dispid( env, self, sym_Item );
 			if ( count != DISPID_UNKNOWN && item != DISPID_UNKNOWN ) 
 			{
 				// Enumerable.
@@ -804,7 +819,7 @@ static muse_boolean com_object_enumerable( muse_env *env, com_object_t *self )
 
 static muse_cell com_object_item( muse_env *env, com_object_t *self, int i, int sp )
 {
-	muse_cell result = com_get_prop( env, self, self->monad.sym_Item, _cons( muse_mk_int(env,i), MUSE_NIL ) );
+	muse_cell result = com_get_prop_from_dispid( env, self, self->monad.item, _cons( muse_mk_int(env,i), MUSE_NIL ), MUSE_NIL );
 	_unwind(sp);
 	_spush(result);
 	return result;
@@ -816,7 +831,7 @@ static muse_cell com_size( muse_env *env, void *obj )
 
 	if ( com_object_enumerable(env,self) )
 	{
-		return com_get_prop( env, self, self->monad.sym_Count, MUSE_NIL );
+		return com_get_prop_from_dispid( env, self, self->monad.count, MUSE_NIL, MUSE_NIL );
 	}
 	else
 	{
