@@ -127,8 +127,6 @@ static void com_get_details( muse_env *env, com_object_t *obj )
 				hr = obj->itypeinfo->lpVtbl->GetTypeAttr( obj->itypeinfo, &(obj->typeattr) );
 				muse_assert( SUCCEEDED(hr) );
 			}
-			else
-				muse_assert( 0 );
 		}
 	}
 }
@@ -280,14 +278,25 @@ static void com_init( muse_env *env, void *p, muse_cell args )
 				hr = CoCreateInstance( &clsid, NULL, CLSCTX_INPROC_SERVER, &IID_IDispatch, (void**)&(obj->idispatch) );
 				if ( FAILED(hr) || obj->idispatch == NULL )
 				{
-					muse_message( env, L"com", L"Failed to instantiate class [%s]", progid );
+					muse_raise_error( env, _csymbol(L"com-error:create-failed"), _cons( arg, MUSE_NIL ) );
+					return;
 				}
 
 				com_get_details( env, obj );
+
+				// Set the "recent item" reference so that
+				// a (com-create "Hello") can be referred to
+				// as (the 'Hello).
+				switch ( _cellt(arg) ) 
+				{
+				case MUSE_SYMBOL_CELL: muse_add_recent_item( env, arg, obj->base.self ); break;
+				case MUSE_TEXT_CELL: muse_add_recent_item( env, _csymbol(progid), obj->base.self ); break;
+				default:;
+				}
 			}
 			else
 			{
-				muse_message( env, L"com-create", L"Invalid COM object name '%s'", progid );
+				muse_raise_error( env, _csymbol(L"com-error:bad-progid"), _cons( arg, MUSE_NIL ) );
 			}
 		}
 	}
@@ -359,7 +368,7 @@ static muse_cell variant2cell( muse_env *env, VARIANT *v )
 					}
 				}
 				else
-					muse_message( env, L"com", L"Given IUnknown does not support IDispatch!" );
+					muse_raise_error( env, _csymbol(L"com-error:unscriptable-object"), MUSE_NIL );
 			}
 		}
 		break;
@@ -379,7 +388,7 @@ static muse_cell variant2cell( muse_env *env, VARIANT *v )
 	case VT_NULL:
 		break;
 	default:
-		muse_message( env, L"get", L"Unknown type code %d", v->vt );
+		muse_raise_error( env, _csymbol(L"com-error:unknown-type"), _cons( muse_mk_int( env, v->vt ), MUSE_NIL ) );
 	}
 
 	return val;
@@ -415,8 +424,17 @@ static void cell2variant( muse_env *env, muse_cell cell, VARIANT *var )
 		var->llVal = 0;
 		break;
 	case MUSE_INT_CELL:
-		var->vt = VT_I8;
-		var->llVal = muse_int_value( env, cell );
+		{
+			muse_int i64 = muse_int_value( env, cell );
+			int i32 = (int)i64;
+			if ( i64 == (muse_int)i32 ) {
+				var->vt = VT_I4;
+				var->intVal = i32;
+			} else {
+				var->vt = VT_I8;
+				var->llVal = i64;
+			}
+		}
 		break;
 	case MUSE_FLOAT_CELL:
 		var->vt = VT_R8;
@@ -464,12 +482,12 @@ static void cell2variant( muse_env *env, muse_cell cell, VARIANT *var )
 							var->ppdispVal = &(obj->idispatch);
 						}
 						else
-							muse_message( env, L"byref", L"Unsupported object type! Expected COM object." );
+							muse_raise_error( env, _csymbol(L"com-error:unsupported-object-type"), MUSE_NIL );
 					}
+					break;
 
-					// To support com_object_t.
 				default:
-					muse_message( env, L"out", L"Unsupported output cell type!" );
+					muse_raise_error( env, _csymbol(L"com-error:unsupported-cell-type"), MUSE_NIL );
 				}
 			}
 			else
@@ -492,7 +510,7 @@ static void cell2variant( muse_env *env, muse_cell cell, VARIANT *var )
 		}
 		break;
 	default:
-		muse_message( env, L"cell2variant", L"Unsupported cell type!" );
+		muse_raise_error( env, _csymbol(L"com-error:unsupported-cell-type"), MUSE_NIL );
 	}
 }
 
@@ -586,20 +604,28 @@ static muse_cell com_get_prop( muse_env *env, void *self, muse_cell key, muse_ce
 		if ( SUCCEEDED(hr) )
 		{
 			val = variant2cell( env, &result );
+
+			VariantClear(&result);
+			if ( params.cArgs > 0 )
+			{
+				com_unprepare_args( env, obj, params.cArgs );
+			}
 		}
 		else
-			muse_message( env, L"get", L"Unable to get property [%s]", muse_symbol_name(env,key) );
-
-		VariantClear(&result);
-		if ( params.cArgs > 0 )
 		{
-			com_unprepare_args( env, obj, params.cArgs );
+			VariantClear(&result);
+			if ( params.cArgs > 0 )
+			{
+				com_unprepare_args( env, obj, params.cArgs );
+			}
+
+			val = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( key, MUSE_NIL ) ) );
 		}
 	}
 	else
-		muse_message( env, L"get", L"Invalid property name [%s]", muse_symbol_name(env,key) );
+		val = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( key, MUSE_NIL ) ) );
 
-	return val;
+	return muse_add_recent_item( env, key, val );
 }
 
 /**
@@ -634,9 +660,9 @@ static muse_cell com_put_prop( muse_env *env, void *self, muse_cell key, muse_ce
 		com_unprepare_args( env, obj, numparams );
 	}
 	else
-		muse_message( env, L"put", L"Invalid property name [%s]", muse_symbol_name(env,key) );
+		value = muse_raise_error( env, _csymbol(L"error:key-not-found"), _cons( obj->base.self, _cons( key, MUSE_NIL ) ) );
 
-	return value;
+	return muse_add_recent_item( env, key, value );
 }
 
 /**
@@ -699,12 +725,32 @@ muse_cell fn_com_object( muse_env *env, com_object_t *obj, muse_cell args )
 			}
 		}
 		else
-			muse_message( env, L"fn_com_object", L"Invalid method name [%s]", muse_symbol_name(env,method) );
+			retval = muse_raise_error( env, _csymbol(L"error:method-not-found"), _cons( obj->base.self, _cons( method, MUSE_NIL ) ) );
 	}
 
-	return retval;
+	return muse_add_recent_item( env, method, retval );
 }
 
+/**
+ * @code (com-create "progid") @endcode
+ *
+ * Creates a new COM object with the given progid.
+ * The resulting object can be used in much the same way
+ * as anything created using @code (object ...) @endcode.
+ *
+ * Property access is using the usual dot notation, or via
+ * the variadic \ref fn_get "get" and \ref fn_put "put"
+ * functions. 
+ *
+ * Method invocation takes the form -
+ *
+ * @code (<obj> 'MethodName arg1 arg2 ...) @endcode
+ *
+ * Do note that methods that take zero arguments are NOT
+ * properties that you can access using "get". get/put
+ * properties are only those which are declared using the
+ * "propget" and "propput" attributes in the IDL spec.
+ */
 muse_cell fn_com_create( muse_env *env, void *context, muse_cell args )
 {
 	return muse_mk_functional_object( env, &g_com_object_type, args );
@@ -726,7 +772,7 @@ muse_cell fn_com_release( muse_env *env, void *context, muse_cell args )
 	}
 	else
 	{
-		muse_message( env, L"com-release", L"Invalid argument! Expecting COM object." );
+		muse_raise_error( env, _csymbol(L"com-error:cannot-release-object"), _cons( obj, MUSE_NIL ) );
 	}
 
 	return MUSE_NIL;
