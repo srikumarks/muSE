@@ -234,6 +234,9 @@ static muse_cell module_augment( muse_env *env, module_t *m, muse_cell args )
 	muse_push_recent_scope( env );
 	muse_add_recent_item( env, (muse_int)fn_module, m->base.self );
 
+	/* Introduce the main symbol as currently defined. */
+	_pushdef( sym_main, m->main );
+	
 	/* Evaluate the body of the module. */
 	if ( args ) {
 		/* This module's body has already been parsed. So evaluate it and gather the
