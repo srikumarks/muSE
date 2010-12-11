@@ -45,6 +45,9 @@ typedef struct _module_t
 	muse_cell main;
 } module_t;
 
+static void introduce_module_local( muse_env *env, module_t *m );
+muse_cell fn_module( muse_env *env, void *context, muse_cell args );
+
 /**
  * Searches this module's symbols for a symbol defined to the given value.
  * If any of the module's symbols is itself is a module, then it recursively
@@ -75,9 +78,16 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 {
 	int bsp = _bspos();
 	module_t *m = (module_t*)ptr;
-	muse_cell exports;
+	muse_cell modname, exports;
 	muse_cell sym_main = _csymbol(L"main");
-	exports = _next(&args);
+	modname = _next(&args);
+	if ( _cellt(modname) == MUSE_CONS_CELL ) {
+		// This is an anonymous module.
+		exports = modname;
+		modname = MUSE_NIL;
+	} else {
+		exports = _next(&args);
+	}
 	
 	m->length = muse_list_length( env, exports );
 	m->bindings = (module_binding_t*)calloc( m->length, sizeof(module_binding_t) );
@@ -104,6 +114,17 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 		}
 	}
 
+	/* Bring into scope the definition of the module's own symbol. 
+	 So it can be captured by functions in the body if necessary. */
+	if ( modname ) {
+		_pushdef( modname, m->base.self );
+	}
+	
+	/* Also make (the module) evaluate to the current
+	 module for the convenience of the body. */
+	muse_push_recent_scope( env );
+	muse_add_recent_item( env, (muse_int)fn_module, m->base.self );
+	
 	/* Make the "main" symbol local. */
 	_pushdef( sym_main, sym_main );
 
@@ -148,6 +169,113 @@ static void module_init( muse_env *env, void *ptr, muse_cell args )
 	
 	/* Restore old definitions. */
 	_unwind_bindings(bsp);
+	muse_pop_recent_scope( env, (muse_int)fn_module, m->base.self );
+}
+
+/**
+ * Adds new definitions if found and replaces old definitions 
+ * with new ones. Note that we don't need to know the module
+ * name. So the args starts with the module exports list,
+ * unlike module_init().
+ */
+static muse_cell module_augment( muse_env *env, module_t *m, muse_cell args )
+{
+	int bsp = _bspos();
+	muse_cell exports;
+	muse_cell sym_main = _csymbol(L"main");
+	int extralen = 0, newlen = m->length;
+	exports = _next(&args);
+	
+	extralen = muse_list_length( env, exports );
+	newlen = m->length + extralen;
+	m->bindings = (module_binding_t*)realloc( m->bindings, sizeof(module_binding_t) * newlen );
+	
+	/* Bring the original definitions into scope. */
+	introduce_module_local( env, m );
+	
+	/* Reset the definitions of exported values. */
+	{
+		int i = 0;
+		muse_cell e = exports;
+		
+		/* HACK: We mofiy the last NULL character in the text contents temporarily
+		 to get the prefix string. This saves an allocation. */
+		while ( e ) {
+			muse_cell sym = _next(&e);
+			muse_boolean exists = MUSE_FALSE;
+
+			MUSE_DIAGNOSTICS({
+				muse_expect( env, L"(module name (.. >>export<< ..) ..)", L"v?", sym, MUSE_SYMBOL_CELL );
+			});
+			
+			for ( i = 0; i < m->length; ++i ) {
+				module_binding_t *b = m->bindings + i;
+				if ( b->name == sym ) {
+					// Already exists. Ignore this entry.
+					exists = MUSE_TRUE;
+					break;
+				}
+			}
+			
+			if ( exists == MUSE_FALSE ) {
+				// Add a new entry. We've already allocated
+				// enough storage for m->bindings.
+				module_binding_t *b = m->bindings + m->length;
+				b->name = sym;
+				b->value = b->name;
+				_pushdef( b->name, b->name );
+				m->length++;
+			}
+		}
+	}
+	
+	/* Also make (the module) evaluate to the current
+	 module for the convenience of the body. */
+	muse_push_recent_scope( env );
+	muse_add_recent_item( env, (muse_int)fn_module, m->base.self );
+
+	/* Evaluate the body of the module. */
+	if ( args ) {
+		/* This module's body has already been parsed. So evaluate it and gather the
+		 definitions. The limitation of this approach is that read-macros defined in
+		 the module cannot be used within the module. But you can export functions,
+		 objects, etc. .. and even unused macro definitions. */
+		_force( muse_do( env, args ) );
+	} else {
+		/* A empty body means "treat the rest of the current input as the module body.".
+		 This approach has the advantage that the module can define, use and export
+		 macros as well. */
+		muse_port_t p = muse_current_port( env, MUSE_INPUT_PORT, NULL );
+		int sp = _spos();
+		while ( !port_eof(p) ) {
+			_eval(muse_pread(p));
+			_unwind(sp);
+		}
+	}
+	
+	/* Keep around the definition of the "main" symbol. */
+	{
+		muse_cell mainval = _symval(sym_main);
+		if ( mainval != sym_main )
+			m->main = mainval;
+		else
+		{
+			/* It is the same as "do". */
+		}
+	}
+	
+	/* Capture new definitions of the exported symbols. */
+	{
+		int i = 0;
+		for ( ; i < m->length; ++i ) {
+			module_binding_t *b = m->bindings + i;
+			b->value = _symval(b->name);
+		}
+	}
+	
+	/* Restore old definitions. */
+	_unwind_bindings(bsp);
+	return muse_pop_recent_scope( env, (muse_int)fn_module, m->base.self );
 }
 
 static void module_mark( muse_env *env, void *ptr )
@@ -372,7 +500,20 @@ static muse_functional_object_type_t g_module_type =
  * Module exports are mutable. You can use the generic \ref fn_get "get"
  * and \ref fn_put "put" functions to fetch and modify the exports of
  * a module. You cannot, however, add new exports or remove exports 
- * from a module.
+ * from a module using "put". To add new exports or to change existing
+ * definitions (for example, to reload a module), you can evaluate
+ * @code (module M (newexport1 oldexport1 ...) ...) @endcode
+ * If your module is defined in a file and you've edited it, you
+ * can use this property to redefine the module by simply callind
+ * @code (load "mymodule.scm") @endcode to have your module's 
+ * definition changes take effect. Note that this refresh mechanism
+ * cannot be used to \b remove module exports.
+ *
+ * Right before the body of a module is evaluated, the new module object
+ * itself is made available in the "recent computations" list so that
+ * you can get at the "current module" object by evaluating the
+ * expression @code (the module) @endcode. This holds even for
+ * anonymous modules.
  *
  * @exception error:key-not-found
  * Handler format: @code (fn (resume 'error:key-not-found obj key) ...) @endcode
@@ -384,22 +525,51 @@ static muse_functional_object_type_t g_module_type =
  * Raised if the module doesn't export the given key. Only exported keys can
  * be modified using put. You can resume with the intended result of the put
  * operation.
+ *
+ * @exception error:invalid-module-name
+ * Handler format: @code (fn (resume 'error:invalid-module-name name) ...) @endcode
+ * Raised if this module definition is trying to augment an existing module, but
+ * the value of the given module name doesn't refer to a module and neither is it
+ * an undefined symbol.
  */
 muse_cell fn_module( muse_env *env, void *context, muse_cell args )
 {
 	int bsp = _bspos();
 	muse_cell mname = _head(args);
+	module_t *m = NULL;
+	
 	if ( _cellt(mname) == MUSE_SYMBOL_CELL )
 	{
-		muse_cell mod = muse_mk_functional_object( env, &g_module_type, _tail(args) );
-		if ( bsp == 0 )
-			_define(mname,mod);
-		else
-			_pushdef(mname,mod);
-		return mod;
+		muse_cell mod = muse_symbol_value( env, mname );
+		if ( mod != mname ) {
+		TRY_MODULE_AGAIN:
+			m = (module_t*)muse_functional_object_data( env, mod, 'mmod' );
+	
+			if ( m != NULL ) {
+				// Leave the module name out of the arguments.
+				return module_augment( env, m, _tail(args) );
+			} else {
+				// Raise an error and allow to continue by resuming with
+				// a valid module object.
+				int sp = _spos();
+				mod =  muse_raise_error( env, _csymbol(L"error:invalid-module-name"), _cons( mname, MUSE_NIL ) );
+				_unwind(sp);
+				_spush(mod);
+				goto TRY_MODULE_AGAIN;
+			}
+		} else {
+			// Include the module name in the arguments.
+			muse_cell mod = muse_mk_functional_object( env, &g_module_type, args );
+			if ( bsp == 0 )
+				_define(mname,mod);
+			else
+				_pushdef(mname,mod);
+			return mod;
+		}
 	}
 	else if ( _cellt(mname) == MUSE_CONS_CELL )
 	{
+		// Create anonymous module.
 		return muse_mk_functional_object( env, &g_module_type, args );
 	}
 	else
