@@ -1008,7 +1008,11 @@ muse_cell fn_wait_for_input( muse_env *env, void *context, muse_cell args )
 		socketport_t *s = (socketport_t*)p;
 		
 		fd_set fds;
+#ifdef MUSE_PLATFORM_WINDOWS
+		struct timeval tv = { (long)(timeout_us / 1000000), (long)(timeout_us % 1000000) };
+#else
 		struct timeval tv = { (time_t)(timeout_us / 1000000), (suseconds_t)(timeout_us % 1000000) };
+#endif
 		FD_ZERO(&fds);
 		FD_SET( s->socket, &fds );
 		

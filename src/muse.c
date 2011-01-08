@@ -198,6 +198,8 @@ static const struct _bs { int builtin; const muse_char *symbol; } k_builtin_symb
 	{ MUSE_TIMEOUTVAR,			L"{{timeout}}"	},
 	{ MUSE_XMLSPLICE,			L"++"		},
 	{ MUSE_GENERIC_INVOKE,		L"*invoke*"	},
+	{ MUSE_GET,					L"get"		},
+	{ MUSE_PUT,					L"put"		},
 	{ -1,						NULL		},
 };
 

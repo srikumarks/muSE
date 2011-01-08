@@ -199,7 +199,7 @@ void muse_define_put_macro( muse_env *env )
 						L"define", L"put",
 						L"fn", L"$args", 
 						L"case", L"$args",
-						_cons(_cons(muse_quote(env,_csymbol(L"get")),_csymbol(L"$get*")),_csymbol(L"$put*")),
+						_cons(_cons(muse_quote(env,_builtin_symbol(MUSE_GET)),_csymbol(L"$get*")),_csymbol(L"$put*")),
 						L"apply", L"put", L"join", L"$get*", L"$put*",
 						L"_", L"cons", L"prim:put", L"$args" ),
 			  MUSE_FALSE );
