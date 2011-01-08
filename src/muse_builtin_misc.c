@@ -99,9 +99,9 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 }
 
 /**
- * (list-folders [pattern]).
- * Returns a list of folder names for all the folders that satisfy the 
- * given pattern.
+ * (list-folders parent-folder).
+ * Returns a list of folder names for all the folders that exist under
+ * the given parent folder.
  * For example:
  * @code
  * (list-folders "../*")
@@ -129,43 +129,78 @@ muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 }
 
 #else // POSIX
+#include <glob.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 
-static muse_cell generate_files( muse_env *env, FILE *info, int i, muse_boolean *eol )
+static muse_cell generate_files( muse_env *env, char **filenames, int i, muse_boolean *eol )
 {
-	char line[4096];
-	if ( fgets( line, 4096, info ) )
+	if ( filenames[i] != NULL )
 	{
-		int len = strlen(line);
-
-		// Erase the newline character at the end.
-		if ( line[len-1] == '\n' || line[len-1] == '\r' )
-		{
-			line[--len] = '\0';
-		}
-
-		// Erase any "/" ending present for directory names.
-		if ( line[len-1] == '/' )
-		{
-			line[--len] = '\0';
-		}
-
-		(*eol) == MUSE_FALSE;
-		return muse_mk_text_utf8(env, line, line+len);
+		(*eol) = MUSE_FALSE;
+		return muse_mk_ctext_utf8( env, filenames[i] );
 	}
 	else
 	{
 		(*eol) = MUSE_TRUE;
-		pclose(info);
 		return MUSE_NIL;
 	}
+}
+
+static int directory_listing( const char *filespec, long filter, char **result[] )
+{
+	glob_t globbuf;
+	struct stat statbuf;
+	int count = 0;
+	
+	(*result) = NULL;
+	
+	if ( glob(filespec, GLOB_MARK, NULL, &globbuf) == 0 )
+	{
+		size_t i = 0;
+		for ( i = 0; i < globbuf.gl_matchc; ++i )
+		{
+			char *name = globbuf.gl_pathv[i];
+			
+			if ( stat(name, &statbuf) == 0 && ((statbuf.st_mode) & S_IFMT) == filter )
+			{
+				char *base;
+				
+				/* Erase trailing slashes from directory names. */
+				size_t n = strlen( name );
+				while ( name[n-1] == '/' )
+					name[--n] = '\0';
+				
+				/* Find last remaining occurance of "/" and     */
+				/* set basename to the characters following it. */
+				base = strrchr( name, '/' );
+				if ( base ) base++; else base = name;
+				
+				/* Dynamically grow array size and add basename to it. */
+				(*result) = (char **)realloc((*result), (count + 2) * sizeof(char *));
+				(*result)[count] = (char *)malloc( strlen(base) + 1 );
+				strcpy( (*result)[count], base );
+				++count;
+			}
+		}
+	}
+	
+	if ( count > 0 )
+	{
+		/* Make sure the array is padded with NULL  */
+		/* to ensure generate_files will terminate. */
+		(*result)[count] = NULL;
+	}
+	
+	globfree( &globbuf );
+	return count;
 }
 
 static int copy_with_space_escapes( int N, char *buffer, const muse_char *str )
 {
 	int count = 0;
 	
-	while ( count < N && (*str) ) {
+	while ( count < N && str && (*str) ) {
 		if ( isspace(*str) ) {
 			buffer[count++] = '\\';
 		}
@@ -195,44 +230,36 @@ static int copy_with_space_escapes( int N, char *buffer, const muse_char *str )
  */
 muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
 {
-	FILE *f;
-	char cmd[4096];
-	int len = 0;
-	
+	muse_cell ret = MUSE_NIL;
+	int i = 0, count = 0;
+	char **filenames = NULL;
+	char filespec[4096];
 	const muse_char *path = _text_contents( _evalnext(&args), NULL );
+	copy_with_space_escapes( 4096, filespec, path );
 	
-	const muse_char *wild = wcschr( path, '*' );
+	/* Get listing of regular files */
+	count = directory_listing( filespec, S_IFREG, &filenames );
 	
-	if ( wild )
+	if ( count > 0 )
 	{
-		len += snprintf( cmd, 4096, "ls -p " );
-		len += copy_with_space_escapes( wild-path, cmd + len, path );
-		len += snprintf( cmd+len, 4096-len, " | grep '%ls$'", wild+1 );
+		ret = muse_add_recent_item( env, (muse_int)fn_list_files, muse_generate_list( env, (muse_list_generator_t)generate_files, filenames ) );
+		
+		/* Free array, including the extra padded element. */
+		for ( ; i <= count; ++i )
+			free( filenames[i] );
+		free( filenames );
 	}
-	else
-	{
-		/* No wild card. We can directly get contents. */
-		len = snprintf( cmd, 4096, "ls -p " );
-		len += copy_with_space_escapes( 4096-len, cmd + len, path );
-		len += snprintf( cmd+len, 4096-len, " | grep -v /" );
-	}
-
-	printf( "command = [%s]\n", cmd );
 	
-	f = popen( cmd, "r" );
-	if ( f )
-		return muse_add_recent_item( env, (muse_int)fn_list_files, muse_generate_list( env, (muse_list_generator_t)generate_files, f ) );
-
-	return MUSE_NIL;
+	return ret;
 }
 
 /**
- * (list-folders [pattern]).
- * Returns a list of folder names for all the folders that satisfy the 
- * given pattern.
+ * (list-folders parent-folder).
+ * Returns a list of folder names for all the folders that exist under
+ * the given parent folder.
  * For example:
  * @code
- * (list-folders "../*")
+ * (list-folders "../")
  * @endcode
  * will list the folders above the current folder.
  * Note that the returned list only has the folder names and not
@@ -248,20 +275,27 @@ muse_cell fn_list_files( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_list_folders( muse_env *env, void *context, muse_cell args )
 {
-	FILE *f;
-	char cmd[4096];
-	int len = 0;
+	muse_cell ret = MUSE_NIL;
+	int i = 0, count = 0;
+	char **filenames = NULL;
+	char filespec[4096];
 	const muse_char *path = _text_contents( _evalnext(&args), NULL );
-
-	len = snprintf( cmd, 4096, "ls -p " );
-	len += copy_with_space_escapes( 4096-len, cmd + len, path );
-	len += snprintf( cmd+len, 4096-len, " | grep /" );
-
-	f = popen( cmd, "r" );
-	if ( f )
-		return muse_add_recent_item( env, (muse_int)fn_list_folders, muse_generate_list( env, (muse_list_generator_t)generate_files, f ) );
-
-	return MUSE_NIL;
+	copy_with_space_escapes( 4096, filespec, path );
+	
+	/* Get listing of directories */
+	count = directory_listing( filespec, S_IFDIR, &filenames );
+	
+	if ( count > 0 )
+	{
+		ret = muse_add_recent_item( env, (muse_int)fn_list_folders, muse_generate_list( env, (muse_list_generator_t)generate_files, filenames ) );
+		
+		/* Free array, including the extra padded element. */
+		for ( ; i <= count; ++i )
+			free( filenames[i] );
+		free( filenames );
+	}
+	
+	return ret;
 }
 
 #endif
