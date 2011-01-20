@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "muse-lib", "muse-lib.vcxproj", "{A4BB2289-C1BA-4766-A927-8A59058C0AAD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "muse", "muse.vcxproj", "{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug DLL|Win32 = Debug DLL|Win32
+		Debug WinApp|Win32 = Debug WinApp|Win32
+		Debug|Win32 = Debug|Win32
+		Release DLL|Win32 = Release DLL|Win32
+		Release WinApp|Win32 = Release WinApp|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug DLL|Win32.ActiveCfg = Debug DLL|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug DLL|Win32.Build.0 = Debug DLL|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug WinApp|Win32.ActiveCfg = Debug WinApp|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug WinApp|Win32.Build.0 = Debug WinApp|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Debug|Win32.Build.0 = Debug|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release DLL|Win32.ActiveCfg = Release DLL|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release DLL|Win32.Build.0 = Release DLL|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release WinApp|Win32.ActiveCfg = Release WinApp|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release WinApp|Win32.Build.0 = Release WinApp|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release|Win32.ActiveCfg = Release|Win32
+		{A4BB2289-C1BA-4766-A927-8A59058C0AAD}.Release|Win32.Build.0 = Release|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug DLL|Win32.ActiveCfg = Debug DLL|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug DLL|Win32.Build.0 = Debug DLL|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug WinApp|Win32.ActiveCfg = Debug WinApp|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug WinApp|Win32.Build.0 = Debug WinApp|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Debug|Win32.Build.0 = Debug|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release DLL|Win32.ActiveCfg = Release DLL|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release DLL|Win32.Build.0 = Release DLL|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release WinApp|Win32.ActiveCfg = Release WinApp|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release WinApp|Win32.Build.0 = Release WinApp|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release|Win32.ActiveCfg = Release|Win32
+		{3E03E2C5-E315-4725-B7D4-20AB3A2E57DF}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+	EndGlobalSection
+EndGlobal
