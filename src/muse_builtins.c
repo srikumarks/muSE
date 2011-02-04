@@ -1107,7 +1107,7 @@ muse_cell fn_format( muse_env *env, void *context, muse_cell args )
 
 	_unwind(sp);
 	_spush(result);
-	return result;
+	return muse_add_recent_item(env, (muse_int)fn_format, result);
 }
 
 /**
