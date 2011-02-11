@@ -230,7 +230,7 @@ static void init_parameters( muse_env *env, const int *parameters )
 		1,		/* MUSE_PRETTY_PRINT */
 		4,		/* MUSE_TAB_SIZE */
 		1,		/* MUSE_DEFAULT_ATTENTION */
-#if __APPLE__	
+#if defined(__APPLE__) && defined(MUSE_OBJC_SUPPORT)
 		1,		/* MUSE_ENABLE_OBJC */
 		1,		/* MUSE_OWN_OBJC_AUTORELEASE_POOL */
 #else
@@ -314,7 +314,7 @@ MUSEAPI muse_env *muse_init_env( const int *parameters )
 		_unwind(sp);
 	}
 
-#if __APPLE__
+#if defined(__APPLE__) && defined(MUSE_OBJC_SUPPORT)
 	/* Initialize objective C if defined. */
 	if ( env->parameters[MUSE_ENABLE_OBJC] ) 
 		init_objc_bridge(env);
@@ -348,7 +348,7 @@ static void cleanup_slots( muse_env *env )
  */
 MUSEAPI void muse_destroy_env( muse_env *env )
 {
-#if __APPLE__
+#if defined(__APPLE__) && defined(MUSE_OBJC_SUPPORT)
 	/* Deallocate objc pool if enabled. */
 	destroy_objc_bridge(env);
 #endif
