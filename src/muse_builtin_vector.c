@@ -410,6 +410,114 @@ static muse_cell vector_reduce( muse_env *env, void *self, muse_cell reduction_f
 	return result;	
 }
 
+
+static void normalize_index_iterator( int *from, int *count, int *to, int step, int length )
+{
+	if ( step == 0 || (*count) <= 0 )
+	{
+		(*count) = 0;
+		return;
+	}
+
+	if ( (*to) >= (*from) )
+	{
+		// Forward scan
+
+		// Check for empty case.
+		if ( (*from) >= length ) { (*count) = 0; return; }
+
+		if ( (*from) < 0 ) (*from) = (((*from) % step) + step) % step;
+
+		if ( (*to) >= (*from) )
+		{
+			// Still good
+			if ( (*to) >= length ) (*to) = length;
+
+			(*count) = ((*to) - (*from))/step;
+		}
+		else
+		{
+			// Empty.
+			(*count) = 0;
+			return;
+		}
+	}
+	else
+	{
+		// Backward scan
+
+		// Check for empty case.
+		if ( (*from) < 0 ) { (*count) = 0; return; }
+
+		if ( (*from) >= length ) (*from) = (*from) - (-step) * (((*from) - length - step) / (-step));
+
+		if ( (*to) <= (*from) )
+		{
+			// Still good
+			if ( (*to) < 0 ) (*to) = -1;
+
+			(*count) = ((*from) - (*to)) / (-step);
+		}
+		else
+		{
+			// Empty
+			(*count) = 0;
+			return;
+		}
+	}
+}
+
+void get_slice_iterator_from_args( muse_env *env, int *from, int *count, int *step, int *to, int length, muse_cell *argv )
+{
+	(*from) = 0;
+	(*count) = -1;
+	(*step) = 1;
+	(*to) = -1;
+
+	if ( argv ) (*from) = (int)_intvalue(_next(argv));
+	if ( argv ) (*count) = (int)_intvalue(_next(argv));
+	if ( argv ) (*step) = (int)_intvalue(_next(argv));
+
+	// Default count such that it covers the whole vector.
+	if ( (*count) < 0 ) 
+	{
+		if ( (*step) < 0 )
+			(*count) = (*from);
+		else
+			(*count) = length - (*from);
+	}
+	
+	(*to) = (*from) + (*step) * (*count);
+
+	normalize_index_iterator( from, count, to, *step, length );
+}
+
+static muse_cell vector_slice( muse_env *env, void *self, muse_cell argv )
+{
+	vector_t *v = (vector_t*)self;
+
+	int from, count, step, to;
+
+	get_slice_iterator_from_args( env, &from, &count, &step, &to, v->length, &argv );
+
+	if ( count <= 0 )
+		return muse_mk_vector( env, 0 );
+	else
+	{
+		muse_cell vec = muse_mk_vector( env, count );
+		int i = 0;
+		int sp = _spos();
+		for ( i = 0; i < count; ++i )
+		{
+			int j = from + i * step;
+			muse_vector_put( env, vec, i, vector_force( env, v, j, v->slots[j] ) );
+			_unwind(sp);
+		}
+
+		return vec;
+	}
+}
+
 static muse_cell vector_iterator( muse_env *env, vector_t *self, muse_iterator_callback_t callback, void *context )
 {
 	int sp = _spos();
@@ -507,7 +615,8 @@ static muse_monad_view_t g_vector_monad_view =
 	vector_map,
 	vector_join,
 	vector_collect,
-	vector_reduce
+	vector_reduce,
+	vector_slice
 };
 
 static muse_format_view_t g_vector_format_view =

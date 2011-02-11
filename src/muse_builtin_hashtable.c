@@ -601,7 +601,8 @@ static muse_monad_view_t g_hashtable_monad_view =
 	hashtable_map,
 	hashtable_join,
 	hashtable_collect,
-	hashtable_reduce
+	hashtable_reduce,
+	NULL
 };
 
 static void *hashtable_view( muse_env *env, int id )

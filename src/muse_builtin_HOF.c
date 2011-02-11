@@ -587,6 +587,108 @@ muse_cell fn_for_each( muse_env *env, void *context, muse_cell args )
 	return muse_pop_recent_scope( env, (muse_int)fn_for_each, _evalnext(&args) );
 }
 
+void get_slice_iterator_from_args( muse_env *env, int *from, int *count, int *step, int *to, int length, muse_cell *argv );
+
+static muse_cell list_slice( muse_env *env, muse_cell list, muse_cell argv )
+{
+	int length = muse_list_length( env, list );
+
+	int from, count, step, to, revorder = 0;
+
+	get_slice_iterator_from_args( env, &from, &count, &step, &to, length, &argv );
+
+	if ( count <= 0 )
+		return MUSE_NIL;
+	else if ( step < 0 )
+	{
+		int newFrom = from + (count-1) * step;
+		int newTo = from - step;
+		int newStep = -step;
+
+		from = newFrom;
+		to = newTo;
+		step = newStep;
+		revorder = 1; // Indicates to build the list in reverse order.
+	}
+
+
+	{
+		muse_cell p = muse_tail_n( env, list, from );
+		muse_cell result = MUSE_NIL, t = MUSE_NIL;
+		int sp = _spos();
+		int i = from;
+		for ( i = from; i < to; i += step )
+		{
+			if ( revorder )
+			{
+				// Build the list in reverse order.
+				result = _cons( muse_head(env,p), result );
+			}
+			else
+			{
+				// Build the list in straight order.
+				if ( result )
+				{
+					muse_cell newt = _cons( muse_head( env, p ), MUSE_NIL );
+					_sett( t, newt );
+					t = newt;
+				}
+				else
+				{
+					result = t = _cons( muse_head( env, p ), MUSE_NIL );
+				}
+			}
+			p = muse_tail_n( env, p, step );
+			_unwind(sp);
+			_spush(result);
+		}
+
+		return result;
+	}
+}
+
+/**
+ * @code (slice collection [from count step]) @endcode
+ *
+ * Copies a portion of the collection into a new collection
+ * of the same type. The starting zero-based index is given
+ * by \p from, the number of items to copy is given by
+ * \p count (must be > 0 for non-empty collection) and 
+ * the iteration step is given by \p step which can be +ve
+ * or -ve.
+ *
+ * The range specified by from/count/step can be outside
+ * the range of available indices in the collection,
+ * in which case the range is shortened to whatever
+ * index range is possible.
+ *
+ * Currently slicing is supported for lists and vectors.
+ *
+ * Note that this is an "eager evaluation" optimization. 
+ * You can also achieve slicing for vectors and hashtables 
+ * by creating a new collection and setting a datafn on it,
+ * which will do the same thing lazily.
+ */
+muse_cell fn_slice( muse_env *env, void *context, muse_cell args )
+{
+	muse_cell coll = _evalnext(&args);
+	muse_cell argv = muse_eval_list( env, args );
+
+	muse_push_recent_scope(env);
+
+	if ( _cellt(coll) == MUSE_CONS_CELL )
+		return muse_pop_recent_scope( env, (muse_int)fn_slice, list_slice( env, coll, argv ) );
+
+	{
+		muse_functional_object_t *obj = NULL;
+		muse_monad_view_t *monad = get_monad_view( env, coll, &obj );
+		if ( monad && monad->slice )
+			return muse_pop_recent_scope( env, (muse_int)fn_slice, monad->slice( env, obj, argv ) );
+		else
+			return muse_pop_recent_scope( env, (muse_int)fn_slice, muse_raise_error( env, _csymbol(L"error:not-supported"), _cons( coll, _cons( _csymbol(L"slice"), MUSE_NIL ) ) ) );
+	}
+}
+
 static muse_cell column_generator( muse_env *env, muse_cell *rows, int i, muse_boolean *eol )
 {
 	if ( *rows ) {

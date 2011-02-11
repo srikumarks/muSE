@@ -123,7 +123,7 @@ BEGIN_MUSE_C_FUNCTIONS
  *	- \ref fn_sort "sort", \ref fn_sort_inplace "sort!", \ref fn_reverse "reverse", \ref fn_reverse_inplace "reverse!"
  *
  * @subsection ML_HOFs Higher order and/or polymorphic functions
- *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_transpose "transpose", \ref fn_join "join", \ref fn_length "length"
+ *	- \ref fn_map "map", \ref fn_reduce "reduce", \ref fn_collect "collect", \ref fn_slice "slice", \ref fn_transpose "transpose", \ref fn_join "join", \ref fn_length "length"
  *	- \ref fn_andmap "andmap", \ref fn_ormap "ormap", \ref fn_for_each "for-each"
  *	- \ref fn_get "get", \ref fn_put "put" and \ref fn_put_many "put*" can work across a multitude of key-value objects
  *	  such as hashtables, vectors, modules and objects.
@@ -819,6 +819,14 @@ typedef struct
 	 * commutative and associative for simplicity, and folds the
 	 * results into successive reduction calls, returning the final
 	 * outcome as the result.
+	 */
+
+	muse_cell (*slice)( muse_env *env, void *self, muse_cell argv );	
+	/**<
+	 * Constructs a new object of the same type containing a selection
+	 * of objects from it. The selection may be specified in different
+	 * ways for different object types through the variable arguments
+	 * list \p argv.
 	 */
 } muse_monad_view_t;
 /*@}*/

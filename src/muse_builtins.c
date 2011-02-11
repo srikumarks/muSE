@@ -86,6 +86,7 @@ static const struct _builtins
 {		L"join",			fn_join				},
 {		L"collect",		fn_collect			},
 {		L"reduce",		fn_reduce			},
+{		L"slice",		fn_slice			},
 {		L"find",		fn_find				},
 {		L"andmap",		fn_andmap			},
 {		L"ormap",		fn_ormap			},
