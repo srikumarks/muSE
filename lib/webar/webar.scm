@@ -85,7 +85,7 @@
             (list 'REPO (cons 'list (get (folder->object repo) 'contents))))
      (close (the open-file))
      (system *program* "--exec" exe "__temp.scm")
-     (system "del" "__temp.scm"))
+     (system "cmd.exe /C" "del __temp.scm"))
 
                                         ; If passed only the repo folder, serve the repo directly
     ((repo)
