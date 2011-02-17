@@ -337,17 +337,14 @@ static muse_cell vector_collect( muse_env *env, void *self, muse_cell predicate,
 	muse_cell result = muse_mk_vector( env, v1->length );
 	vector_t *result_ptr = (vector_t*)_functional_object_data( result, 'vect' );
 	
-	muse_cell ix = _mk_int(0);
-	muse_cell args = _cons( ix, MUSE_NIL );
-	muse_int *ixptr = &(_ptr(ix)->i);
+	muse_cell args = _cons( MUSE_NIL, MUSE_NIL );
 	
 	{
 		int sp = _spos();
 		int i, j;
 		for ( i = 0, j = 0; i < v1->length; ++i )
 		{
-			(*ixptr) = i;
-			_sett( args, v1->slots[i] );
+			_setht( args, _mk_int(i), v1->slots[i] );
 			
 			if ( !predicate || _apply( predicate, args, MUSE_TRUE ) )
 			{
@@ -355,7 +352,7 @@ static muse_cell vector_collect( muse_env *env, void *self, muse_cell predicate,
 				{
 					muse_cell m;
 					
-					(*ixptr) = j;
+					_seth( args, _mk_int(j) );
 					m = _apply( mapper, args, MUSE_TRUE );
 					
 					if ( m )
