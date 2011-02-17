@@ -474,9 +474,9 @@ void get_slice_iterator_from_args( muse_env *env, int *from, int *count, int *st
 	(*step) = 1;
 	(*to) = -1;
 
-	if ( argv ) (*from) = (int)_intvalue(_next(argv));
-	if ( argv ) (*count) = (int)_intvalue(_next(argv));
-	if ( argv ) (*step) = (int)_intvalue(_next(argv));
+	if ( *argv ) (*from) = (int)_intvalue(_next(argv));
+	if ( *argv ) (*count) = (int)_intvalue(_next(argv));
+	if ( *argv ) (*step) = (int)_intvalue(_next(argv));
 
 	// Default count such that it covers the whole vector.
 	if ( (*count) < 0 ) 
