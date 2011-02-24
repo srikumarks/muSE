@@ -96,7 +96,8 @@ static muse_functional_object_type_t g_box_type =
 MUSEAPI muse_cell muse_mk_box( muse_env *env, muse_cell contents )
 {
 	muse_cell b = _mk_functional_object( &g_box_type, MUSE_NIL ); 
-	return muse_box_set( env, b, contents );
+	muse_box_set( env, b, contents );
+	return b;
 }
 
 /**

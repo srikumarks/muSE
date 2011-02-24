@@ -521,13 +521,18 @@ muse_cell fn_andmap( muse_env *env, void *context, muse_cell args )
 	muse_cell predicate = _evalnext(&args);
 	muse_cell list = _evalnext(&args);
 	
-	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
-	muse_functional_object_t *collObj = NULL;
-	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
-	muse_push_recent_scope(env);
-	return muse_pop_recent_scope( env, (muse_int)fn_andmap,
-									iter ? (iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t())
-										 : MUSE_NIL ); 
+	if ( list )
+	{
+		mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
+		muse_functional_object_t *collObj = NULL;
+		muse_iterator_t iter = get_iterator_view( env, list, &collObj );
+		muse_push_recent_scope(env);
+		return muse_pop_recent_scope( env, (muse_int)fn_andmap,
+										iter ? (iter( env, collObj, (muse_iterator_callback_t)andmapper, &info ) ? MUSE_NIL : _t())
+											 : MUSE_NIL ); 
+	}
+	else
+		return muse_add_recent_item( env, (muse_int)fn_andmap, MUSE_NIL );
 }
 
 /**
@@ -549,13 +554,18 @@ muse_cell fn_ormap( muse_env *env, void *context, muse_cell args )
 	muse_cell predicate = _evalnext(&args);
 	muse_cell list = _evalnext(&args);
 	
-	mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
-	muse_functional_object_t *collObj = NULL;
-	muse_iterator_t iter = get_iterator_view( env, list, &collObj );
-	muse_push_recent_scope(env);
-	return muse_pop_recent_scope( env, (muse_int)fn_ormap,
-									iter ? iter( env, collObj, (muse_iterator_callback_t)ormapper, &info )
-									     : MUSE_NIL );
+	if ( list )
+	{
+		mapinfo_t info = { predicate, _cons(MUSE_NIL, MUSE_NIL) };
+		muse_functional_object_t *collObj = NULL;
+		muse_iterator_t iter = get_iterator_view( env, list, &collObj );
+		muse_push_recent_scope(env);
+		return muse_pop_recent_scope( env, (muse_int)fn_ormap,
+										iter ? iter( env, collObj, (muse_iterator_callback_t)ormapper, &info )
+											 : MUSE_NIL );
+	} 
+	else
+		return muse_add_recent_item( env, (muse_int)fn_ormap, MUSE_NIL );
 }
 
  
