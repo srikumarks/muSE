@@ -723,9 +723,10 @@ muse_cell fn_list_to_vector( muse_env *env, void *context, muse_cell args )
 		vector_init_with_length( v, length );
 
 		{
+			int i = 0;
 			muse_cell *slots = v->slots;
 			while ( list ) {
-				slots[0] = muse_head(env,list);
+				slots[i++] = muse_head(env,list);
 				list = muse_tail(env,list);
 			}
 		}
