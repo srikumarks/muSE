@@ -2,10 +2,10 @@
 
 (module XML (tag= attr= body= 
 	     :tag :attr :attrs 
-	     :select :and :any :or :not
+	     :select :and :any :or :not :node
 	     :child :path :descendant
-             :pipe :map : :* :reduce :apply :filter :attr= :attr=*
-	     :replace
+         :pipe :map : :* :reduce :apply :filter :attr= :attr=*
+	     :replace :transform
 	     read-xml-file))
 
 ; In v271, a native function called read-xml was added to muSE
@@ -152,6 +152,9 @@
   (fn preds
       (fn (node)
           (apply join (map (fn (p) (p node)) preds)))))
+
+; :node is a predicate that allows all nodes through.
+(define :node (fn (node) (list node)))
 
 ; (:or ..predicates..)
 ; Evalutes to a predicate that will succeed on a node if any of
@@ -316,5 +319,27 @@
       (list fn (list '$node)
         (list f f '$node)))))
 
+; :transform constructs a fn (nodes) -> nodes
+; which recursively tests the nodes of the tree using what?
+; and transforms in-place the nodes that match using to-what.
+; The result is the same list of nodes with the in-place
+; transformations done.
+;
+; @param what? is a fn(node) -> list-of-nodes that selects a node based 
+; on some criterion. A standard predicate expression will do.
+;
+; @param to-what is a fn(node) -> node that transforms the given node
+; to something else which will be placed in the position of the original node.
+(define (:transform what? to-what)
+  (let ((f (fn (self nodes)
+               (case nodes
+                 ((h . t) (if (what? h)
+                            (setf! nodes (to-what h))
+                            (self self (body= h)))
+                          (self self t)
+                          nodes)
+                 (_ _)))))
+    (fn (nodes)
+        (f f nodes))))
 
 (print "(XML library loaded)")
