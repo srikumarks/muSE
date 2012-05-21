@@ -52,6 +52,27 @@ typedef long long longlong_t;
 			while(0)
 #endif
 
+// Thanks to contribution by cjames... here -
+// http://code.google.com/p/muvee-symbolic-expressions/issues/detail?id=36
+//
+// See here - http://stackoverflow.com/questions/1753602/registers-for-x86-64-processors
+// for a summary of the 64-bit registers. The stack pointer "esp"
+// becomes "rsp" in the 64-bit asm. Also, the "q" asms "movq" and "pushq"
+// work with 64-bit values ("q" for "quad words", I think).
+#if __x86_64__
+#	define SAVE_STACK_POINTER( var ) \
+            void *var = NULL; \
+            asm("movq %%rsp, %0;" : "=r"(var));
+
+#	define CHANGE_STACK_POINTER(sp_value) \
+            do\
+            {\
+                void *new_sp = (void*)(sp_value);\
+                asm("pushq %0; popq %%rsp;" : : "r"(new_sp));\
+            }\
+            while(0)
+#endif
+
 #define MUSE_PLATFORM_POSIX 1
 
 #  if defined(BSD) || __APPLE__ & __MACH__
