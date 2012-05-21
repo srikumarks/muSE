@@ -540,10 +540,15 @@ muse_cell fn_objc_sel( muse_env *env, compiled_sel_t *sel, muse_cell args )
 			// Not an objc symbol and refers to the super tree.
 			muse_cell obj = _symval(sel->sym_self);
 			return fn_super_invoke_explicit( env, NULL, _cons( obj, _cons( _qq(fn_supers(env,NULL,_cons(obj,MUSE_NIL))), _cons( _qq(objcell), args ) ) ) );
-		} else if ( _cellt(objcell) == MUSE_SYMBOL_CELL ) {
-			// Not an objc class symbol.
-			// Send the message to the muSE object.
-			return muse_apply( env, objcell, _cons( _qq(sel->sym), args ), MUSE_FALSE, MUSE_FALSE );
+		} else {
+            // Not an objc class symbol.
+            // Send the message to the muSE object.
+            //
+            // The protocol for "sending a message" is to call the object
+            // like a function, passing the selector symbol as the first argument, followed
+            // by the other arguments to the "method" selected by the given selector.
+            // For more info about muse's object system, see muse_builtin_class.c
+            return muse_apply( env, objcell, _cons( _qq(sel->sym), args ), MUSE_FALSE, MUSE_FALSE );
 		}
 	}
 	
