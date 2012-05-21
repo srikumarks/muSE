@@ -1470,7 +1470,7 @@ MUSEAPI muse_cell muse_pread( muse_port_t f )
 				 */
 				if ( (f->mode & MUSE_PORT_READ_DETECT_MACROS) && is_macro_sexpr(env,sexpr) )
 					sexpr = peval(env,f,sexpr);
-#if __APPLE__
+#if defined(__APPLE__) && defined(MUSE_OBJC_SUPPORT)
 				return fn_expand_objc_expression( env, NULL, sexpr );
 #else
 				/* If objc is not available (not supported on non-Apple platforms),
