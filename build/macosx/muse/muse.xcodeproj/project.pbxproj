@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 42;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -16,6 +16,8 @@
 		A90CEEE310F6A22D004E92D4 /* muse_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = A90CEEDB10F6A22D004E92D4 /* muse_utils.h */; };
 		A90CEEE410F6A22D004E92D4 /* muse_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = A90CEEDC10F6A22D004E92D4 /* muse_utils.c */; };
 		A90CEEE510F6A22D004E92D4 /* muse_builtin_crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = A90CEEDD10F6A22D004E92D4 /* muse_builtin_crypto.c */; };
+		A95D9392156AA11F00BDFA06 /* muse_win32_com.c in Sources */ = {isa = PBXBuildFile; fileRef = A9E087F20E3660CB00F6BCAF /* muse_win32_com.c */; };
+		A95D9393156AA12400BDFA06 /* muse_win32_com.c in Sources */ = {isa = PBXBuildFile; fileRef = A9E087F20E3660CB00F6BCAF /* muse_win32_com.c */; };
 		A977A7D10CC2E83300EA48A7 /* muse.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6B70BA53CB900FAF5C4 /* muse.c */; };
 		A977A7D20CC2E83A00EA48A7 /* muse.h in Headers */ = {isa = PBXBuildFile; fileRef = C420F6B90BA53CB900FAF5C4 /* muse.h */; };
 		A977A7D30CC2E83B00EA48A7 /* muse_builtin_algo.c in Sources */ = {isa = PBXBuildFile; fileRef = C420F6BA0BA53CB900FAF5C4 /* muse_builtin_algo.c */; };
@@ -447,9 +449,16 @@
 /* Begin PBXProject section */
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0420;
+			};
 			buildConfigurationList = 1DEB927808733DD40010E9CD /* Build configuration list for PBXProject "muse" */;
-			compatibilityVersion = "Xcode 2.4";
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
 			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+			);
 			mainGroup = 08FB7794FE84155DC02AAC07 /* muse */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -555,6 +564,7 @@
 				A9ABD7FF108B06AD00B9EF59 /* muse_image_info.cpp in Sources */,
 				A90CEEE110F6A22D004E92D4 /* muse_utils.c in Sources */,
 				A90CEEE210F6A22D004E92D4 /* muse_builtin_crypto.c in Sources */,
+				A95D9393156AA12400BDFA06 /* muse_win32_com.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -597,6 +607,7 @@
 				A9ABD800108B06AD00B9EF59 /* muse_image_info.cpp in Sources */,
 				A90CEEE410F6A22D004E92D4 /* muse_utils.c in Sources */,
 				A90CEEE510F6A22D004E92D4 /* muse_builtin_crypto.c in Sources */,
+				A95D9392156AA11F00BDFA06 /* muse_win32_com.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -616,7 +627,6 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = NO;
@@ -631,10 +641,7 @@
 		1DEB927608733DD40010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					ppc,
-					i386,
-				);
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
 				GCC_PRECOMPILE_PREFIX_HEADER = NO;
@@ -648,19 +655,20 @@
 		1DEB927908733DD40010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = i386;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				GCC_FAST_OBJC_DISPATCH = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = MUSE_OBJC_SUPPORT;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				PREBINDING = NO;
-				SDKROOT = /Developer/SDKs/MacOSX10.5.sdk;
+				ONLY_ACTIVE_ARCH = NO;
+				SDKROOT = macosx10.6;
 			};
 			name = Debug;
 		};
 		1DEB927A08733DD40010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = i386;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				GCC_AUTO_VECTORIZATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
@@ -669,15 +677,17 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_MODEL_TUNING = G4;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = NDEBUG;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					MUSE_OBJC_SUPPORT,
+					NDEBUG,
+				);
 				GCC_STRICT_ALIASING = YES;
 				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				OTHER_CFLAGS = "-fasm-blocks";
-				PREBINDING = NO;
-				SDKROOT = /Developer/SDKs/MacOSX10.5.sdk;
+				SDKROOT = macosx10.6;
 			};
 			name = Release;
 		};
@@ -687,12 +697,10 @@
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_PREFIX = lib;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
 				PRODUCT_NAME = muse;
 				ZERO_LINK = YES;
 			};
@@ -703,11 +711,9 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = YES;
 				EXECUTABLE_PREFIX = lib;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
 				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
 				PRODUCT_NAME = muse;
 				ZERO_LINK = NO;
 			};
@@ -721,7 +727,6 @@
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_ENABLE_SYMBOL_SEPARATION = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_MODEL_TUNING = G5;
@@ -736,7 +741,6 @@
 					"-framework",
 					AppKit,
 				);
-				PREBINDING = NO;
 				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
 				PRODUCT_NAME = muse;
 				ZERO_LINK = YES;
@@ -750,7 +754,6 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_ENABLE_SYMBOL_SEPARATION = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
@@ -764,7 +767,6 @@
 					"-framework",
 					AppKit,
 				);
-				PREBINDING = NO;
 				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
 				PRODUCT_NAME = muse;
 				ZERO_LINK = NO;
