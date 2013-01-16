@@ -1,7 +1,0 @@
-digraph "Graphical Class Hierarchy"
-{
-  edge [fontname="FreeSans",fontsize="10",labelfontname="FreeSans",labelfontsize="10"];
-  node [fontname="FreeSans",fontsize="10",shape=record];
-  rankdir="LR";
-  Node1 [label="muse_cell_data",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$unionmuse__cell__data.html",tooltip="A muse cell is a union of all the possible cell types."];
-}

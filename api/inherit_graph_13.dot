@@ -1,7 +1,0 @@
-digraph "Graphical Class Hierarchy"
-{
-  edge [fontname="FreeSans",fontsize="10",labelfontname="FreeSans",labelfontsize="10"];
-  node [fontname="FreeSans",fontsize="10",shape=record];
-  rankdir="LR";
-  Node1 [label="muse_prop_view_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structmuse__prop__view__t.html",tooltip="A property view (id = &#39;prop&#39;) says that an object support get and set methods for properties..."];
-}
