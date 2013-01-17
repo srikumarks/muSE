@@ -150,7 +150,7 @@ int utf8_to_uc16( const unsigned char *utf8, muse_char *uc16 )
 	}
 }
 
-enum { BUFFER_MAXFRAGLEN = 128 };
+enum { BUFFER_MAXFRAGLEN = 512 };
 
 typedef struct
 {
@@ -160,7 +160,7 @@ typedef struct
 
 struct __buffer_t__
 {
-	int N;
+	int N, maxN, length;
 	fragment_t **frags;
 };
 
@@ -173,7 +173,8 @@ struct __buffer_t__
 buffer_t *buffer_alloc()
 {
 	buffer_t *b = (buffer_t*)calloc( 1, sizeof(buffer_t) );
-	b->N = 1;
+	b->N = b->maxN = 1;
+    b->length = 0;
 	b->frags = (fragment_t**)calloc( 1, sizeof(fragment_t*) );
 	b->frags[0] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
 	b->frags[0]->len = 0;
@@ -186,12 +187,41 @@ buffer_t *buffer_alloc()
 void buffer_free( buffer_t *b )
 {
 	int i = 0;
-	for ( i = 0; i < b->N; ++i ) {
+	for ( i = 0; i < b->maxN; ++i ) {
 		free( b->frags[i] );
 	}
 
 	free( b->frags );
 	free( b );
+}
+
+/**
+ * Gives up all the data without releasing memory.
+ */
+void buffer_reset( buffer_t *b )
+{
+    b->N = 1;
+    b->frags[0]->len = 0;
+    b->length = 0;
+}
+
+static void buffer_grow_if_necessary( buffer_t *b )
+{
+	if ( b->frags[b->N-1]->len >= BUFFER_MAXFRAGLEN ) {
+        if ( b->N >= b->maxN ) {
+            b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->maxN * 2) );
+            {
+                int i, maxI;
+                for (i = b->maxN, maxI = i * 2; i < maxI; ++i) {
+                    b->frags[i] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
+                }
+                b->maxN = maxI;
+            }
+        }
+        
+        b->frags[b->N]->len = 0;
+		b->N++;
+	}    
 }
 
 /**
@@ -201,16 +231,13 @@ void buffer_free( buffer_t *b )
  */
 void buffer_putc( buffer_t *b, muse_char c )
 {
-	if ( b->frags[b->N-1]->len >= BUFFER_MAXFRAGLEN ) {
-		b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
-		b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
-		b->N++;
-	}
+    buffer_grow_if_necessary( b );
 
 	// Add character.
 	{
 		fragment_t *f = b->frags[b->N-1];
 		f->chars[f->len++] = c;
+        b->length++;
 	}
 }
 
@@ -228,15 +255,14 @@ void buffer_puts( buffer_t *b, const muse_char *s, int len )
 		if ( len <= freelen ) {
 			memcpy( f->chars + f->len, s, len * sizeof(muse_char) );
 			f->len += len;
+            b->length += len;
 			return;
 		} else {
 			memcpy( f->chars + f->len, s, freelen * sizeof(muse_char) );
 			f->len += freelen;
+            b->length += freelen;
 
-			// Grow by one fragment.
-			b->frags = (fragment_t**)realloc( b->frags, sizeof(fragment_t*) * (b->N + 1) );
-			b->frags[b->N] = (fragment_t*)calloc( 1, sizeof(fragment_t) );
-			b->N++;
+            buffer_grow_if_necessary( b );
 
 			buffer_puts( b, s + freelen, len - freelen );
 			return;
@@ -250,9 +276,7 @@ void buffer_puts( buffer_t *b, const muse_char *s, int len )
  */
 muse_cell buffer_to_string( buffer_t *b, muse_env *env )
 {
-	int total_size = 0, i = 0;
-	for ( i = 0; i < b->N; ++i )
-		total_size += b->frags[i]->len;
+	int total_size = b->length, i = 0;
 
 	{
 		muse_cell txt = muse_mk_text( env, NULL, ((const muse_char *)NULL) + total_size );
@@ -283,12 +307,7 @@ muse_cell buffer_to_symbol( buffer_t *b, muse_env *env )
  */
 int buffer_length( buffer_t *b )
 {
-	int len = 0;
-	int i = 0;
-	for ( i = 0; i < b->N; ++i ) {
-		len += b->frags[i]->len;
-	}
-	return len;
+    return b->length;
 }
 
 /**

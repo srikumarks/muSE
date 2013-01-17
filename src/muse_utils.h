@@ -40,6 +40,7 @@ typedef struct __buffer_t__ buffer_t;
 
 buffer_t*	buffer_alloc();
 void		buffer_free( buffer_t *b );
+void        buffer_reset( buffer_t *b );
 void		buffer_putc( buffer_t *b, muse_char c );
 void		buffer_puts( buffer_t *b, const muse_char *s, int len );
 muse_cell	buffer_to_string( buffer_t *b, muse_env *env );
