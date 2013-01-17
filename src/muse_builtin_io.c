@@ -738,6 +738,7 @@ muse_cell muse_scribble_expr( muse_env *env, muse_port_t in )
         // be useful to "comment out" blocks like that.
         port_getchar(in);
         muse_scribble_expr(env, in); // Discard result.
+        skip_whitespace(in);
         return MUSE_NIL;
     } else if ( c == '(' || c == '{' || c == '[' ) {
         // A regular scheme expression.
