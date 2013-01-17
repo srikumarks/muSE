@@ -611,13 +611,14 @@ muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
         // If {scribble} is immediately followed by an opening
         // brace, then we limit the reading to the matching
         // closing brace. This allows scribble text to be used
-        // within muSE source files.
+        // within muSE source files. Gobble the opening brace.
         {
             muse_char c = port_getchar(in);
             if ( c == '{' ) {
                 open_braces = 0;
+            } else {
+                port_ungetchar(c, in);
             }
-            port_ungetchar(c, in);
         }
     }
     
@@ -626,7 +627,7 @@ muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
     muse_push_recent_scope(env);
     
     return muse_pop_recent_scope(env, (muse_int)fn_scribble,
-                                 muse_eval_list(env, muse_scribble( env, in, 1, empty_list() )));
+                                 muse_eval_list(env, muse_scribble( env, in, open_braces, empty_list() )));
 }
 
 running_list_t empty_list()
