@@ -176,6 +176,7 @@ static const struct _builtins
 {		L"read-line",	fn_read_line		},
 {		L"flush",		fn_flush			},
 {		L"mickey",		fn_mickey			},
+{		L"scribble",	fn_scribble			},
 {		L"load",		fn_load				},
 {		L"file-has-attached-code?",		fn_file_has_attached_code_p	},
 {		L"write-xml",	fn_write_xml		},

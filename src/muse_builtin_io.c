@@ -561,6 +561,222 @@ static void mickey_mode( muse_port_t in, muse_port_t out )
 	}
 }
 
+typedef struct _running_list_t
+{
+    muse_cell head, tail;
+} running_list_t;
+
+static muse_cell muse_scribble( muse_env *env, muse_port_t in, muse_int open_braces, running_list_t list );
+static muse_cell muse_scribble_expr( muse_env *env, muse_port_t in );
+static running_list_t append_to_list( muse_env *env, running_list_t list, muse_cell term, int *sp );
+static running_list_t empty_list();
+
+/**
+ * {scribble} or (scribble inport)
+ * 
+ * Parses input stream in scribble format (like DrRacket) and
+ * returns a single object. Scribble expressions are of the form
+ *    
+ *    @word[optional scheme thingies]{textual stuff}
+ *
+ * This is turned into an expression of the form --
+ *
+ *    (fn (@) (@ 'word (list optional scheme thingies) (list "textual stuff")))
+ *
+ * This thunking helps delay computations so that they can be context dependent.
+ * The return value of scribble is a list of things - either strings or
+ * function expressions of that form. Textual content is broken
+ * into lines, but the line separators are also preserved as separate strings.
+ *
+ * No whitespace must be present before '[' and '{' when specifying parameters.
+ * This allows both parts to be optional.
+ *
+ * scribble can be used in-source by surrounding the desired section in 
+ * braces. E: {scribble}{some text @dothis["meow"]{cat called wanda} some more text}
+ *
+ * Braces must appear matched. Braces escaped using '\' character (backslash)
+ * are excluded from match. The '\' character is preserved.
+ */
+muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
+{
+    muse_port_t in;
+    muse_int open_braces = 0;
+    
+    if ( args ) {
+        in = _port(_evalnext(&args));
+        open_braces = 1;
+    } else {
+        in = muse_current_port(env, MUSE_INPUT_PORT, NULL);
+
+        // If {scribble} is immediately followed by an opening
+        // brace, then we limit the reading to the matching
+        // closing brace. This allows scribble text to be used
+        // within muSE source files.
+        {
+            muse_char c = port_getchar(in);
+            if ( c == '{' ) {
+                open_braces = 0;
+            }
+            port_ungetchar(c, in);
+        }
+    }
+    
+    muse_assert(in != NULL);
+    
+    muse_push_recent_scope(env);
+    
+    return muse_pop_recent_scope(env, (muse_int)fn_scribble,
+                                 muse_eval_list(env, muse_scribble( env, in, 1, empty_list() )));
+}
+
+running_list_t empty_list()
+{
+    running_list_t list = { MUSE_NIL, MUSE_NIL };
+    return list;
+}
+
+
+running_list_t append_to_list( muse_env *env, running_list_t list, muse_cell term, int *sp )
+{
+    muse_cell s = _cons(term, MUSE_NIL);
+    if (!list.head) {
+        list.head = list.tail = s;
+        _unwind(*sp);
+        _spush(list.head);
+        *sp = _spos();
+    } else {
+        _sett(list.tail, s);
+        list.tail = s;
+        _unwind(*sp);
+    }
+    
+    return list;
+}
+
+running_list_t save_string( muse_env *env, buffer_t *b, running_list_t list, int *sp )
+{
+    if (buffer_length(b) > 0) {
+        list = append_to_list(env, list, buffer_to_string(b, env), sp);
+        buffer_reset(b);
+    }
+    return list;
+}
+
+
+muse_cell muse_scribble( muse_env *env, muse_port_t in, muse_int open_braces, running_list_t list )
+{
+    // Start in textual mode.
+    buffer_t *buff = buffer_alloc();
+    int sp = _spos();
+    
+    while (!port_eof(in)) {
+        muse_char c = port_getchar(in);
+        
+        if ( c == '\r' || c == '\n' ) {
+            // Break lines into separate strings.
+            list = save_string(env, buff, list, &sp);
+            buffer_putc(buff, c);
+        } else if ( c == '\\' ) {
+            // If brace is being escaped, then don't count it.
+            c = port_getchar(in);
+            buffer_putc(buff, '\\');
+            buffer_putc(buff, c);
+        } else if ( c == '@' ) {
+            // peek a character and if it is '\\', it is escaping the next character.
+            c = port_getchar(in);
+            
+            if ( c == '\\' ) {
+                // Escaping character.
+                c = port_getchar(in);
+                buffer_putc(buff, c);
+            } else {
+                port_ungetchar(c, in);
+            }
+            
+            // End of text mode.
+            list = save_string(env, buff, list, &sp);
+            
+            // Enter scribble expression
+            list = append_to_list(env, list, muse_scribble_expr(env, in), &sp);
+        } else if ( c == '{' ) {
+            // Note down the brace.
+            ++open_braces;
+            buffer_putc(buff, c);
+        } else if ( c == '}' ) {
+            if ( open_braces <= 1 ) {
+                // End of expression. Don't add this brace.
+                break;
+            } else {
+                --open_braces;
+                buffer_putc(buff, c);
+                // Continue.
+            }
+        } else if (c > 0) {
+            buffer_putc(buff, c);
+        }
+    }
+
+    list = save_string(env, buff, list, &sp);
+    
+    _unwind(sp);
+    return list.head;
+}
+
+muse_cell muse_scribble_expr( muse_env *env, muse_port_t in )
+{
+    muse_char c = port_getchar(in);
+    port_ungetchar(c, in);
+
+    if ( c == '(' || c == '{' || c == '[' ) {
+        // A regular scheme expression.
+        return muse_pread(in);
+    } else {
+        muse_assert((c >= 'A' && c <= 'z') || (c >= 'a' && c <= 'z'));
+        {
+            muse_cell sym = muse_pread(in), args = MUSE_NIL, text = MUSE_NIL;
+            skip_whitespace(in);
+            c = port_getchar(in);
+            
+            if (c == '[') {
+                // scheme parameters
+                int old_mode = in->mode;
+                in->mode = MUSE_PORT_READ;
+                port_ungetchar('(', in);
+                {
+                    args = muse_pread(in);
+                    in->mode = old_mode;
+                }
+                c = port_getchar(in);
+            }
+            
+            if (c == '{') {
+                // Text parameters
+                text = muse_scribble(env, in, 1, empty_list());
+            } else {
+                port_ungetchar(c, in);
+            }
+            
+            /*
+             * 	- c -> cell
+             * 	- i -> 32-bit integer
+             * 	- I -> 64-bit integer
+             * 	- f -> 64-bit float
+             * 	- T -> unicode text string
+             * 	- t -> utf8 text string
+             * 	- S -> unicode symbol string
+             * 	- s -> utf8 symbol string
+             */
+            
+            return muse_list(env, "s(s)(s'ccc)",
+                             "fn", "@", "@",
+                             sym,
+                             args ? _cons(_csymbol(L"list"), args) : MUSE_NIL,
+                             text ? _cons(_csymbol(L"list"), text) : MUSE_NIL);
+        }
+    }
+}
+
+
 /**
  * {tab-syntax}
  * Changes the syntax of the currently reading port

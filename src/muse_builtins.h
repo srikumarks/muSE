@@ -180,6 +180,7 @@ muse_cell fn_read( muse_env *env, void *context, muse_cell args );
 muse_cell fn_read_line( muse_env *env, void *context, muse_cell args );
 muse_cell fn_flush( muse_env *env, void *context, muse_cell args );
 muse_cell fn_mickey( muse_env *env, void *context, muse_cell args );
+muse_cell fn_scribble( muse_env *env, void *context, muse_cell args );
 muse_cell fn_load( muse_env *env, void *context, muse_cell args );
 muse_cell fn_file_has_attached_code_p( muse_env *env, void *context, muse_cell args );
 muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args );
