@@ -213,7 +213,7 @@ MUSEAPI size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_ch
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = WideCharToMultiByte( CP_UTF8, 0, win, (int)win_len, out, (int)out_maxlen, NULL, NULL );
 #else
-	#if 0
+	#if 1
 	int result = 0;
 	int win_offset = 0;
 	while ( win_offset < win_len && result < out_maxlen ) {
@@ -226,6 +226,8 @@ MUSEAPI size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_ch
 		}
 	}
 	#else
+    // BUG: Doesn't seem to work on MacOSX for some cases. Haven't figured out the
+    // reason, but the above slow code has no problems.
 	int result = wcstombs( out, win, win_len );
 	#endif
 #endif
