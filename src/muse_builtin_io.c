@@ -639,16 +639,18 @@ running_list_t empty_list()
 
 running_list_t append_to_list( muse_env *env, running_list_t list, muse_cell term, int *sp )
 {
-    muse_cell s = _cons(term, MUSE_NIL);
-    if (!list.head) {
-        list.head = list.tail = s;
-        _unwind(*sp);
-        _spush(list.head);
-        *sp = _spos();
-    } else {
-        _sett(list.tail, s);
-        list.tail = s;
-        _unwind(*sp);
+    if ( term != MUSE_NIL ) {
+        muse_cell s = _cons(term, MUSE_NIL);
+        if (!list.head) {
+            list.head = list.tail = s;
+            _unwind(*sp);
+            _spush(list.head);
+            *sp = _spos();
+        } else {
+            _sett(list.tail, s);
+            list.tail = s;
+            _unwind(*sp);
+        }
     }
     
     return list;
@@ -728,7 +730,16 @@ muse_cell muse_scribble_expr( muse_env *env, muse_port_t in )
     muse_char c = port_getchar(in);
     port_ungetchar(c, in);
 
-    if ( c == '(' || c == '{' || c == '[' ) {
+    if ( c == '~' ) {
+        // @~{hello ...} will cause the code
+        // to be run, but the result discarded.
+        // This feature is almost useless for
+        // @~(...) and @~[...] forms, but it may
+        // be useful to "comment out" blocks like that.
+        port_getchar(in);
+        muse_scribble_expr(env, in); // Discard result.
+        return MUSE_NIL;
+    } else if ( c == '(' || c == '{' || c == '[' ) {
         // A regular scheme expression.
         return muse_pread(in);
     } else {
