@@ -18,6 +18,7 @@
 static const char *k_args_exec_switch1				= "--exec";
 static const char *k_args_exec_switch2				= "--exe";
 static const char *k_args_attach_switch				= "--attach";
+static const char *k_args_run_switch                = "--run";
 static const muse_char *k_main_function_name		= L"main";
 static const muse_char *k_program_string_name		= L"*program*";
 
@@ -260,7 +261,7 @@ static muse_cell fn_repl( muse_env *env, args_t *context, muse_cell args )
 		int i = 0;
 		muse_cell loader = _symval(_csymbol(L"load"));
 		for ( i = 0; i < context->argc; ++i ) {
-			if ( strcmp( context->argv[i], "--run" ) == 0 ) { 
+			if ( strcmp( context->argv[i], k_args_run_switch ) == 0 ) {
 				enable_repl = 0; 
 			} else {
 				muse_apply( env, loader, _cons( muse_mk_ctext_utf8( env, context->argv[i] ), MUSE_NIL ), MUSE_TRUE, MUSE_FALSE );
