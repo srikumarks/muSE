@@ -581,7 +581,7 @@ static running_list_t empty_list();
  *
  * This is turned into an expression of the form --
  *
- *    (fn (@) (@ 'word (list optional scheme thingies) (list "textual stuff")))
+ *    (fn (@) (@ 'word (list optional scheme thingies "textual stuff")))
  *
  * This thunking helps delay computations so that they can be context dependent.
  * The return value of scribble is a list of things - either strings or
@@ -679,6 +679,7 @@ muse_cell muse_scribble( muse_env *env, muse_port_t in, muse_int open_braces, ru
             // Break lines into separate strings.
             list = save_string(env, buff, list, &sp);
             buffer_putc(buff, c);
+            list = save_string(env, buff, list, &sp);
         } else if ( c == '\\' ) {
             // If brace is being escaped, then don't count it.
             c = port_getchar(in);
@@ -780,11 +781,10 @@ muse_cell muse_scribble_expr( muse_env *env, muse_port_t in )
              * 	- s -> utf8 symbol string
              */
             
-            return muse_list(env, "s(s)(s'ccc)",
+            return muse_list(env, "s(s)(s'cc)",
                              "fn", "@", "@",
                              sym,
-                             args ? _cons(_csymbol(L"list"), args) : MUSE_NIL,
-                             text ? _cons(_csymbol(L"list"), text) : MUSE_NIL);
+                             _cons(_csymbol(L"list"), muse_list_append(env, args, text)));
         }
     }
 }
