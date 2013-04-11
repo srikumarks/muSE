@@ -331,10 +331,11 @@ typedef struct
 {
 	muse_port_t p;
 	int shareable;
+    int self_closing_tag;
 } xml_tag_attrib_gen_info_t;
 
 static muse_cell xml_tag_attrib_gen( muse_env *env, xml_tag_attrib_gen_info_t *info, int i, muse_boolean *eol );
-static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable );
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable, int *self_closing_tag );
 
 typedef struct 
 {
@@ -703,11 +704,15 @@ static muse_cell xml_read_tag( muse_env *env, muse_port_t p, int *shareable )
             
             {
                 int sp = _spos();
-                int localshareable = 1;
+                int localshareable = 1, self_closing_tag = 0;
                 muse_cell tag = muse_csymbol_utf8(env,sym);
-                muse_cell attribs = xml_read_tag_attribs(env,p,&localshareable);
+                muse_cell attribs = xml_read_tag_attribs(env,p,&localshareable, &self_closing_tag);
                 muse_cell body = xml_read_tag_body(env,p,tag,&localshareable);
                 muse_cell result = MUSE_NIL;
+                if ( !self_closing_tag && body == MUSE_NIL ) {
+                    body = _cons(muse_mk_ctext(env, L""), MUSE_NIL);
+                }
+                
                 if ( sym[0] == '@' ) {
                     (*shareable) = 0;
                     result = _cons( _csymbol(L"@"), _cons(_quote(tag), _cons(attribs, body)) );
@@ -819,6 +824,7 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, xml_tag_attrib_gen_info_t *i
 		muse_assert( c == '>' );
 		ungetbuffer( "</>", 3, p );
 		(*eol) = MUSE_TRUE;
+        info->self_closing_tag = 1;
 		return MUSE_NIL;
 	}
 	else
@@ -918,11 +924,14 @@ static muse_cell xml_take_tail( muse_env *env, muse_cell attrs )
 	return muse_generate_list( env, (muse_list_generator_t)xml_take_tail_gen, &attrs );
 }
 
-static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable )
+static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *shareable, int *self_closing_tag )
 {
-	xml_tag_attrib_gen_info_t info = { p, 1 };
+	xml_tag_attrib_gen_info_t info = { p, 1, 0 };
 	muse_cell attrs = muse_generate_list( env, (muse_list_generator_t)xml_tag_attrib_gen, &info );
 	(*shareable) &= info.shareable;
+    if (self_closing_tag) {
+        (*self_closing_tag) = info.self_closing_tag;
+    }
 	if ( info.shareable )
 		return _quote(xml_take_tail(env,attrs));
 	else
