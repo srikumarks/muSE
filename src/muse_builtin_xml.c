@@ -523,16 +523,22 @@ static muse_boolean xml_skip_comment( muse_port_t p )
 static muse_boolean xml_DOCTYPE_start( muse_port_t p )
 {
 	char c[10];
-	size_t n = port_read( c, 9, p );
-	c[9] = '\0';
+    size_t n = port_read( c, 1, p );
+    c[1] = '\0';
+    if (c[0] == '<') {
+        n += port_read( c + 1, 1, p );
+        c[2] = '\0';
+        if (c[1] == '!') {
+            n += port_read( c + 2, 7, p );
+            c[9] = '\0';
+            
+            if ( n == 9 && strcmp(c,"<!DOCTYPE") == 0 )
+                return MUSE_TRUE;
+        }
+    }
 
-	if ( n == 9 && strcmp(c,"<!DOCTYPE") == 0 )
-		return MUSE_TRUE;
-	else
-	{
-		ungetbuffer( c, n, p );
-		return MUSE_FALSE;
-	}
+    ungetbuffer( c, n, p );
+    return MUSE_FALSE;
 }
 
 static muse_boolean xml_skip_DOCTYPE( muse_port_t p )
@@ -782,13 +788,7 @@ static muse_cell xml_tag_attrib_gen( muse_env *env, xml_tag_attrib_gen_info_t *i
 				sym[symlen] = '\0';
 				break;
 			}
-			else if ( sc == '=' )
-			{
-				sym[symlen] = '\0';
-				port_ungetc(sc,p);
-				break;
-			}
-			else if ( sc == '>' )
+			else if ( sc == '=' || sc == '>' || sc == '/' )
 			{
 				sym[symlen] = '\0';
 				port_ungetc(sc,p);
