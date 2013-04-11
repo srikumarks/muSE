@@ -947,7 +947,7 @@ muse_cell fn_temp_file( muse_env *env, void *context, muse_cell args )
 		FILE *f = NULL;
 		do
 		{
-			snprintf( buffer, 1024, "%ls%ls%d.tmp", folder, prefix, t.tv_sec );
+			snprintf( buffer, 1024, "%ls%ls%ld.tmp", folder, prefix, t.tv_sec );
 			f = fopen( buffer, "rb" );
 		}
 		while ( f == NULL );
