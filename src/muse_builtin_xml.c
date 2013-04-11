@@ -16,8 +16,13 @@
 #include <string.h>
 #include <stdlib.h>
 
+typedef enum {
+    WRITE_XML_ESCAPE_CHARACTERS = 0,
+    WRITE_XML_LITERAL_CHARACTERS = 1
+} write_xml_options_t;
+
 static void write_xml_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth );
-static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth );
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int write_xml_options, int depth );
 static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
 
 /**
@@ -173,10 +178,11 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
             if ( children )
             {
                 int nested_tag_count = 0;
+                int is_script = (tag == _csymbol(L"script") ? WRITE_XML_LITERAL_CHARACTERS : WRITE_XML_ESCAPE_CHARACTERS);
                 port_putc( '>', port );
                 while ( children )
                 {
-                    nested_tag_count += write_xml_child_node( env, port, _next(&children), context, depth+1 );
+                    nested_tag_count += write_xml_child_node( env, port, _next(&children), context, is_script, depth+1 );
                 }
                 if ( nested_tag_count > 0 )
                 {
@@ -244,7 +250,7 @@ static void write_tag_attrs( muse_env *env, muse_port_t port, muse_cell attrs )
 	}
 }
 
-static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth )
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int write_xml_options, int depth )
 {
 	if ( _cellt(xmlnode) == MUSE_TEXT_CELL )
 	{
@@ -252,20 +258,26 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 		const muse_char *text = _text_contents(xmlnode, &length);
 		const muse_char *text_end = text + length;
 
-		while ( text < text_end )
-		{
-			muse_char c = *text++;
-			switch ( c )
-			{
-			case '"': port_write( "&quot;", 6, p ); break;
-			case '&': port_write( "&amp;", 5, p ); break;
-			case '<': port_write( "&lt;", 4, p ); break;
-			case '>': port_write( "&gt;", 4, p ); break;
-			case '\'': port_write( "&apos;", 6, p ); break;
-			default:
-				port_putc( c, p );
-			}
-		}
+        if ( write_xml_options & WRITE_XML_LITERAL_CHARACTERS ) {
+            while ( text < text_end ) {
+                port_putc( *text++, p );
+            }
+        } else {
+            while ( text < text_end )
+            {
+                muse_char c = *text++;
+                switch ( c )
+                {
+                    case '"': port_write( "&quot;", 6, p ); break;
+                    case '&': port_write( "&amp;", 5, p ); break;
+                    case '<': port_write( "&lt;", 4, p ); break;
+                    case '>': port_write( "&gt;", 4, p ); break;
+                    case '\'': port_write( "&apos;", 6, p ); break;
+                    default:
+                        port_putc( c, p );
+                }
+            }
+        }
 		return 0;
 	}
 	else if ( _cellt(xmlnode) == MUSE_CONS_CELL && _head(xmlnode) == _builtin_symbol(MUSE_XMLSPLICE) )
