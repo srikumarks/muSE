@@ -16,8 +16,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-static void write_xml_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
-static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth );
+static void write_xml_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth );
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth );
 static void write_tag_attrs( muse_env *env, muse_port_t p, muse_cell attrs );
 
 /**
@@ -58,6 +58,7 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args )
 	muse_cell portcell	= _evalnext(&args);
 	muse_port_t port	= _port(portcell);
 	muse_cell xmlnode	= MUSE_NIL;
+    muse_cell obj       = MUSE_NIL;
 	muse_cell flags		= MUSE_NIL;
 	muse_boolean with_header = MUSE_FALSE;
 
@@ -79,12 +80,12 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args )
 		/* The xml node is given as a function of an object instead of
 		as an s-xml tree. We'll need to apply it to an object value
 		to get the s-xml tree. */
-		muse_cell obj = _evalnext(&args);
+		obj = _evalnext(&args);
 
 		if ( muse_functional_object_data( env, obj, 'mobj' ) )
 		{
 			/* An object value has been given. Apply it. */
-			xmlnode = _apply( xmlnode, _cons(obj,MUSE_NIL), MUSE_TRUE );
+			xmlnode = _apply( xmlnode, _cons(obj, MUSE_NIL), MUSE_TRUE );
 
 			/* Now check whether the following object is a flags list. */
 			flags = _evalnext(&args);
@@ -93,6 +94,7 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args )
 		{
 			/* No object value. Apply to () instead. This is handy 
 			for constant XML expressions. */
+            obj = MUSE_NIL;
 			xmlnode = _apply( xmlnode, _cons(MUSE_NIL,MUSE_NIL), MUSE_TRUE );
 			flags = obj;
 		}
@@ -117,7 +119,7 @@ muse_cell fn_write_xml( muse_env *env, void *context, muse_cell args )
 		port_write( (void*)header, strlen(header), port );
 	}
 
-	write_xml_node( env, port, xmlnode, 0 );
+	write_xml_node( env, port, xmlnode, obj, 0 );
 
 	return MUSE_NIL;
 }
@@ -132,11 +134,11 @@ static void indent( muse_env *env, muse_port_t port, int depth )
 	}
 }
 
-static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, int depth )
+static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, muse_cell context, int depth )
 {
 	if ( _isfn(xmlnode) )
 	{
-		write_xml_node( env, port, _apply(xmlnode,_cons(MUSE_NIL,MUSE_NIL), MUSE_TRUE), depth );
+		write_xml_node( env, port, _apply(xmlnode,_cons(context,MUSE_NIL), MUSE_TRUE), context, depth );
 	}
 	else
 	{
@@ -150,7 +152,7 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
 			{
 				while ( xmlnode )
 				{
-					write_xml_node( env, port, _head(xmlnode), depth );
+					write_xml_node( env, port, _head(xmlnode), context, depth );
 					xmlnode = _tail(xmlnode);
 				}
 			}
@@ -174,7 +176,7 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
 					port_putc( '>', port );
 					while ( children )
 					{
-						nested_tag_count += write_xml_child_node( env, port, _next(&children), depth+1 );
+						nested_tag_count += write_xml_child_node( env, port, _next(&children), context, depth+1 );
 					}
 					if ( nested_tag_count > 0 )
 						indent( env,port,depth);
@@ -237,7 +239,7 @@ static void write_tag_attrs( muse_env *env, muse_port_t port, muse_cell attrs )
 	}
 }
 
-static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, int depth )
+static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode, muse_cell context, int depth )
 {
 	if ( _cellt(xmlnode) == MUSE_TEXT_CELL )
 	{
@@ -274,14 +276,14 @@ static int write_xml_child_node( muse_env *env, muse_port_t p, muse_cell xmlnode
 		int count = 0;
 		while ( nodes )
 		{
-			write_xml_node( env, p, _next(&nodes), depth );
+			write_xml_node( env, p, _next(&nodes), context, depth );
 			++count;
 		}
 		return count;
 	}
 	else
 	{
-		write_xml_node( env, p, xmlnode, depth );
+		write_xml_node( env, p, xmlnode, context, depth );
 		return 1;
 	}
 }
