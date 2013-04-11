@@ -409,7 +409,7 @@ muse_cell fn_read_xml( muse_env *env, void *context, muse_cell args )
 		port = muse_stdport( env, MUSE_STDIN_PORT );
 	}
 
-	return muse_add_recent_item( env, (muse_int)fn_read_xml, muse_read_xml_node(port) );
+	return muse_add_recent_item( env, (muse_int)fn_read_xml, _eval(muse_read_xml_node(port)) );
 }
 
 static void xml_skip_ignorables( muse_port_t p )
@@ -607,7 +607,7 @@ MUSEAPI muse_cell muse_read_xml_node( muse_port_t p )
 {
 	muse_env *env = p->env;
 	int shareable = 1;
-	return _eval( muse_list( env, "=S(S)c", L"fn", L"@", xml_read_tag( env, p, &shareable ) ) );
+	return muse_list( env, "=S(S)c", L"fn", L"@", xml_read_tag( env, p, &shareable ) );
 }
 
 static muse_cell xml_unquote_body_gen( muse_env *env, muse_cell *attrs, int i, muse_boolean *eol )
