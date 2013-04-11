@@ -136,63 +136,68 @@ static void indent( muse_env *env, muse_port_t port, int depth )
 
 static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, muse_cell context, int depth )
 {
+    if ( xmlnode == MUSE_NIL ) {
+        return;
+    }
+    
 	if ( _isfn(xmlnode) )
 	{
 		write_xml_node( env, port, _apply(xmlnode,_cons(context,MUSE_NIL), MUSE_TRUE), context, depth );
 	}
-	else
+	else if ( _cellt(xmlnode) == MUSE_CONS_CELL )
 	{
-		muse_assert( _cellt(xmlnode) == MUSE_CONS_CELL );
-
-		if ( xmlnode )
-		{
-			muse_cell tag		= _head(xmlnode);
-
-			if ( _cellt(tag) == MUSE_CONS_CELL )
-			{
-				while ( xmlnode )
-				{
-					write_xml_node( env, port, _head(xmlnode), context, depth );
-					xmlnode = _tail(xmlnode);
-				}
-			}
-			else
-			{
-				muse_cell attrs		= _head(_tail(xmlnode));
-				muse_cell children	= _tail(_tail(xmlnode));
-
-				indent( env,port,depth);
-				port_putc( '<', port );
-				muse_pwrite( port, tag ); 
-
-				if ( attrs )
-					port_putc( ' ', port );
-
-				write_tag_attrs( env, port, attrs );
-
-				if ( children )
-				{
-					int nested_tag_count = 0;
-					port_putc( '>', port );
-					while ( children )
-					{
-						nested_tag_count += write_xml_child_node( env, port, _next(&children), context, depth+1 );
-					}
-					if ( nested_tag_count > 0 )
-						indent( env,port,depth);
-					port_putc( '<', port );
-					port_putc( '/', port );
-					muse_pwrite( port, tag );
-					port_putc( '>', port );
-				}
-				else
-				{
-					port_putc( '/', port );
-					port_putc( '>', port );
-				}
-			}
-		}
-	}
+        muse_cell tag		= _head(xmlnode);
+        
+        if ( _cellt(tag) == MUSE_CONS_CELL )
+        {
+            while ( xmlnode )
+            {
+                write_xml_node( env, port, _head(xmlnode), context, depth );
+                xmlnode = _tail(xmlnode);
+            }
+        }
+        else
+        {
+            muse_cell attrs		= _head(_tail(xmlnode));
+            muse_cell children	= _tail(_tail(xmlnode));
+            
+            indent( env,port,depth);
+            port_putc( '<', port );
+            muse_pwrite( port, tag );
+            
+            if ( attrs )
+                port_putc( ' ', port );
+            
+            write_tag_attrs( env, port, attrs );
+            
+            if ( children )
+            {
+                int nested_tag_count = 0;
+                port_putc( '>', port );
+                while ( children )
+                {
+                    nested_tag_count += write_xml_child_node( env, port, _next(&children), context, depth+1 );
+                }
+                if ( nested_tag_count > 0 )
+                {
+                    indent( env,port,depth);
+                }
+                port_putc( '<', port );
+                port_putc( '/', port );
+                muse_pwrite( port, tag );
+                port_putc( '>', port );
+            }
+            else
+            {
+                port_putc( '/', port );
+                port_putc( '>', port );
+            }
+        }
+	} else {
+        /* Treat it as a literal and write it out. */
+        muse_assert(_cellt(xmlnode) == MUSE_TEXT_CELL || _cellt(xmlnode) == MUSE_FLOAT_CELL || _cellt(xmlnode) == MUSE_INT_CELL);
+        muse_pprint(port, xmlnode);
+    }
 }
 
 static void write_tag_attr_value( muse_env *env, muse_port_t port, muse_cell value )
@@ -639,43 +644,72 @@ static muse_cell xml_read_tag( muse_env *env, muse_port_t p, int *shareable )
 	c = port_getc(p);
 	if ( c == '<' )
 	{
-		char sym[128];
-		int symlen = 0;
-		for ( symlen = 0; symlen < 127; ++symlen )
-		{
-			int tc = port_getc(p);
-			if ( isspace(tc) || tc == '>' || tc == '/' )
-			{
-				sym[symlen] = '\0';
-				port_ungetc(tc,p);
-				break;
-			}
-			else
-				sym[symlen] = tc;
-		}
-
-		sym[symlen] = '\0';
-
-		{
-			int sp = _spos();
-			int localshareable = 1;
-			muse_cell tag = muse_csymbol_utf8(env,sym);
-			muse_cell attribs = xml_read_tag_attribs(env,p,&localshareable);
-			muse_cell body = xml_read_tag_body(env,p,tag,&localshareable);
-			muse_cell result = MUSE_NIL;
-			if ( sym[0] == '@' ) {
-				(*shareable) = 0;
-				result = _cons( _csymbol(L"@"), _cons(_quote(tag), _cons(attribs, body)) );
-			} else if ( localshareable ) {
-				result = _quote(_cons(tag,_cons(_tail(attribs),xml_unquote_body(env,body))));
-			} else {
-				(*shareable) = 0;
-				result = _cons( _symval(_csymbol(L"list")), _cons( _quote(tag), _cons(attribs, body) ) );
-			}
-			_unwind(sp);
-			_spush(result);
-			return result;
-		}
+        /* A tag of the form <(....)/> is just the result of the
+         scheme expression within the parens. */
+        c = port_getc(p);
+        port_ungetc(c, p);
+        if (c == '(') {
+            int sp = _spos();
+            muse_cell expr = muse_pread(p);
+            (*shareable) = 0;
+            
+            /* Read off the closing tag. */
+            xml_skip_whitespace(p);
+            c = port_getc(p);
+            if (c == '/') {
+                c = port_getc(p);
+                if (c == '>') {
+                    /* Successful close tag. */
+                    _unwind(sp);
+                    _spush(expr);
+                    return expr;
+                }
+            }
+            
+            muse_assert(c == '/');
+            port_ungetc(c, p);
+            _unwind(sp);
+            _spush(expr);
+            return expr;
+        } else {
+            char sym[128];
+            int symlen = 0;
+            for ( symlen = 0; symlen < 127; ++symlen )
+            {
+                int tc = port_getc(p);
+                if ( isspace(tc) || tc == '>' || tc == '/' )
+                {
+                    sym[symlen] = '\0';
+                    port_ungetc(tc,p);
+                    break;
+                }
+                else
+                    sym[symlen] = tc;
+            }
+            
+            sym[symlen] = '\0';
+            
+            {
+                int sp = _spos();
+                int localshareable = 1;
+                muse_cell tag = muse_csymbol_utf8(env,sym);
+                muse_cell attribs = xml_read_tag_attribs(env,p,&localshareable);
+                muse_cell body = xml_read_tag_body(env,p,tag,&localshareable);
+                muse_cell result = MUSE_NIL;
+                if ( sym[0] == '@' ) {
+                    (*shareable) = 0;
+                    result = _cons( _csymbol(L"@"), _cons(_quote(tag), _cons(attribs, body)) );
+                } else if ( localshareable ) {
+                    result = _quote(_cons(tag,_cons(_tail(attribs),xml_unquote_body(env,body))));
+                } else {
+                    (*shareable) = 0;
+                    result = _cons( _symval(_csymbol(L"list")), _cons( _quote(tag), _cons(attribs, body) ) );
+                }
+                _unwind(sp);
+                _spush(result);
+                return result;
+            }
+        }
 	}
 	else
 	{
