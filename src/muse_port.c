@@ -1685,7 +1685,7 @@ static void muse_print_sym( muse_port_t f, muse_cell s )
 	else
 	{
 		char buffer[64];
-		int count = sprintf( buffer, "<sym:%x>", s );
+		int count = sprintf( buffer, "<sym:%lx>", s );
 		port_write( buffer, count, f );
 		pretty_printer_move(f,count);
 	}
@@ -1695,7 +1695,7 @@ static void muse_print_lambda( muse_port_t f, muse_cell l, muse_boolean quote )
 {
 	muse_env *env = f->env;
 	char buffer[64];
-	int count = sprintf( buffer, "(fn ", l );
+	int count = sprintf( buffer, "(fn " );
 	pretty_printer_indent(f);
 	port_write( buffer, count, f );
 	pretty_printer_move(f,count);
@@ -1722,7 +1722,7 @@ static void muse_print_nativefn( muse_port_t f, muse_cell l )
 	else
 	{
 		char buffer[64];
-		int count = sprintf( buffer, "<prim:%x>", l );
+		int count = sprintf( buffer, "<prim:%lx>", l );
 		port_write( buffer, count, f );
 		pretty_printer_move(f,count);
 	}
@@ -1905,7 +1905,7 @@ ez_result_t ez_parse_group( muse_port_t p, int col )
 			{
 				MUSE_DIAGNOSTICS({ 			
 					if ( !port_eof(p) )
-							fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
+							fprintf( stderr, "Syntax error %ld: Expecting list terms.\n", r.expr );
 				});
 						
 				return ez_expr( p, h, col, r.col_end, 0 );
@@ -1977,7 +1977,7 @@ ez_result_t ez_parse_list( muse_port_t p, int col )
 			{
 				MUSE_DIAGNOSTICS({ 			
 					if ( !port_eof(p) )
-						fprintf( stderr, "Syntax error %d: Expecting list terms.\n", r.expr );
+						fprintf( stderr, "Syntax error %ld: Expecting list terms.\n", r.expr );
 				});
 					
 				return ez_expr( p, h, col, r.col_end, 0 );
