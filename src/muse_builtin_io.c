@@ -627,7 +627,7 @@ muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
     muse_push_recent_scope(env);
     
     return muse_pop_recent_scope(env, (muse_int)fn_scribble,
-                                 muse_eval_list(env, muse_scribble( env, in, open_braces, empty_list() )));
+                                 muse_scribble( env, in, open_braces, empty_list() ));
 }
 
 running_list_t empty_list()
