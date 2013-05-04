@@ -601,12 +601,14 @@ muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
 {
     muse_port_t in;
     muse_int open_braces = 0;
+    int inline_scribble = 0;
     
     if ( args ) {
         in = _port(_evalnext(&args));
         open_braces = 1;
     } else {
         in = muse_current_port(env, MUSE_INPUT_PORT, NULL);
+        inline_scribble = 1;
 
         // If {scribble} is immediately followed by an opening
         // brace, then we limit the reading to the matching
@@ -626,8 +628,11 @@ muse_cell fn_scribble( muse_env *env, void *context, muse_cell args )
     
     muse_push_recent_scope(env);
     
-    return muse_pop_recent_scope(env, (muse_int)fn_scribble,
-                                 muse_scribble( env, in, open_braces, empty_list() ));
+    {
+        muse_cell scribble = muse_scribble( env, in, open_braces, empty_list() );
+        return muse_pop_recent_scope(env, (muse_int)fn_scribble,
+                                     inline_scribble ? _cons(_csymbol(L"list"), scribble) : scribble);
+    }
 }
 
 running_list_t empty_list()

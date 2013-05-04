@@ -1566,7 +1566,7 @@ static size_t muse_print_text( muse_port_t f, muse_cell t, muse_boolean quote )
 			else
 			{
 				unsigned char utf8[4];
-				int n = uc16_to_utf8( *c, utf8, 4 );
+				int n = uc16_to_utf8( uc16, utf8, 4 );
 				port_write( utf8, n, f );
 				++total;
 			}

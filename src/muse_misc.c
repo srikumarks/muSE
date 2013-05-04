@@ -258,7 +258,7 @@ MUSEAPI size_t muse_utf8_to_unicode( muse_char *wout, size_t wout_maxlen, const 
 #ifdef MUSE_PLATFORM_WINDOWS
 	int result = MultiByteToWideChar( CP_UTF8, 0, in, (int)in_len, wout, (int)(wout_maxlen * sizeof(muse_char)) );
 #else
-	#if 0
+	#if 1
 	int result = 0;
 	int in_offset = 0;
 	while ( in_offset < in_len && result < wout_maxlen ) {
