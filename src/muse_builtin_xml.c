@@ -155,13 +155,9 @@ static void write_xml_node( muse_env *env, muse_port_t port, muse_cell xmlnode, 
 	{
         muse_cell tag		= _head(xmlnode);
         
-        if ( _cellt(tag) == MUSE_CONS_CELL )
+        if ( tag == _builtin_symbol(MUSE_XMLSPLICE) )
         {
-            while ( xmlnode )
-            {
-                write_xml_node( env, port, _head(xmlnode), context, depth );
-                xmlnode = _tail(xmlnode);
-            }
+            write_xml_child_node(env, port, xmlnode, context, 0, depth);
         }
         else
         {
@@ -223,7 +219,9 @@ static void write_tag_attr_value( muse_env *env, muse_port_t port, muse_cell val
 		muse_pwrite( port, value );
 		return;
 	case MUSE_CONS_CELL:
-		write_tag_attr_value( env, port, _eval(value) );
+        if (value) {
+            write_tag_attr_value( env, port, _eval(value) );
+        }
 		return;
 	default:
 		muse_raise_error( env, _csymbol(L"xml:bad-attr-value"), _cons(value,MUSE_NIL) );
