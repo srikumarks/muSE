@@ -1004,8 +1004,6 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 
 static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
 {
-    static const char *kDigitsLC = "0123456789abcdef";
-    static const char *kDigitsUC = "0123456789ABCDEF";
 	const int BMAX = 32;
 	muse_char buffer[32];
 	int ix = 0;
