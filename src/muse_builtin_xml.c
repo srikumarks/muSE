@@ -1004,6 +1004,8 @@ static void xml_trim_text_whitespace( char **text, size_t *len )
 
 static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
 {
+    static const char *kDigitsLC = "0123456789abcdef";
+    static const char *kDigitsUC = "0123456789ABCDEF";
 	const int BMAX = 32;
 	muse_char buffer[32];
 	int ix = 0;
@@ -1013,8 +1015,50 @@ static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
 
 	if ( c == '&' ) {
 		buffer[ix++] = c;
-		do {
-			c = port_getchar(p);
+        c = port_getchar(p);
+        if (c == '#') {
+            // Check for numeric entity - &#nnnn;
+            // Check for a sequence of at most 10 decimal digits followed by a single ';'.
+            int digit_count = 0;
+            muse_char digits[16];
+            muse_char d;
+            int code = 0, base = 10, max_digits = 11;
+            
+            do {
+                digits[digit_count++] = d = port_getchar(p);
+                if (digit_count == 1 && d == 'x') {
+                    // Hexadecimal indicator.
+                    base = 16;
+                    max_digits = 9;
+                } else if (digit_count <= max_digits && (d >= '0' && d <= '9')) {
+                    // Yes.
+                    code = code * base + (d - '0');
+                } else if (base == 16 && digit_count <= max_digits && (d >= 'a' && d <= 'f')) {
+                    // Yes. Lower case Hex.
+                    code = code * base + 10 + (d - 'a');
+                } else if (base == 16 && digit_count <= max_digits && (d >= 'A' && d <= 'F')) {
+                    // Yes. Upper case Hex.
+                    code = code * base + 10 + (d - 'A');
+                } else if (d == ';') {
+                    // End of entity.
+                    muse_char ch = (muse_char)code;
+                    return muse_mk_text(env, &ch, (&ch)+1);
+                } else {
+                    // Something else.
+                    break;
+                }
+            } while (!port_eof(p));
+            
+            // Unwind the read characters.
+            for (int i = digit_count - 1; i >= 0; --i) {
+                port_ungetchar(digits[i], p);
+            }
+        }
+        
+        port_ungetchar(c, p); // '#'.
+        
+        do {
+            c = port_getchar(p);
             if (isspace(c)) {
                 abort = 1;
                 break;
@@ -1025,24 +1069,24 @@ static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
                 abort = 1;
                 break;
             }
-		} while ( c != ';' && ix + 1 < BMAX );
-
-		buffer[ix] = 0;
-
+        } while ( c != ';' && ix + 1 < BMAX );
+        
+        buffer[ix] = 0;
+        
         if (!abort) {
-			muse_cell code = muse_symbol( env, buffer, buffer+ix );
-			muse_cell result = muse_symbol_value( env, code );
-			if ( result == code || _cellt(result) != MUSE_TEXT_CELL ) {
+            muse_cell code = muse_symbol( env, buffer, buffer+ix );
+            muse_cell result = muse_symbol_value( env, code );
+            if ( result == code || _cellt(result) != MUSE_TEXT_CELL ) {
                 if (buffer[ix-1] != ';') {
                     return muse_raise_error( env, _csymbol(L"error:unsupported-xml-code"), _cons(code,MUSE_NIL) );
                 } else {
                     // Copy input to output.
                     abort = 1;
                 }
-			} else {
-				return result;
+            } else {
+                return result;
             }
-		}
+        }
         
         for (int i = ix-1; i >= 0; --i) {
             port_ungetchar(buffer[i], p);
