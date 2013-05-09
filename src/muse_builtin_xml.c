@@ -1028,19 +1028,24 @@ static muse_cell xml_parse_amp_code( muse_env *env, muse_port_t p )
                     // Hexadecimal indicator.
                     base = 16;
                     max_digits = 9;
-                } else if (digit_count <= max_digits && (d >= '0' && d <= '9')) {
-                    // Yes.
-                    code = code * base + (d - '0');
-                } else if (base == 16 && digit_count <= max_digits && (d >= 'a' && d <= 'f')) {
-                    // Yes. Lower case Hex.
-                    code = code * base + 10 + (d - 'a');
-                } else if (base == 16 && digit_count <= max_digits && (d >= 'A' && d <= 'F')) {
-                    // Yes. Upper case Hex.
-                    code = code * base + 10 + (d - 'A');
-                } else if (d == ';') {
-                    // End of entity.
-                    muse_char ch = (muse_char)code;
-                    return muse_mk_text(env, &ch, (&ch)+1);
+                } else if (digit_count <= max_digits) {
+                    if (d >= '0' && d <= '9') {
+                        // Yes.
+                        code = code * base + (d - '0');
+                    } else if (base == 16 && (d >= 'a' && d <= 'f')) {
+                        // Yes. Lower case Hex.
+                        code = code * base + 10 + (d - 'a');
+                    } else if (base == 16 && (d >= 'A' && d <= 'F')) {
+                        // Yes. Upper case Hex.
+                        code = code * base + 10 + (d - 'A');
+                    } else if (d == ';') {
+                        // End of entity.
+                        muse_char ch = (muse_char)code;
+                        return muse_mk_text(env, &ch, (&ch)+1);
+                    } else {
+                        // Something else.
+                        break;
+                    }
                 } else {
                     // Something else.
                     break;
