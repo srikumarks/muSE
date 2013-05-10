@@ -952,6 +952,8 @@ static muse_cell xml_read_tag_attribs( muse_env *env, muse_port_t p, int *sharea
 
 static void xml_trim_text_whitespace_wide( muse_char **text, size_t *len )
 {
+    return; // DISABLED!
+    
 	/* Trim leading white space. */
 	while ( (*len) > 0 )
 	{
