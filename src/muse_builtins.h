@@ -293,6 +293,7 @@ void muse_define_builtin_networking(muse_env *env);
 void muse_define_builtin_local(muse_env *env);
 void muse_register_com_support( muse_env *env );
 void muse_define_xml_codes(muse_env *env);
+void muse_define_builtin_type_regexp(muse_env *env);
 
 END_MUSE_C_FUNCTIONS
 

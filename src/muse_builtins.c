@@ -255,6 +255,7 @@ void muse_load_builtin_fns(muse_env *env)
 	muse_define_image_properties(env);
 	muse_define_xml_codes(env);
 	muse_define_crypto(env);
+    muse_define_builtin_type_regexp(env);
 }
 
 /**
