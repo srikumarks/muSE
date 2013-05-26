@@ -149,9 +149,9 @@ static muse_cell fn_regexp_search(muse_env *env, void *context, muse_cell args) 
                 _unwind(sp);
             }
         }
-        return muse_add_recent_item(env, (muse_int)fn_regexp_match, vec);
+        return muse_add_recent_item(env, (muse_int)fn_regexp_search, vec);
     } else {
-        return muse_add_recent_item(env, (muse_int)fn_regexp_match, MUSE_NIL);
+        return muse_add_recent_item(env, (muse_int)fn_regexp_search, MUSE_NIL);
     }
 }
 
@@ -164,7 +164,7 @@ static muse_cell fn_regexp_replace_one(muse_env *env, void *context, muse_cell a
     muse_cell input = _evalnext(&args);
     
     std::wstring result = regex_replace(_text_contents(input, NULL), (*(re->re)), _text_contents(format, NULL), regex_constants::format_first_only);
-    return muse_mk_text(env, result.c_str(), result.c_str() + result.length());
+    return muse_add_recent_item(env, (muse_int)fn_regexp_replace_one, muse_mk_text(env, result.c_str(), result.c_str() + result.length()));
 }
 
 // (regexp-replace re format input) -> text
@@ -176,7 +176,7 @@ static muse_cell fn_regexp_replace(muse_env *env, void *context, muse_cell args)
     muse_cell input = _evalnext(&args);
     
     std::wstring result = regex_replace(_text_contents(input, NULL), (*(re->re)), _text_contents(format, NULL), regex_constants::format_all);
-    return muse_mk_text(env, result.c_str(), result.c_str() + result.length());
+    return muse_add_recent_item(env, (muse_int)fn_regexp_replace, muse_mk_text(env, result.c_str(), result.c_str() + result.length()));
 }
 
 static const struct regexp_fns_t { const muse_char *name; muse_nativefn_t fn; } g_regexp_fns[] =
