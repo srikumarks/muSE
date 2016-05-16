@@ -381,35 +381,35 @@ static void mickey_mode( muse_port_t in, muse_port_t out );
  * dynamic documents in web applications, etc.
  * 
  * A mickey stream is a stream of text with embedded "mickey"
- * codes - of the form @...expr...@ where the portion between 
- * the "@" signs (which look like Mickey's ears and hence the
+ * codes - of the form `@...expr...@` where the portion between 
+ * the "`@`" signs (which look like Mickey's ears and hence the
  * name) is interpreted as a muSE expression. The result 
  * of evaluating the expression is used in place of the 
  * @ expression itself (without the mickey ears). 
  *
- * If you put a sequence of expressions within @..expr..@,
+ * If you put a sequence of expressions within `@..expr..@`,
  * the mickey block will evaluate to the value of the last 
- * expression - behaving like a (do ..) block.
+ * expression - behaving like a `(do ..)` block.
  *
  * Note that scheme symbols and atoms are themselves allowed 
  * to use the @ character within a mickey expression. So, for
- * example, if you simply want a symbol Hello to expand to 
+ * example, if you simply want a symbol `Hello` to expand to 
  * its value "World", you should write it like this -
- *		@Hello;@
- * The ; character will terminate the symbol name and ignore 
- * all characters up to the next new line or @ whichever comes 
+ *		`@Hello;@`
+ * The `;` character will terminate the symbol name and ignore 
+ * all characters up to the next new line or `@` whichever comes 
  * first. In general, it is a good idea to end a mickey
- * expression with ;@ instead of just @. Stuff like @(+ 1 2)@
+ * expression with `;@` instead of just `@`. Stuff like `@(+ 1 2)@`
  * will work correctly however. 
  *
- * If you have a symbol starting with an @ character 
- * (say @rate), you can place its value in the output 
- * using @(eval '@rate)@.
+ * If you have a symbol starting with an `@` character 
+ * (say `@rate`), you can place its value in the output 
+ * using @code @(eval '@rate)@ @endcode
  *
- * If you want to place a literal @ character in the output 
- * stream, simply use @@ in the input stream wherever you need
- * the literal @. For example, an email address would look
- * like somebody@@somewhere.com in the input stream.
+ * If you want to place a literal `@` character in the output 
+ * stream, simply use `@@` in the input stream wherever you need
+ * the literal `@`. For example, an email address would look
+ * like `somebody@@somewhere.com` in the input stream.
  */
 MUSEAPI void muse_mickey( muse_port_t in, muse_port_t out )
 {

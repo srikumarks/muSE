@@ -4360,11 +4360,10 @@ muse_vsprintf </dd></dl>
 
 <p>Processes mickey streams from input port to output port. </p>
 <p>Mickey streams let you use muSE as a powerful yet simple macro expander. You may find this useful in scripting, dynamic documents in web applications, etc.</p>
-<p>A mickey stream is a stream of text with embedded "mickey" codes - of the form ...expr...@ where the portion between the "@" signs (which look like Mickey's ears and hence the name) is interpreted as a muSE expression. The result of evaluating the expression is used in place of the @ expression itself (without the mickey ears).</p>
-<p>If you put a sequence of expressions within ..expr..@, the mickey block will evaluate to the value of the last expression - behaving like a (do ..) block.</p>
-<p>Note that scheme symbols and atoms are themselves allowed to use the @ character within a mickey expression. So, for example, if you simply want a symbol Hello to expand to its value "World", you should write it like this - ;@ The ; character will terminate the symbol name and ignore all characters up to the next new line or @ whichever comes first. In general, it is a good idea to end a mickey expression with ;@ instead of just . Stuff like @(+ 1 2)@ will work correctly however.</p>
-<p>If you have a symbol starting with an @ character (say ), you can place its value in the output using @(eval ').</p>
-<p>If you want to place a literal @ character in the output stream, simply use @ in the input stream wherever you need the literal . For example, an email address would look like somebody@somewhere.com in the input stream. </p>
+<p>A mickey stream is a stream of text with embedded "mickey" codes - of the form <code>@...expr...@</code> where the portion between the "`@`" signs (which look like Mickey's ears and hence the name) is interpreted as a muSE expression. The result of evaluating the expression is used in place of the @ expression itself (without the mickey ears).</p>
+<p>If you put a sequence of expressions within <code>@..expr..@</code>, the mickey block will evaluate to the value of the last expression - behaving like a <code>(do ..)</code> block.</p>
+<p>Note that scheme symbols and atoms are themselves allowed to use the @ character within a mickey expression. So, for example, if you simply want a symbol <code>Hello</code> to expand to its value "World", you should write it like this - <code>@Hello;@</code> The <code>;</code> character will terminate the symbol name and ignore all characters up to the next new line or <code>@</code> whichever comes first. In general, it is a good idea to end a mickey expression with <code>;@</code> instead of just <code>@</code>. Stuff like <code>@(+ 1 2)@</code> will work correctly however.</p>
+<p>If you have a symbol starting with an <code>@</code> character (say <code>@rate</code>), you can place its value in the output using</p><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;@(eval &#39;@rate)@</div></div><!-- fragment --><p>If you want to place a literal <code>@</code> character in the output stream, simply use <code>@@</code> in the input stream wherever you need the literal <code>@</code>. For example, an email address would look like <code>somebody@@somewhere.com</code> in the input stream. </p>
 
 <p>References <a class="el" href="group__FunctionalObjects.html#ga56a8e4c5dfb2ed7e083cf814dcd8e1b7">_muse_port_base_t::env</a>, <a class="el" href="group__MuseAPI.html#gaa1aa2951f816f09aa3b1ee8aa75ad47e">muse_eval()</a>, <a class="el" href="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a691eefc496b45215c8ff94a59de008c3">MUSE_NIL</a>, <a class="el" href="group__MuseAPI.html#ga5f798991587017096d24ae10a70e553e">muse_pread()</a>, <a class="el" href="group__Ports.html#ga550b00cbbe54e9d8d86593f2756258be">port_eof()</a>, <a class="el" href="group__Ports.html#ga0ddcaab8423f19fca0aa6fbb56e3be7c">port_getc()</a>, <a class="el" href="group__Ports.html#ga227eaea79866dd5b6906528c69c93787">port_putc()</a>, and <a class="el" href="group__Ports.html#ga5de7a0c15b24fea5ce4701ae07907653">port_ungetc()</a>.</p>
 
@@ -4632,7 +4631,7 @@ muse_vsprintf </dd></dl>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon May 16 2016 09:20:32 for muSE by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon May 16 2016 09:31:44 for muSE by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.11
 </small></address>
