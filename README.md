@@ -15,7 +15,7 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
     * Exception handler dispatch using pattern matching bind.
     * Simple cleanup mechanism
   * Reduce the need for local variables using TheAndIt.
-  * Built-in support for [JSON](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gd279620db34a8d1055531730840159ea).
+  * Built-in support for [JSON](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gad279620db34a8d1055531730840159ea).
   * Built-in support for reading/writing [a subset of XML](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145) .
 
 ## Integration features ##
