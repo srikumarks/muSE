@@ -1,6 +1,6 @@
 <map id="muse_builtin_math.h" name="muse_builtin_math.h">
-<area shape="rect" id="node2" href="$muse__builtins_8h.html" title="muse_builtins.h" alt="" coords="1815,80,1929,107"/>
-<area shape="rect" id="node25" href="$muse__builtin__math_8c.html" title="muse_builtin_math.c" alt="" coords="1953,80,2097,107"/>
+<area shape="rect" id="node2" href="$muse__builtins_8h.html" title="muse_builtins.h" alt="" coords="1895,80,2009,107"/>
+<area shape="rect" id="node26" href="$muse__builtin__math_8c.html" title="muse_builtin_math.c" alt="" coords="2033,80,2177,107"/>
 <area shape="rect" id="node3" href="$muse_8c.html" title="muse.c" alt="" coords="5,155,69,181"/>
 <area shape="rect" id="node4" href="$muse__builtin__algo_8c.html" title="muse_builtin_algo.c" alt="" coords="94,155,233,181"/>
 <area shape="rect" id="node5" href="$muse__builtin__box_8c.html" title="muse_builtin_box.c" alt="" coords="259,155,395,181"/>
@@ -21,6 +21,7 @@
 <area shape="rect" id="node20" href="$muse__builtin__vector_8c.html" title="muse_builtin_vector.c" alt="" coords="2898,155,3048,181"/>
 <area shape="rect" id="node21" href="$muse__builtin__xml_8c.html" title="muse_builtin_xml.c" alt="" coords="3073,155,3209,181"/>
 <area shape="rect" id="node22" href="$muse__builtins_8c.html" title="muse_builtins.c" alt="" coords="3234,155,3347,181"/>
-<area shape="rect" id="node23" href="$muse__utils_8c.html" title="muse_utils.c" alt="" coords="3372,155,3468,181"/>
-<area shape="rect" id="node24" href="$muse__win32__com_8c.html" title="muse_win32_com.c" alt="" coords="3493,155,3632,181"/>
+<area shape="rect" id="node23" href="$muse__regexp_8cpp.html" title="muse_regexp.cpp" alt="" coords="3372,155,3500,181"/>
+<area shape="rect" id="node24" href="$muse__utils_8c.html" title="muse_utils.c" alt="" coords="3524,155,3620,181"/>
+<area shape="rect" id="node25" href="$muse__win32__com_8c.html" title="muse_win32_com.c" alt="" coords="3645,155,3784,181"/>
 </map>

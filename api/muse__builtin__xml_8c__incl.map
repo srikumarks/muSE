@@ -1,6 +1,7 @@
 <map id="muse_builtin_xml.c" name="muse_builtin_xml.c">
 <area shape="rect" id="node2" href="$muse__builtins_8h.html" title="muse_builtins.h" alt="" coords="68,80,183,107"/>
 <area shape="rect" id="node11" href="$muse__port_8h.html" title="muse_port.h" alt="" coords="223,155,319,181"/>
+<area shape="rect" id="node12" href="$muse__utils_8h.html" title="muse_utils.h" alt="" coords="283,80,380,107"/>
 <area shape="rect" id="node3" href="$muse__opcodes_8h.html" title="muse_opcodes.h" alt="" coords="63,229,187,256"/>
 <area shape="rect" id="node10" href="$muse__builtin__math_8h.html" title="muse_builtin_math.h" alt="" coords="53,155,197,181"/>
 <area shape="rect" id="node4" href="$muse_8h.html" title="muse.h" alt="" coords="93,304,157,331"/>

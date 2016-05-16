@@ -31,7 +31,7 @@
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__context__t.html#a6a86a19c3bf1e4a9a133d9f32f42d6a4"><param name="Name" value="base"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__CellManipulation.html"><param name="Name" value="Basic cell, list and symbol manipulation"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#abd3266c37b2fdea36d328951341443e8"><param name="Name" value="begin"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#ace9c2b5c042ed59541a4821a10ee6d0e"><param name="Name" value="begin"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="struct__muse__process__frame__t.html#a4a3b42a7233ce95cbd71954f656247ed"><param name="Name" value="bindings_stack"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__stack.html#add94a33318ff2553bb51987f5eadb8cb"><param name="Name" value="bottom"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Boxes.html"><param name="Name" value="Boxes"></OBJECT>
@@ -71,6 +71,11 @@
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#acdf3a7bad13b33b5f942a30c9147d01b"><param name="Name" value="muse_utils.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#acdf3a7bad13b33b5f942a30c9147d01b"><param name="Name" value="muse_utils.h"></OBJECT>
+  </UL>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#af271b2e326b4caec2c6a6cf97ec97274"><param name="Name" value="buffer_reset"></OBJECT>
+  <UL>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#af271b2e326b4caec2c6a6cf97ec97274"><param name="Name" value="muse_utils.c"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#af271b2e326b4caec2c6a6cf97ec97274"><param name="Name" value="muse_utils.h"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#aa0c236e87d164f6e95ab4188d24a89c5"><param name="Name" value="buffer_substring"></OBJECT>
   <UL>
@@ -126,12 +131,12 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga819d48b0e024444810e2d19a395dce8d"><param name="Name" value="muse_opcodes.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga819d48b0e024444810e2d19a395dce8d"><param name="Name" value="Processes_impl"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga64b229f58b114a9809ba750815183f7e"><param name="Name" value="close"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gacaebc40eabf71f257d26b3d1bc73cb62"><param name="Name" value="close"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga64b229f58b114a9809ba750815183f7e"><param name="Name" value="FunctionalObjects"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga64b229f58b114a9809ba750815183f7e"><param name="Name" value="muse_port_type_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gacaebc40eabf71f257d26b3d1bc73cb62"><param name="Name" value="FunctionalObjects"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gacaebc40eabf71f257d26b3d1bc73cb62"><param name="Name" value="muse_port_type_t"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a1c0ace486d22e6245cb6c203459dca2d"><param name="Name" value="collect"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a5c0f3f7c945d6657ba1ef90518a7b0a2"><param name="Name" value="collect"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Comparisons.html"><param name="Name" value="Comparisons"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Comparisons.html#gadc7a707a47967dcb93947fc81b8498dc"><param name="Name" value="fn_and"></OBJECT>
@@ -186,9 +191,9 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="struct__muse__process__frame__t.html#aea9cbc4425c603431b428d94abc57bce"><param name="Name" value="cstack"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="struct__muse__process__frame__t.html#a793a330e4ba8096c84fda1808dc80426"><param name="Name" value="current_port"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__context__t.html#a031f0c7ec5ae3146c91be0739a0fe434"><param name="Name" value="depth"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a9cb5ada175fd8ae7f419a911491667e0"><param name="Name" value="destroy"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a2c6d4158cf0dff3e3e3b91d7af02d49a"><param name="Name" value="destroy"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html"><param name="Name" value="Embedding API for the Muse language."></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#adc995f37176ea18165fea8596f217622"><param name="Name" value="end"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#a0cad107bbf792305020d6a32e0ee1546"><param name="Name" value="end"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga7af29c06ac0250072cbee740501ddd52"><param name="Name" value="enter_atomic"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga7af29c06ac0250072cbee740501ddd52"><param name="Name" value="muse.c"></OBJECT>
@@ -235,10 +240,10 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Ports.html#ga882e14825ce846e5ce1ac14176695945"><param name="Name" value="muse_port.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Ports.html#ga882e14825ce846e5ce1ac14176695945"><param name="Name" value="Ports"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga77b78859f5b31dcf072523a11aff15d0"><param name="Name" value="flush"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga4f1ed5d9d88f0328e9a00c47a309800b"><param name="Name" value="flush"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga77b78859f5b31dcf072523a11aff15d0"><param name="Name" value="FunctionalObjects"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga77b78859f5b31dcf072523a11aff15d0"><param name="Name" value="muse_port_type_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga4f1ed5d9d88f0328e9a00c47a309800b"><param name="Name" value="FunctionalObjects"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga4f1ed5d9d88f0328e9a00c47a309800b"><param name="Name" value="muse_port_type_t"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a71dd515baef80a41e67eb45ad8d04f9b"><param name="Name" value="fn"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#a295ebf205d94422e9df1a8e16781d1b7"><param name="Name" value="fn_add"></OBJECT>
@@ -974,6 +979,12 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gae1690531de6770961399e2cd589a1f1d"><param name="Name" value="muse_builtins.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gae1690531de6770961399e2cd589a1f1d"><param name="Name" value="PortIO"></OBJECT>
   </UL>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="fn_scribble"></OBJECT>
+  <UL>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="muse_builtin_io.c"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="muse_builtins.h"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="PortIO"></OBJECT>
+  </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__CellManipulation.html#gae912d927c23bcd6c7952f68b1fbc185a"><param name="Name" value="fn_set_M"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__CellManipulation.html#gae912d927c23bcd6c7952f68b1fbc185a"><param name="Name" value="CellManipulation"></OBJECT>
@@ -1285,7 +1296,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#ga19d35625cad23d5f1ccf5cfbc3fce689"><param name="Name" value="muse_builtins.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#ga19d35625cad23d5f1ccf5cfbc3fce689"><param name="Name" value="PortIO"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__format__view__t.html#a3c7ce34b6ecfb3c849737515f4c68d2c"><param name="Name" value="format"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__format__view__t.html#a8d4afb938434b9990b1fa301b9f3ee35"><param name="Name" value="format"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__heap.html#a08dc1bb53fafc5c6acec4d1c865ce23c"><param name="Name" value="free_cell_count"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__heap.html#ac32d5f585cd8bd086af1cf78d3942b64"><param name="Name" value="free_cells"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga428bb7fffe1973c236353efc91a760ca"><param name="Name" value="free_process"></OBJECT>
@@ -1297,12 +1308,12 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html"><param name="Name" value="Functional objects"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html"><param name="Name" value="FunctionalObjects"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga64b229f58b114a9809ba750815183f7e"><param name="Name" value="close"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gacaebc40eabf71f257d26b3d1bc73cb62"><param name="Name" value="close"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga56a8e4c5dfb2ed7e083cf814dcd8e1b7"><param name="Name" value="env"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga77b78859f5b31dcf072523a11aff15d0"><param name="Name" value="flush"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga4f1ed5d9d88f0328e9a00c47a309800b"><param name="Name" value="flush"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gab77d8e498e45fcdd7381f1a1b19463c7"><param name="Name" value="pp_max_indent_cols"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gae78989ca3765dc92f311d117c91c3c15"><param name="Name" value="read"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gad1b37cda1c83c59f6bd079673d73ead5"><param name="Name" value="write"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga54f228ce5a7627d863dc6d1242b4db39"><param name="Name" value="read"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga0cd75fc69bbc9c77c3b582b319aa1873"><param name="Name" value="write"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8c.html#acdd2a3d035bbd84a1fe04af02a76a13e"><param name="Name" value="g_muse_typenames"></OBJECT>
   <UL>
@@ -1318,7 +1329,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__GenericFns.html#ga07873c5f51b927f2a082311753133246"><param name="Name" value="syntax_generic_lambda"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__GenericFns.html#ga03988c727ca3aee7d8c2c249909c5d3e"><param name="Name" value="syntax_local"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a74986953835ac0a1cd07e4b9cc180fdf"><param name="Name" value="get_prop"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a7726339f8b1bcc757e8a2fabc83528d6"><param name="Name" value="get_prop"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Hashtables.html"><param name="Name" value="Hashtables"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Hashtables.html#gaa305be669334b9e84cfcab9355def892"><param name="Name" value="fn_alist_to_hashtable"></OBJECT>
@@ -1349,7 +1360,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__HOFs.html#ga2e9840d48d038f855afccc20ced9ef02"><param name="Name" value="fn_slice"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__HOFs.html#ga51a10bd87786d3327f38bb7fd02c8b10"><param name="Name" value="fn_transpose"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a6ebf186ef6428e4e4cc7b2ab45d6e21e"><param name="Name" value="init"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a351d2aa1e9d950a205dad5570e95279f"><param name="Name" value="init"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga8c447cc19c640268f04dae615ba415a2"><param name="Name" value="init_process_mailbox"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga8c447cc19c640268f04dae615ba415a2"><param name="Name" value="muse.c"></OBJECT>
@@ -1363,7 +1374,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga8d4ff13d756eb93aefb084e9717d7959"><param name="Name" value="muse_opcodes.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga8d4ff13d756eb93aefb084e9717d7959"><param name="Name" value="Processes_impl"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a6697bbf12603b6fb01d3d27d2ae897ef"><param name="Name" value="join"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a2ad9361fc4252fa49bb3c446c856f6fb"><param name="Name" value="join"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__heap.html#ab4b4d46a626e07e459239850d1375d2f"><param name="Name" value="keep"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__LanguageConstructs.html"><param name="Name" value="Language constructs"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__LanguageConstructs.html"><param name="Name" value="LanguageConstructs"></OBJECT>
@@ -1395,8 +1406,8 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__t.html#a1cdba0ac0f4ea3cb4ce66466fc729d6d"><param name="Name" value="muse_functional_object_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#addce3f274e3bd1b0f3c7698fb17d1c1d"><param name="Name" value="muse_functional_object_type_t"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a7d3f55159eeaadce4143c0b9b3e63e5a"><param name="Name" value="map"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#aa0f755a3769c4a45484fb1709098e6e2"><param name="Name" value="mark"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a1ec1991bfb5ecf06327aabe3e82bb9c6"><param name="Name" value="map"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a3d11a159b716b97217741f0a446f14f4"><param name="Name" value="mark"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga48cfc3296f5de8390b7b8b5da8210932"><param name="Name" value="mark_process"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga48cfc3296f5de8390b7b8b5da8210932"><param name="Name" value="muse.c"></OBJECT>
@@ -1525,7 +1536,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga585a3813cb412ed58ef5caa4fb02b074"><param name="Name" value="muse_csymbol"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga1dcbe9d239617a6d6b7f8eb3ba50f790"><param name="Name" value="muse_csymbol_utf8"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga8758b6cb16ed94c31d3dc906598e48bd"><param name="Name" value="muse_current_port"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ae63368f6e583439bf2d4413529eee413"><param name="Name" value="muse_datafn_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a4528b1b9fa872d1543eb3fd07475837b"><param name="Name" value="muse_datafn_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="muse_define"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga2a4488ace0f31356d19aae5f276849fb"><param name="Name" value="muse_destroy_env"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga66bdc40be7c147a1b0c41e7a90cadf4f"><param name="Name" value="muse_destroy_object"></OBJECT>
@@ -1563,13 +1574,13 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gad48e320fae28077910b7a40a53c18ead"><param name="Name" value="muse_int"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga494e2293f0c5fb24a10998d923bc4885"><param name="Name" value="muse_int_value"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga0059944986d5f2952f5673f01d2d8702"><param name="Name" value="muse_isfn"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a42cc8566b0ea3359fcb32a9e4fa83fb2"><param name="Name" value="muse_iterator_callback_t"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a19c8f19745c8878d860a889d180a5807"><param name="Name" value="muse_iterator_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#aebcaf820aaed4fe676836c27c672a53d"><param name="Name" value="muse_iterator_callback_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a3600514d7fa44ff137522910f38c6bbf"><param name="Name" value="muse_iterator_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gac82cc9843c4a0f7e0cce002b5a6685a5"><param name="Name" value="muse_link_plugin"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga3b83e771899830ee19b008c95a6bd31e"><param name="Name" value="muse_list"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga5b629b0a129f6b978513113a4c97909d"><param name="Name" value="muse_list_append"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gad1bc6f435c164378e58a749782159df8"><param name="Name" value="muse_list_extract"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga2c3edefd247583770f66b3ed0177a278"><param name="Name" value="muse_list_generator_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga3386ed80954acdeb86695588c6572b22"><param name="Name" value="muse_list_generator_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga84067b5f118c19541644c11ba569a94b"><param name="Name" value="muse_list_last"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga6d584b938bf46ff71afb5f3b98f671e9"><param name="Name" value="muse_list_length"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga908effdc65396a96e0d396092d8b70c4"><param name="Name" value="muse_list_to_array"></OBJECT>
@@ -1592,9 +1603,9 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaeb56720dfc1a1c61e74f1ca9024f402b"><param name="Name" value="muse_mk_text_utf8"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga4d7fa53f90ab49cfd4a6485796131f52"><param name="Name" value="muse_mk_vector"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gad3d3958bbc2904d00fc43f3ac00d8bab"><param name="Name" value="muse_nativefn_context"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga60e2edd62bf26d99abc885a5790ce295"><param name="Name" value="muse_nativefn_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga34a7a6dada9675fe28f3bd52796ff7da"><param name="Name" value="muse_nativefn_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga57e552c1e259fdf9c2417f8b637111ab"><param name="Name" value="muse_pload"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaf23735f6de459f73294684818bf60b4e"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga19610f9167c1e040444f6001480264dc"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gabf5fa57448cf35abdfc8e399bb34bd69"><param name="Name" value="muse_popdef"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga8665ccb146ded03de15f3cdcdb241f91"><param name="Name" value="muse_port"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaabcbd6ca309a2184f727072df644df11"><param name="Name" value="muse_port_t"></OBJECT>
@@ -1620,7 +1631,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga85a8e619148f31ba7c0e1c063fbc2bee"><param name="Name" value="muse_similar_symbol"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gafb4ed137e6c65772b2a91b51c94bc061"><param name="Name" value="muse_sleep"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaf190680fd1cae768b07bfdfbb6428ce6"><param name="Name" value="muse_slot"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga2c712e673b7c02e39848e5d961d07c21"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gabea7f20a5fe2e7f12f74bacb14f57a49"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ga65df05ccb4f900629eb93ff5aa27a009"><param name="Name" value="muse_sprintf"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaca472076e14a267135b45721e428410f"><param name="Name" value="muse_stack_pos"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#gaf36a76fafe88f9efdd994e68c2a83ae2"><param name="Name" value="muse_stack_push"></OBJECT>
@@ -1894,6 +1905,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#ga21e62bebf5c63eb51fabfb4121e772b2"><param name="Name" value="fn_read"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#gacac38ca217fad27de091077027dadb96"><param name="Name" value="fn_read_line"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#gae1690531de6770961399e2cd589a1f1d"><param name="Name" value="fn_scheme_syntax"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="fn_scribble"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#gaa458a4e52ed08e34c1f14bddecfde141"><param name="Name" value="fn_tab_syntax"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#ga9e4535deef369d6d89e36e375e4ecf3a"><param name="Name" value="fn_with_bytes_as_port"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__io_8c.html#gadc99cf562f996e26e47d055b5c456222"><param name="Name" value="fn_write"></OBJECT>
@@ -1939,7 +1951,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#a9ef730866d60018e68ecaeb03ee527ff"><param name="Name" value="fn_trunc"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#a68ab4d30d9962886be1a7a8f6f83806d"><param name="Name" value="fn_unary_math"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#a5563e19fb39f3d7d2c9c9e389690b32e"><param name="Name" value="muse_math_load_common_unary_functions"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#ae64d5569cb23a6bd1003dd7763034241"><param name="Name" value="unary_math_op_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#ab0a3a64299cb553647d3a48b5bd6fe72"><param name="Name" value="unary_math_op_t"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8h.html"><param name="Name" value="muse_builtin_math.h"></OBJECT>
   <UL>
@@ -2183,6 +2195,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#gaa66016788351ed9f8de5b1511b3cb70f"><param name="Name" value="fn_reverse_inplace"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#ga2aafcfd0961232ac9245a30bcf17fb99"><param name="Name" value="fn_run"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#gae1690531de6770961399e2cd589a1f1d"><param name="Name" value="fn_scheme_syntax"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="fn_scribble"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#gae912d927c23bcd6c7952f68b1fbc185a"><param name="Name" value="fn_set_M"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#gab675494453d07c8861502f47a221029d"><param name="Name" value="fn_setf_M"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtins_8h.html#ga09281db6b532702db236c6c65efc80b3"><param name="Name" value="fn_setr_M"></OBJECT>
@@ -2366,16 +2379,16 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga8758b6cb16ed94c31d3dc906598e48bd"><param name="Name" value="muse_port.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga8758b6cb16ed94c31d3dc906598e48bd"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#ae63368f6e583439bf2d4413529eee413"><param name="Name" value="muse_datafn_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a4528b1b9fa872d1543eb3fd07475837b"><param name="Name" value="muse_datafn_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga99a6fcb4727b48a74b6ad1f9d821381eafc65903740a10aa20751dec6c5b81c0c"><param name="Name" value="MUSE_DEFAULT_ATTENTION"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a66c81830cf885eda1c18558943bacc83"><param name="Name" value="MUSE_DEFAULT_EXCEPTION_HANDLER"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="muse_define"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="muse.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="muse_cells.c"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a80bcc3a39f93164667c88982bb90ae81"><param name="Name" value="MUSE_DEFINE"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga018f171a9fcee9687b3649e950d44237"><param name="Name" value="muse_define"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Ports.html#ga03f8bcde33db881d0198aa3a8b2da7cc"><param name="Name" value="muse_define_builtin_fileport"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Ports.html#ga03f8bcde33db881d0198aa3a8b2da7cc"><param name="Name" value="muse_builtin_fileport.c"></OBJECT>
@@ -2511,7 +2524,7 @@
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__format__view__t.html"><param name="Name" value="muse_format_view_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__format__view__t.html#a3c7ce34b6ecfb3c849737515f4c68d2c"><param name="Name" value="format"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__format__view__t.html#a8d4afb938434b9990b1fa301b9f3ee35"><param name="Name" value="format"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga5b830e85998fd7b2f0b1f6c8f100b40e"><param name="Name" value="muse_fsize"></OBJECT>
   <UL>
@@ -2532,15 +2545,15 @@
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html"><param name="Name" value="muse_functional_object_type_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a9cb5ada175fd8ae7f419a911491667e0"><param name="Name" value="destroy"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a2c6d4158cf0dff3e3e3b91d7af02d49a"><param name="Name" value="destroy"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a71dd515baef80a41e67eb45ad8d04f9b"><param name="Name" value="fn"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a6ebf186ef6428e4e4cc7b2ab45d6e21e"><param name="Name" value="init"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a351d2aa1e9d950a205dad5570e95279f"><param name="Name" value="init"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#addce3f274e3bd1b0f3c7698fb17d1c1d"><param name="Name" value="magic_word"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#aa0f755a3769c4a45484fb1709098e6e2"><param name="Name" value="mark"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a3d11a159b716b97217741f0a446f14f4"><param name="Name" value="mark"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#ad7cf056fbe625622a52e20fe96802216"><param name="Name" value="size"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#af3d4eca22347e4f9dcf5942e7ea3f3d6"><param name="Name" value="type_word"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#adbbd6aaac54dd1250550c2e5bae43bff"><param name="Name" value="view"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a4397a4360434a2d77719aec36c102710"><param name="Name" value="write"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a2687ac789a5b5a0ba9f17ae9f8ca8ff6"><param name="Name" value="view"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a86384e3fd5c78025be308610dce3e252"><param name="Name" value="write"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga4cb856de64a5b0496ac7fbbd70e72265"><param name="Name" value="muse_gc"></OBJECT>
   <UL>
@@ -2667,8 +2680,8 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga0059944986d5f2952f5673f01d2d8702"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a19c118a030d543c837a7e258fd4c3d10"><param name="Name" value="MUSE_IT"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a42cc8566b0ea3359fcb32a9e4fa83fb2"><param name="Name" value="muse_iterator_callback_t"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a19c8f19745c8878d860a889d180a5807"><param name="Name" value="muse_iterator_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#aebcaf820aaed4fe676836c27c672a53d"><param name="Name" value="muse_iterator_callback_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse_8h.html#a3600514d7fa44ff137522910f38c6bbf"><param name="Name" value="muse_iterator_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ggab5b6d16681e25eaab89b93fad90b4727abb8f2ec3d6f4c99b231634b1d0b43b11"><param name="Name" value="MUSE_LAMBDA_CELL"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ggab5b6d16681e25eaab89b93fad90b4727a83a817e9511e7086e5122f73e76851f2"><param name="Name" value="MUSE_LAZY_CELL"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gac82cc9843c4a0f7e0cce002b5a6685a5"><param name="Name" value="muse_link_plugin"></OBJECT>
@@ -2695,10 +2708,10 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad1bc6f435c164378e58a749782159df8"><param name="Name" value="muse_cells.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad1bc6f435c164378e58a749782159df8"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c3edefd247583770f66b3ed0177a278"><param name="Name" value="muse_list_generator_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3386ed80954acdeb86695588c6572b22"><param name="Name" value="muse_list_generator_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c3edefd247583770f66b3ed0177a278"><param name="Name" value="muse.h"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c3edefd247583770f66b3ed0177a278"><param name="Name" value="MuseAPI"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3386ed80954acdeb86695588c6572b22"><param name="Name" value="muse.h"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3386ed80954acdeb86695588c6572b22"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga84067b5f118c19541644c11ba569a94b"><param name="Name" value="muse_list_last"></OBJECT>
   <UL>
@@ -2874,12 +2887,12 @@
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html"><param name="Name" value="muse_monad_view_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a1c0ace486d22e6245cb6c203459dca2d"><param name="Name" value="collect"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a6697bbf12603b6fb01d3d27d2ae897ef"><param name="Name" value="join"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a7d3f55159eeaadce4143c0b9b3e63e5a"><param name="Name" value="map"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#ae8e15e799951c7aa49c33c9a1b62a48e"><param name="Name" value="reduce"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a254911cebb80a0ee9b68312a9f0bc84e"><param name="Name" value="size"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a96ab4ec11137447eaadf678818b7be50"><param name="Name" value="slice"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a5c0f3f7c945d6657ba1ef90518a7b0a2"><param name="Name" value="collect"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a2ad9361fc4252fa49bb3c446c856f6fb"><param name="Name" value="join"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a1ec1991bfb5ecf06327aabe3e82bb9c6"><param name="Name" value="map"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a71b36d9a942c86dd68c125b5b371247f"><param name="Name" value="reduce"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a42dda361e84959a76c5ad9c24da9a8c1"><param name="Name" value="size"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#ae4066c06685bf828242cbf6e837a3132"><param name="Name" value="slice"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890ae8fafa4930ac418e3781fb5a8cdc29ca"><param name="Name" value="MUSE_NAME"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__nativefn__cell.html"><param name="Name" value="muse_nativefn_cell"></OBJECT>
@@ -2890,10 +2903,10 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad3d3958bbc2904d00fc43f3ac00d8bab"><param name="Name" value="muse_cells.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad3d3958bbc2904d00fc43f3ac00d8bab"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga60e2edd62bf26d99abc885a5790ce295"><param name="Name" value="muse_nativefn_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga34a7a6dada9675fe28f3bd52796ff7da"><param name="Name" value="muse_nativefn_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga60e2edd62bf26d99abc885a5790ce295"><param name="Name" value="muse.h"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga60e2edd62bf26d99abc885a5790ce295"><param name="Name" value="MuseAPI"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga34a7a6dada9675fe28f3bd52796ff7da"><param name="Name" value="muse.h"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga34a7a6dada9675fe28f3bd52796ff7da"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Networking.html#ga2e0e2d8f8334748c3ba90b87640a1dd7"><param name="Name" value="muse_network_startup"></OBJECT>
   <UL>
@@ -2964,10 +2977,10 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga57e552c1e259fdf9c2417f8b637111ab"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__plugin_8c.html"><param name="Name" value="muse_plugin.c"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf23735f6de459f73294684818bf60b4e"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga19610f9167c1e040444f6001480264dc"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf23735f6de459f73294684818bf60b4e"><param name="Name" value="muse.h"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf23735f6de459f73294684818bf60b4e"><param name="Name" value="MuseAPI"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga19610f9167c1e040444f6001480264dc"><param name="Name" value="muse.h"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga19610f9167c1e040444f6001480264dc"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga42275893c621de9fecdddfb5ff5dcb9e"><param name="Name" value="muse_pop_recent_scope"></OBJECT>
   <UL>
@@ -3062,10 +3075,10 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga4cacdd3763ca0ed2861411836c2d3875a74d6801426d4b95b2402662ef7a5e876"><param name="Name" value="MUSE_PORT_TRUSTED_INPUT"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html"><param name="Name" value="muse_port_type_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#ga64b229f58b114a9809ba750815183f7e"><param name="Name" value="close"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#ga77b78859f5b31dcf072523a11aff15d0"><param name="Name" value="flush"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#gae78989ca3765dc92f311d117c91c3c15"><param name="Name" value="read"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#gad1b37cda1c83c59f6bd079673d73ead5"><param name="Name" value="write"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#gacaebc40eabf71f257d26b3d1bc73cb62"><param name="Name" value="close"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#ga4f1ed5d9d88f0328e9a00c47a309800b"><param name="Name" value="flush"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#ga54f228ce5a7627d863dc6d1242b4db39"><param name="Name" value="read"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__port__type__t.html#ga0cd75fc69bbc9c77c3b582b319aa1873"><param name="Name" value="write"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga4cacdd3763ca0ed2861411836c2d3875a724b8809e9c519f8c5c0866584b669db"><param name="Name" value="MUSE_PORT_WRITE"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga6aeecd71ea06b1ebf8b8c14779222e26"><param name="Name" value="muse_pprint"></OBJECT>
@@ -3084,8 +3097,8 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__opcodes_8h.html#a7f05e53eb3a6b48bd744aefb7d272d9a"><param name="Name" value="muse_process_frame_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html"><param name="Name" value="muse_prop_view_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a74986953835ac0a1cd07e4b9cc180fdf"><param name="Name" value="get_prop"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#af31a0b60764260368433ed504ad91198"><param name="Name" value="put_prop"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a7726339f8b1bcc757e8a2fabc83528d6"><param name="Name" value="get_prop"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a7b56c2b28d398b8996fcf61582a201aa"><param name="Name" value="put_prop"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga3922df4d995479245cb2d3ee2c3b2e6e"><param name="Name" value="muse_push_recent_scope"></OBJECT>
   <UL>
@@ -3157,8 +3170,8 @@
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html"><param name="Name" value="muse_scope_view_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#abd3266c37b2fdea36d328951341443e8"><param name="Name" value="begin"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#adc995f37176ea18165fea8596f217622"><param name="Name" value="end"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#ace9c2b5c042ed59541a4821a10ee6d0e"><param name="Name" value="begin"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__scope__view__t.html#a0cad107bbf792305020d6a32e0ee1546"><param name="Name" value="end"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a82c647706a7abae912199953f918f166"><param name="Name" value="MUSE_SELF"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__networking_8c.html#a300190ed3440e51a1cf838ef944b3ec3"><param name="Name" value="muse_server_stream_socket_t"></OBJECT>
@@ -3230,10 +3243,10 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf190680fd1cae768b07bfdfbb6428ce6"><param name="Name" value="muse.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf190680fd1cae768b07bfdfbb6428ce6"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c712e673b7c02e39848e5d961d07c21"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gabea7f20a5fe2e7f12f74bacb14f57a49"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c712e673b7c02e39848e5d961d07c21"><param name="Name" value="muse.h"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c712e673b7c02e39848e5d961d07c21"><param name="Name" value="MuseAPI"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gabea7f20a5fe2e7f12f74bacb14f57a49"><param name="Name" value="muse.h"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gabea7f20a5fe2e7f12f74bacb14f57a49"><param name="Name" value="MuseAPI"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__slot__t.html"><param name="Name" value="muse_slot_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__networking_8c.html#a9fdd068b1e6f0803ed88693361efc4b5"><param name="Name" value="MUSE_SO_REUSE"></OBJECT>
@@ -3427,6 +3440,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#a0df01e5f3df0eba4f48049af975d938b"><param name="Name" value="buffer_length"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#a8315b415d515d66d541a8c632fef09a0"><param name="Name" value="buffer_putc"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#acdf3a7bad13b33b5f942a30c9147d01b"><param name="Name" value="buffer_puts"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#af271b2e326b4caec2c6a6cf97ec97274"><param name="Name" value="buffer_reset"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#aa0c236e87d164f6e95ab4188d24a89c5"><param name="Name" value="buffer_substring"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#a85d4aff180bc5c9632a3ac7fd8daf909"><param name="Name" value="buffer_to_string"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#a68eacd4fd316acfe8e6f5e0d37b71974"><param name="Name" value="buffer_to_symbol"></OBJECT>
@@ -3441,6 +3455,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#a0df01e5f3df0eba4f48049af975d938b"><param name="Name" value="buffer_length"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#a8315b415d515d66d541a8c632fef09a0"><param name="Name" value="buffer_putc"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#acdf3a7bad13b33b5f942a30c9147d01b"><param name="Name" value="buffer_puts"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#af271b2e326b4caec2c6a6cf97ec97274"><param name="Name" value="buffer_reset"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#aa0c236e87d164f6e95ab4188d24a89c5"><param name="Name" value="buffer_substring"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#aa062eee4b3e5c437fab183069251406d"><param name="Name" value="buffer_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#a85d4aff180bc5c9632a3ac7fd8daf909"><param name="Name" value="buffer_to_string"></OBJECT>
@@ -3548,8 +3563,8 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga4cb856de64a5b0496ac7fbbd70e72265"><param name="Name" value="muse_gc"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga91cff55083d294f1da92a8f82ad870d3"><param name="Name" value="muse_generate_list"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a9ac78b8a32c3c72c2738ae9d043763ff"><param name="Name" value="MUSE_GENERIC_INVOKE"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga01eb2208041a1058fa3fdb6562f85331"><param name="Name" value="muse_get"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890acb88ffef068fb39941023cbbda2f9ee8"><param name="Name" value="MUSE_GET"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga01eb2208041a1058fa3fdb6562f85331"><param name="Name" value="muse_get"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf498a76ee31fd41ef0748419c0c67a6e"><param name="Name" value="muse_get_meta"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad328233d166bd10b3a51275ed9a311be"><param name="Name" value="muse_get_prop"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga99a6fcb4727b48a74b6ad1f9d821381eaca7167320e87dc1cb24f8a6bd4c3b4b0"><param name="Name" value="MUSE_GROW_HEAP_THRESHOLD"></OBJECT>
@@ -3573,7 +3588,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3b83e771899830ee19b008c95a6bd31e"><param name="Name" value="muse_list"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga5b629b0a129f6b978513113a4c97909d"><param name="Name" value="muse_list_append"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad1bc6f435c164378e58a749782159df8"><param name="Name" value="muse_list_extract"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c3edefd247583770f66b3ed0177a278"><param name="Name" value="muse_list_generator_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3386ed80954acdeb86695588c6572b22"><param name="Name" value="muse_list_generator_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga84067b5f118c19541644c11ba569a94b"><param name="Name" value="muse_list_last"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga6d584b938bf46ff71afb5f3b98f671e9"><param name="Name" value="muse_list_length"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga908effdc65396a96e0d396092d8b70c4"><param name="Name" value="muse_list_to_array"></OBJECT>
@@ -3599,13 +3614,13 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890ae8fafa4930ac418e3781fb5a8cdc29ca"><param name="Name" value="MUSE_NAME"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ggab5b6d16681e25eaab89b93fad90b4727adda7db0e96c4d555efd6c404997d1929"><param name="Name" value="MUSE_NATIVEFN_CELL"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gad3d3958bbc2904d00fc43f3ac00d8bab"><param name="Name" value="muse_nativefn_context"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga60e2edd62bf26d99abc885a5790ce295"><param name="Name" value="muse_nativefn_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga34a7a6dada9675fe28f3bd52796ff7da"><param name="Name" value="muse_nativefn_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a691eefc496b45215c8ff94a59de008c3"><param name="Name" value="MUSE_NIL"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a8220c1ed1298e09064356fa9379be657"><param name="Name" value="MUSE_NUM_BUILTIN_SYMBOLS"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga99a6fcb4727b48a74b6ad1f9d821381eac6f70c2efbe385a69ae7ad0f9af49e8d"><param name="Name" value="MUSE_NUM_PARAMETER_NAMES"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga99a6fcb4727b48a74b6ad1f9d821381ea81ff8080e15c0125379231ff98a87b51"><param name="Name" value="MUSE_OWN_OBJC_AUTORELEASE_POOL"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga57e552c1e259fdf9c2417f8b637111ab"><param name="Name" value="muse_pload"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf23735f6de459f73294684818bf60b4e"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga19610f9167c1e040444f6001480264dc"><param name="Name" value="muse_plugin_entry_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gabf5fa57448cf35abdfc8e399bb34bd69"><param name="Name" value="muse_popdef"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga8665ccb146ded03de15f3cdcdb241f91"><param name="Name" value="muse_port"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga4cacdd3763ca0ed2861411836c2d3875aab2984909802911de55bea02919c9994"><param name="Name" value="MUSE_PORT_EZSCHEME"></OBJECT>
@@ -3620,13 +3635,13 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga5f798991587017096d24ae10a70e553e"><param name="Name" value="muse_pread"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga99a6fcb4727b48a74b6ad1f9d821381ea698efb198396371f93a4bd7453d6cb94"><param name="Name" value="MUSE_PRETTY_PRINT"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gab527b056a7ef179c1af485c885348b55"><param name="Name" value="muse_pushdef"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890ad608fdef8d32209fad6eef1e9455522f"><param name="Name" value="MUSE_PUT"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga92b11af5047ae4f3b441a9ab9b7b4b2d"><param name="Name" value="muse_put"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890ad608fdef8d32209fad6eef1e9455522f"><param name="Name" value="MUSE_PUT"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga9a28108223e0de495b6e4dac11b46e04"><param name="Name" value="muse_put_many"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga3195a91ed38a1f1285f791b81237e908"><param name="Name" value="muse_put_prop"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaad86c760371654433c53c164ac12214a"><param name="Name" value="muse_pwrite"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a0750243792f6125f8868bb993fa17668"><param name="Name" value="MUSE_QUOTE"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga5d49337ef93b232c68554350a1fe9120"><param name="Name" value="muse_quote"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gga71b858b1a2cd474be8f987d0271f1890a0750243792f6125f8868bb993fa17668"><param name="Name" value="MUSE_QUOTE"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga16eb6fecef6e1e55330539875ee5d40a"><param name="Name" value="muse_raise_error"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gade3a4d0406406c6e03a2e91411318d88"><param name="Name" value="muse_read_xml_node"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga77d63ec7a21a79d24743cd1dbce34772"><param name="Name" value="muse_repl"></OBJECT>
@@ -3643,7 +3658,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga85a8e619148f31ba7c0e1c063fbc2bee"><param name="Name" value="muse_similar_symbol"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gafb4ed137e6c65772b2a91b51c94bc061"><param name="Name" value="muse_sleep"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf190680fd1cae768b07bfdfbb6428ce6"><param name="Name" value="muse_slot"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga2c712e673b7c02e39848e5d961d07c21"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gabea7f20a5fe2e7f12f74bacb14f57a49"><param name="Name" value="muse_slot_cleanup_proc_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#ga65df05ccb4f900629eb93ff5aa27a009"><param name="Name" value="muse_sprintf"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaca472076e14a267135b45721e428410f"><param name="Name" value="muse_stack_pos"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__MuseAPI.html#gaf36a76fafe88f9efdd994e68c2a83ae2"><param name="Name" value="muse_stack_push"></OBJECT>
@@ -3830,6 +3845,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gacac38ca217fad27de091077027dadb96"><param name="Name" value="fn_read_line"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#ga43e20503d130213a336ab78e7d64f28d"><param name="Name" value="fn_read_xml"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gae1690531de6770961399e2cd589a1f1d"><param name="Name" value="fn_scheme_syntax"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gafad409cf9ba07d99dd550a8395361d63"><param name="Name" value="fn_scribble"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gaa458a4e52ed08e34c1f14bddecfde141"><param name="Name" value="fn_tab_syntax"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gadc99cf562f996e26e47d055b5c456222"><param name="Name" value="fn_write"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__PortIO.html#gad279620db34a8d1055531730840159ea"><param name="Name" value="fn_write_json"></OBJECT>
@@ -3987,12 +4003,12 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga11edf833f173ae8d8333b9e7f2ace47f"><param name="Name" value="muse_opcodes.h"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga11edf833f173ae8d8333b9e7f2ace47f"><param name="Name" value="Processes_impl"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#af31a0b60764260368433ed504ad91198"><param name="Name" value="put_prop"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__prop__view__t.html#a7b56c2b28d398b8996fcf61582a201aa"><param name="Name" value="put_prop"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Exceptions.html"><param name="Name" value="Raising and handling exceptions"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gae78989ca3765dc92f311d117c91c3c15"><param name="Name" value="read"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga54f228ce5a7627d863dc6d1242b4db39"><param name="Name" value="read"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gae78989ca3765dc92f311d117c91c3c15"><param name="Name" value="FunctionalObjects"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gae78989ca3765dc92f311d117c91c3c15"><param name="Name" value="muse_port_type_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga54f228ce5a7627d863dc6d1242b4db39"><param name="Name" value="FunctionalObjects"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga54f228ce5a7627d863dc6d1242b4db39"><param name="Name" value="muse_port_type_t"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="struct__muse__process__frame__t.html#ae57ba06f4b682584ece9919e0db41473"><param name="Name" value="recent"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__context__t.html"><param name="Name" value="recent_context_t"></OBJECT>
@@ -4006,7 +4022,7 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__entries__t.html"><param name="Name" value="recent_entries_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__entry__t.html"><param name="Name" value="recent_entry_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structrecent__t.html"><param name="Name" value="recent_t"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#ae8e15e799951c7aa49c33c9a1b62a48e"><param name="Name" value="reduce"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a71b36d9a942c86dd68c125b5b371247f"><param name="Name" value="reduce"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga9735d3f457ead63c447d5cc2db8cbdef"><param name="Name" value="remove_process"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga9735d3f457ead63c447d5cc2db8cbdef"><param name="Name" value="muse.c"></OBJECT>
@@ -4026,11 +4042,11 @@
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#ad7cf056fbe625622a52e20fe96802216"><param name="Name" value="size"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#ad7cf056fbe625622a52e20fe96802216"><param name="Name" value="muse_functional_object_type_t"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a254911cebb80a0ee9b68312a9f0bc84e"><param name="Name" value="muse_monad_view_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a42dda361e84959a76c5ad9c24da9a8c1"><param name="Name" value="muse_monad_view_t"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__stack.html#a5f19c1e1fd2260e7f327ef3d00011c95"><param name="Name" value="muse_stack"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__heap.html#a14d57b70a3c7365a6f139e52bf5102de"><param name="Name" value="size_cells"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#a96ab4ec11137447eaadf678818b7be50"><param name="Name" value="slice"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__monad__view__t.html#ae4066c06685bf828242cbf6e837a3132"><param name="Name" value="slice"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#gaaba2c973e1cfc5b3c74d72d9e21ce6c4"><param name="Name" value="switch_to_process"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#gaaba2c973e1cfc5b3c74d72d9e21ce6c4"><param name="Name" value="muse.c"></OBJECT>
@@ -4184,7 +4200,7 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8c.html#aa06a457a792ced79ef1dffb8748adb65"><param name="Name" value="muse_utils.c"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__utils_8h.html#aa06a457a792ced79ef1dffb8748adb65"><param name="Name" value="muse_utils.h"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#ae64d5569cb23a6bd1003dd7763034241"><param name="Name" value="unary_math_op_t"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__builtin__math_8c.html#ab0a3a64299cb553647d3a48b5bd6fe72"><param name="Name" value="unary_math_op_t"></OBJECT>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__opcodes_8h.html#a45df182e91e2d3ce069303ef1b0d02fe"><param name="Name" value="utf8_to_uc16"></OBJECT>
   <UL>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="muse__opcodes_8h.html#a45df182e91e2d3ce069303ef1b0d02fe"><param name="Name" value="muse_opcodes.h"></OBJECT>
@@ -4205,12 +4221,12 @@
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Vectors.html#ga46c949fc30c0f5d496e9401732b83efc"><param name="Name" value="muse_vector_length"></OBJECT>
     <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Vectors.html#gaa34e4172e16e0b1016fac4db267d5f4c"><param name="Name" value="muse_vector_put"></OBJECT>
   </UL>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#adbbd6aaac54dd1250550c2e5bae43bff"><param name="Name" value="view"></OBJECT>
-  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gad1b37cda1c83c59f6bd079673d73ead5"><param name="Name" value="write"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a2687ac789a5b5a0ba9f17ae9f8ca8ff6"><param name="Name" value="view"></OBJECT>
+  <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga0cd75fc69bbc9c77c3b582b319aa1873"><param name="Name" value="write"></OBJECT>
   <UL>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gad1b37cda1c83c59f6bd079673d73ead5"><param name="Name" value="FunctionalObjects"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a4397a4360434a2d77719aec36c102710"><param name="Name" value="muse_functional_object_type_t"></OBJECT>
-    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#gad1b37cda1c83c59f6bd079673d73ead5"><param name="Name" value="muse_port_type_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga0cd75fc69bbc9c77c3b582b319aa1873"><param name="Name" value="FunctionalObjects"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="structmuse__functional__object__type__t.html#a86384e3fd5c78025be308610dce3e252"><param name="Name" value="muse_functional_object_type_t"></OBJECT>
+    <LI><OBJECT type="text/sitemap"><param name="Local" value="group__FunctionalObjects.html#ga0cd75fc69bbc9c77c3b582b319aa1873"><param name="Name" value="muse_port_type_t"></OBJECT>
   </UL>
   <LI><OBJECT type="text/sitemap"><param name="Local" value="group__Processes__impl.html#ga778eeb854f94e5daa8bc9f45e6f181d5"><param name="Name" value="yield_process"></OBJECT>
   <UL>
