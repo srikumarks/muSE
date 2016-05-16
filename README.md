@@ -6,7 +6,7 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
   * Provides lexically scoped closures as well as dynamically scoped blocks.
   * Expressive reader macro system where macros are first class citizens (i.e. can be passed around as arguments to functions, assigned to variables, etc.)
   * Uniform use of pattern matching for variable binding.
-  * Generic functions ([doc](http://muvee-symbolic-expressions.googlecode.com/svn/api/group__GenericFns.html))
+  * Generic functions ([doc](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__GenericFns.html))
   * Many polymorphic primitives - including map, filter, reduce, get, put, and some others.
   * An extremely easy to use Objective-C bridge (only on MacOSX).
   * A simple module system.
@@ -15,8 +15,8 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
     * Exception handler dispatch using pattern matching bind.
     * Simple cleanup mechanism
   * Reduce the need for local variables using TheAndIt.
-  * Built-in support for [JSON](http://muvee-symbolic-expressions.googlecode.com/svn/api/group__PortIO.html#gd279620db34a8d1055531730840159ea).
-  * Built-in support for reading/writing [a subset of XML](http://muvee-symbolic-expressions.googlecode.com/svn/api/group__PortIO.html#g1e609c18047e7fcd3bfb12bf012c5145) .
+  * Built-in support for [JSON](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gd279620db34a8d1055531730840159ea).
+  * Built-in support for reading/writing [a subset of XML](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#g1e609c18047e7fcd3bfb12bf012c5145) .
 
 ## Integration features ##
 
