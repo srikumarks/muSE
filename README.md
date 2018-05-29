@@ -6,7 +6,7 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
   * Provides lexically scoped closures as well as dynamically scoped blocks.
   * Expressive reader macro system where macros are first class citizens (i.e. can be passed around as arguments to functions, assigned to variables, etc.)
   * Uniform use of pattern matching for variable binding.
-  * Generic functions ([doc](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__GenericFns.html))
+  * Generic functions ([doc][gfndoc])
   * Many polymorphic primitives - including map, filter, reduce, get, put, and some others.
   * An extremely easy to use Objective-C bridge (only on MacOSX).
   * A simple module system.
@@ -14,13 +14,13 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
     * Resumable exceptions
     * Exception handler dispatch using pattern matching bind.
     * Simple cleanup mechanism
-  * Reduce the need for local variables using TheAndIt.
-  * Built-in support for [JSON](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gad279620db34a8d1055531730840159ea).
-  * Built-in support for reading/writing [a subset of XML](https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145) .
+  * Reduce the need for local variables using [TheAndIt][].
+  * Built-in support for [JSON][jsondoc].
+  * Built-in support for reading/writing [a subset of XML][xmldoc].
 
 ## Integration features ##
 
-  * C-based, fairly well documented, simple embedding API. Can call as well as be called from C/C++ code.
+  * C-based, [fairly well documented][apidoc], simple embedding API. Can call as well as be called from C/C++ code.
   * Compact - Its easy to strip down the feature set to whatever subset of the core language you need.
   * Extensible notion of objects to add new kinds of things to muSE in native code. Vectors, hashtables and ports (for I/O) are provided using this mechanism.
   * Ability to add C/C++ based native functionality in the form of plugin DLLs.
@@ -34,3 +34,9 @@ The license agreement has been changed (13Nov2008) to "New BSD" with the require
 
 ## Copyright ##
 Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. Ltd.
+
+[apidoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/index.html
+[jsondoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gad279620db34a8d1055531730840159ea
+[xmldoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145
+[gfndoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__GenericFns.html
+[TheAndIt]: https://github.com/srikumarks/muSE/wiki/TheAndIt
