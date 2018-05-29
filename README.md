@@ -10,7 +10,7 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
   * Many polymorphic primitives - including map, filter, reduce, get, put, and some others.
   * An extremely easy to use Objective-C bridge (only on MacOSX).
   * A simple module system.
-  * Flexible exception handling
+  * Flexible [exception handling][ExceptionHandling]
     * Resumable exceptions
     * Exception handler dispatch using pattern matching bind.
     * Simple cleanup mechanism
@@ -24,7 +24,7 @@ muSE - short for 'muvee Symbolic Expressions' - is a Scheme dialect intended for
   * Compact - Its easy to strip down the feature set to whatever subset of the core language you need.
   * Extensible notion of objects to add new kinds of things to muSE in native code. Vectors, hashtables and ports (for I/O) are provided using this mechanism.
   * Ability to add C/C++ based native functionality in the form of plugin DLLs.
-  * Ability to create StandAloneExecutables
+  * Ability to create [StandAloneExecutables][]
   * Supports multiple independent environments
   * Liberal license terms - can use in commercial applications without publishing source code.
 
@@ -40,3 +40,5 @@ Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. 
 [xmldoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145
 [gfndoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__GenericFns.html
 [TheAndIt]: https://github.com/srikumarks/muSE/wiki/TheAndIt
+[ExceptionHandling]: https://github.com/srikumarks/muSE/wiki/ExceptionHandling
+[StandAloneExecutables]: https://github.com/srikumarks/muSE/wiki/StandAloneExecutables
