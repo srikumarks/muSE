@@ -77,6 +77,8 @@ typedef long long longlong_t;
 
 #  if defined(BSD) || __APPLE__ & __MACH__
 #      define MUSE_PLATFORM_BSD 1
+#include <sys/ioctl.h>
+#include <unistd.h>
 #  endif
 
 #endif

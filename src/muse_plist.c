@@ -228,7 +228,7 @@ int	muse_compare( muse_env *env, muse_cell a, muse_cell b )
 
 	/* If either is nil, we really can't compare contents, so we just do a cell compare. */
 	if ( a == MUSE_NIL || b == MUSE_NIL )
-		return a - b;
+		return (int)(a - b);
 	
 	if ( _cellt(a) == _cellt(b) )
 	{
@@ -240,7 +240,7 @@ int	muse_compare( muse_env *env, muse_cell a, muse_cell b )
 			case MUSE_TEXT_CELL		: return wcscmp( _ptr(a)->text.start, _ptr(b)->text.start );
 			case MUSE_SYMBOL_CELL	: return wcscmp( muse_symbol_name(env,a), muse_symbol_name(env,b) );
 			case MUSE_CONS_CELL		: return compare_contents_of_conses( env, a, b );
-			default					: return a - b;
+			default					: return (int)(a - b);
 		}
 	}
 	else

@@ -7,7 +7,7 @@
 //
 
 #import "MuseEnvironment.h"
-#include <muse_opcodes.h>
+#include "muse_opcodes.h"
 
 id muse2obj( muse_env *env, muse_cell arg );
 muse_cell obj2muse( muse_env *env, id obj );

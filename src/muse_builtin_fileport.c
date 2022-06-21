@@ -199,7 +199,7 @@ static size_t uc16_fileport_read( void *buffer, size_t nbytes, void *port )
 		return 0;
 }
 
-static size_t fileport_write(void *buffer, size_t nbytes, void *port )
+static size_t fileport_write(const void *buffer, size_t nbytes, void *port )
 {
 	fileport_t *p = (fileport_t*)port;
 	
@@ -586,7 +586,7 @@ static void discard_utf8_header( muse_env *env, fileport_t *p )
 		platforms. */
 
 		unsigned char c[3];
-		int nbytes = read( p->desc, c, 2 );
+		int nbytes = (int)read( p->desc, c, 2 );
 
 		if ( nbytes == 2 )
 		{

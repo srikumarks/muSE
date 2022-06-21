@@ -642,6 +642,7 @@ static void json_write( muse_port_t p, muse_cell thing )
 					}
 					break;
 				}
+            default:;
 		}
 	}
 }

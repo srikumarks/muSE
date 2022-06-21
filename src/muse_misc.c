@@ -184,12 +184,12 @@ MUSEAPI FILE* muse_fopen( const muse_char *filename, const muse_char *options )
 #ifdef MUSE_PLATFORM_WINDOWS
 	return _wfopen( filename, options );
 #else
-	int length						= wcslen(filename);
-	int utf8_size					= muse_utf8_size(filename,length);
+	int length						= (int)wcslen(filename);
+	int utf8_size					= (int)muse_utf8_size(filename,length);
 	char *narrow_filename			= (char*)alloca( utf8_size );
 	char *narrow_options			= (char*)alloca(8);
 
-	utf8_size = muse_unicode_to_utf8( narrow_filename, utf8_size, filename, length );
+	utf8_size = (int)muse_unicode_to_utf8( narrow_filename, utf8_size, filename, length );
 	muse_unicode_to_utf8( narrow_options, 8, options, wcslen(options) );
 
 	return fopen( narrow_filename, narrow_options );
@@ -217,7 +217,7 @@ MUSEAPI size_t muse_unicode_to_utf8( char *out, size_t out_maxlen, const muse_ch
 	int result = 0;
 	int win_offset = 0;
 	while ( win_offset < win_len && result < out_maxlen ) {
-		int n = uc16_to_utf8( win[win_offset], (unsigned char*)out + result, out_maxlen - result );
+		int n = (int)uc16_to_utf8( win[win_offset], (unsigned char*)out + result, (int)(out_maxlen - result) );
 		if ( n > 0 && result + n < out_maxlen ) {
 			win_offset++;
 			result += n;
@@ -475,7 +475,7 @@ static size_t muse_sprintf_object( muse_env *env, muse_char *buffer, size_t maxl
 				/* Anonymous object. */
 				char obj[64];
 				obj[63] = '\0';
-				snprintf( obj, 64, "<obj:%x>", thing );
+                snprintf( obj, 64, "<obj:%lx>", thing );
 				len += muse_utf8_to_unicode( buffer + len, (maxlen - len), obj, strlen(obj) );
 			}
 		}
@@ -810,7 +810,7 @@ MUSEAPI muse_cell muse_symbol_is_defined( muse_env *env, void *context, muse_cel
 MUSEAPI muse_cell muse_similar_symbol( muse_env *env, muse_cell symbol, int *outDistance, muse_nativefn_t predicate, void *context )
 {
 	int distance = 0x7fffffff;
-	int result = MUSE_NIL;
+	muse_cell result = MUSE_NIL;
 
 	const muse_char *s1 = muse_symbol_name(env,symbol);
 
@@ -1221,15 +1221,15 @@ static const char *k_footer_scan_format			= ";%d muSEexec";
  */
 MUSEAPI int muse_fsize( FILE *f )
 {
-	int pos = 0;
-	int size = 0;
+	long pos = 0;
+	long size = 0;
 	
 	pos = ftell( f );
 	fseek( f, 0, SEEK_END );
 	size = ftell( f );
 	fseek( f, pos, SEEK_SET );
 	
-	return size;
+	return (int)size;
 }
 
 

@@ -279,13 +279,13 @@ static size_t socket_read( void *buffer, size_t nbytes, void *s )
 	return (size_t)result;
 }
 
-static size_t socket_write( void *buffer, size_t nbytes, void *s )
+static size_t socket_write( const void *buffer, size_t nbytes, void *s )
 {
 	/* Ensures that all given bytes are written before returning. */
 	
 	socketport_t *p = (socketport_t*)s;
-	unsigned char *b = buffer;
-	unsigned char *b_end = b + nbytes;
+	const unsigned char *b = buffer;
+	const unsigned char *b_end = b + nbytes;
 	muse_int bytes_sent = 0;
 	
 	while ( b < b_end )
@@ -540,7 +540,7 @@ muse_cell fn_with_incoming_connections_to_port( muse_env *env, void *context, mu
 	
 	/* Setup the localSocketAddress */
 	conn->localSocketAddress.sin_family			= AF_INET;
-	conn->localSocketAddress.sin_addr.s_addr	= bindAddr;
+	conn->localSocketAddress.sin_addr.s_addr	= (in_addr_t)bindAddr;
 	conn->localSocketAddress.sin_port			= htons(listenPort);
 	
 	/* Bind listenSocket to the local address/port combo. */
@@ -852,7 +852,7 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 	{
 		int result = 
 			poll_network( env, s->socket, 0 ) == POLL_SOCKET_SET
-				? recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len )
+				? (int)recvfrom( s->socket, (char*)buffer, (int)nbytes, 0, (struct sockaddr*)&(s->src_addr), &s->src_addr_len )
 				: SOCKET_ERROR;
 
 		if ( result < 0 )
@@ -867,7 +867,7 @@ static size_t multicast_socket_read( void *buffer, size_t nbytes, void *p )
 	}
 }
 
-static size_t multicast_socket_write( void *buffer, size_t nbytes, void *p )
+static size_t multicast_socket_write( const void *buffer, size_t nbytes, void *p )
 {
 	multicast_socket_port_t *s = (multicast_socket_port_t*)p;
 	muse_env *env = s->base.env;
@@ -877,7 +877,7 @@ static size_t multicast_socket_write( void *buffer, size_t nbytes, void *p )
 	int addr_len = s->reply ? s->src_addr_len : sizeof(s->dst_addr);
 	int result = 
 			poll_network( env, s->socket, 1 ) == POLL_SOCKET_SET
-				? sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len )
+				? (int)sendto( s->socket, buffer, (int)nbytes, 0, addr, addr_len )
 				: SOCKET_ERROR;
 
 	if ( result < 0 )

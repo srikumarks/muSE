@@ -51,7 +51,7 @@ typedef struct
 		 * return 0, else it should return the number of bytes read.
 		 */
 
-	size_t (*write)( void *buffer, size_t nbytes, void *port );
+	size_t (*write)( const void *buffer, size_t nbytes, void *port );
 		/**<
 		 * Should write the given \p nbytes bytes to the \p port.
 		 * Must not perform an incomplete write. For network ports,
@@ -126,7 +126,7 @@ int		port_putc( int c, muse_port_base_t *p );
 void	port_close( muse_port_base_t *p );
 int		port_eof( muse_port_base_t *port );
 size_t	port_read( void *buffer, size_t nbytes, muse_port_base_t *port );
-size_t	port_write( void *buffer, size_t nbytes, muse_port_base_t *port );
+size_t	port_write( const void *buffer, size_t nbytes, muse_port_base_t *port );
 int		port_flush( muse_port_base_t *port );
 muse_char port_getchar( muse_port_base_t *p );
 muse_char port_putchar( muse_char c, muse_port_base_t *p );

@@ -569,7 +569,7 @@ typedef struct _running_list_t
 static muse_cell muse_scribble( muse_env *env, muse_port_t in, muse_int open_braces, running_list_t list );
 static muse_cell muse_scribble_expr( muse_env *env, muse_port_t in );
 static running_list_t append_to_list( muse_env *env, running_list_t list, muse_cell term, int *sp );
-static running_list_t empty_list();
+static running_list_t empty_list(void);
 
 /**
  * {scribble} or (scribble inport)

@@ -11,7 +11,8 @@
  
 #import <Foundation/Foundation.h>
 #include <objc/objc-runtime.h>
-#include <muse_opcodes.h>
+#include "muse_opcodes.h"
+#include "muse_port.h"
 
 
 typedef char name_t[256];
@@ -150,7 +151,7 @@ muse_cell fn_object( muse_env *env, void *context, muse_cell args )
 
 void compile_sel( muse_env *env, id obj, compiled_sel_t *sel )
 {
-	Class c = (Class)obj->isa;
+    Class c = object_getClass(obj);
 	Method m = class_getInstanceMethod( c, sel->sel );
 	if ( m == NULL )
 		m = class_getClassMethod( c, sel->sel );
@@ -242,7 +243,7 @@ id muse2obj( muse_env *env, muse_cell arg )
 			
 			muse_functional_object_t *fobj = NULL;
 			
-			if ( fobj = muse_functional_object_data( env, arg, 'vect' ) ) {
+			if ( (fobj = muse_functional_object_data( env, arg, 'vect' )) ) {
 				// Convert vector to NSArray.
 				int length = muse_vector_length(env, arg);
 				NSMutableArray *array = [NSMutableArray array];
@@ -253,7 +254,7 @@ id muse2obj( muse_env *env, muse_cell arg )
 				return array;
 			}
 			
-			if ( fobj = muse_functional_object_data( env, arg, 'hash' ) ) {
+			if ( (fobj = muse_functional_object_data( env, arg, 'hash' )) ) {
 				// Convert hashtable to dictionary.
 				muse_cell ht2alist = _symval(_csymbol(L"hashtable->alist"));
 				muse_cell alist = _eval(_cons(ht2alist,_cons(arg,MUSE_NIL)));
@@ -301,7 +302,7 @@ muse_cell obj2muse( muse_env *env, id obj ) {
 	if ( [obj isKindOfClass:[NSString class]] ) {
 		// Convert strings to text.
 		NSString *str = (NSString*)obj;
-		int length = [str length];
+		NSUInteger length = [str length];
 		muse_char *buffer = (muse_char*)malloc( sizeof(muse_char) * (length+1) );
 		unichar *ubuffer = (unichar*)malloc( sizeof(unichar) * (length+1) );
 		buffer[length] = 0;
@@ -319,8 +320,8 @@ muse_cell obj2muse( muse_env *env, id obj ) {
 	
 	if ( [obj isKindOfClass:[NSArray class]] ) {
 		// Convert NSArray to vector.
-		int length = [obj count];
-		muse_cell vec = muse_mk_vector( env, length );
+		NSUInteger length = [obj count];
+		muse_cell vec = muse_mk_vector( env, (int)length );
 		int i;
 		int sp = _spos();
 		for ( i = 0; i < length; ++i ) {
@@ -333,7 +334,7 @@ muse_cell obj2muse( muse_env *env, id obj ) {
 	if ( [obj isKindOfClass:[NSDictionary class]] ) {
 		// Convert NSDictionary to hashtable.
 		NSEnumerator *keys = [obj keyEnumerator];
-		muse_cell ht = muse_mk_hashtable(env,[obj count]);
+		muse_cell ht = muse_mk_hashtable(env, (int)[obj count]);
 		id key = nil;
 		int sp = _spos();
 		while ( key = [keys nextObject] ) {
@@ -853,9 +854,9 @@ muse_cell invocation2arglist( muse_env *env, NSInvocation *invocation );
 - (muse_cell) invocation2arglist: (NSInvocation *)invocation
 {
 	NSMethodSignature *sig = [invocation methodSignature];
-	int N = [sig numberOfArguments];
+	NSUInteger N = [sig numberOfArguments];
 
-	muse_cell vec = muse_mk_vector( env, N-2 );
+	muse_cell vec = muse_mk_vector( env, (int)(N-2) );
 	int sp = _spos();
 	int i;
 	

@@ -320,7 +320,7 @@ size_t port_read( void *buffer, size_t nbytes, muse_port_base_t *port )
  * port's write function is not called and the given bytes are
  * simply copied to the port buffer.
  */
-size_t port_write( void *buffer, size_t nbytes, muse_port_base_t *port )
+size_t port_write( const void *buffer, size_t nbytes, muse_port_base_t *port )
 {
 	muse_debug_only(muse_env *env = port->env;)
 	muse_port_buffer_t *out	= &port->out;
@@ -1754,7 +1754,8 @@ static void muse_print_q( muse_port_t f, muse_cell sexpr, muse_boolean quote )
 		case MUSE_CONS_CELL		:	muse_print_list( f, sexpr, quote ); break;
 		case MUSE_SYMBOL_CELL	:	muse_print_sym( f, sexpr ); break;
 		case MUSE_LAMBDA_CELL	:	muse_print_lambda( f, sexpr, quote ); break;
-		case MUSE_NATIVEFN_CELL	:	muse_print_nativefn( f, sexpr ); break;			
+		case MUSE_NATIVEFN_CELL	:	muse_print_nativefn( f, sexpr ); break;
+        case MUSE_LAZY_CELL     :   break;
 	}
 	/*pretty_printer_unindent();*/
 }

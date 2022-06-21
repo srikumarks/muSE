@@ -487,7 +487,7 @@ MUSEAPI void		muse_add_finalizer_call( muse_env *env, muse_nativefn_t fn, void *
 MUSEAPI muse_int	muse_hash( muse_env *env, muse_cell obj );
 MUSEAPI muse_int	muse_hash_text( const muse_char *start, const muse_char *end, muse_int initial );
 MUSEAPI muse_int	muse_hash_data( const unsigned char *start, const unsigned char *end, muse_int initial );
-MUSEAPI void*		muse_tick();
+MUSEAPI void*		muse_tick(void);
 MUSEAPI muse_int	muse_elapsed_us( void *timer );
 MUSEAPI muse_int	muse_tock( void *timer );
 MUSEAPI void		muse_sleep( muse_int time_us );

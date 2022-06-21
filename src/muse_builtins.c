@@ -251,8 +251,8 @@ void muse_load_builtin_fns(muse_env *env)
 	muse_define_builtin_fileport(env);
 	muse_define_builtin_memport(env);
 	muse_define_builtin_networking(env);
-	muse_register_com_support(env);
-	muse_define_image_properties(env);
+	//muse_register_com_support(env);
+	//muse_define_image_properties(env);
 	muse_define_xml_codes(env);
 	muse_define_crypto(env);
     muse_define_builtin_type_regexp(env);
@@ -541,7 +541,7 @@ muse_cell syntax_for( muse_env *env, void *context, muse_cell args )
  */
 muse_cell fn_stats( muse_env *env, void *context, muse_cell args )
 {
-	int free_cell_count		= env->heap.free_cell_count;
+	int free_cell_count		= (int)(env->heap.free_cell_count);
 	int sp					= _spos();
 	
 	muse_cell obj = fn_new(env,NULL,MUSE_NIL);
@@ -898,7 +898,7 @@ static void gendoc_for_symbol( muse_env *env, muse_cell symbol, muse_port_t p )
 		MUSE_DIAGNOSTICS3({ fprintf( stderr, "symbol: %S\n", muse_symbol_name(env,symbol) ); });
 
 		/* Generate documentation only if there is a plist for the symbol. */
-		size = sprintf(buffer, "/**\n@defgroup g%d %S\n", symbol, muse_symbol_name(env,symbol) );
+        size = sprintf(buffer, "/**\n@defgroup g%ld %S\n", symbol, muse_symbol_name(env,symbol) );
 		port_write( buffer, size, p );
 		
 		pty = muse_assoc( env, plist, _builtin_symbol(MUSE_SIGNATURE) );

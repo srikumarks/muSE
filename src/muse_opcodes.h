@@ -645,7 +645,7 @@ static inline void op_unwind_bindings( muse_env *env, int pos )
 #define _mark(c) op_mark(env,c)
 static inline void op_mark( muse_env *env, muse_cell c )
 {
-	int ci = _celli(c);
+	muse_cell ci = _celli(c);
 	unsigned char *m = _heap()->marks + (ci >> 3);
 	muse_assert( ci >= 0 && ci < _heap()->size_cells );
 	(*m) |= (1 << (ci & 7));
@@ -653,7 +653,7 @@ static inline void op_mark( muse_env *env, muse_cell c )
 #define _unmark(c) op_unmark(env,c)
 static inline void op_unmark( muse_env *env, muse_cell c )
 {
-	int ci = _celli(c);
+	muse_cell ci = _celli(c);
 	unsigned char *m = _heap()->marks + (ci >> 3);
 	muse_assert( ci >= 0 && ci < _heap()->size_cells );
 	(*m) &= ~(1 << (ci & 7));
@@ -661,14 +661,14 @@ static inline void op_unmark( muse_env *env, muse_cell c )
 #define _ismarked(c) op_ismarked(env,c)
 static inline int op_ismarked( muse_env *env, muse_cell c )
 {
-	int ci = _celli(c);
+	muse_cell ci = _celli(c);
 	const unsigned char *m = _heap()->marks + (ci >> 3);
 	muse_assert( ci >= 0 && ci < _heap()->size_cells );
 	return (*m) & (1 << (ci & 7));
 }
 static inline int _iscompound( muse_cell c )
 {
-	int t = _cellt(c);
+	muse_cell t = _cellt(c);
 	return t < MUSE_NATIVEFN_CELL || t > MUSE_TEXT_CELL;
 }
 #define _takefreecell() op_takefreecell(env)

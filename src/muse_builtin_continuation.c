@@ -12,6 +12,7 @@
 #include "muse_builtins.h"
 #include "muse_opcodes.h"
 #include "muse_port.h"
+#include "muse_platform.h"
 #include <stdlib.h>
 #include <setjmp.h>
 #include <memory.h>
@@ -453,7 +454,7 @@ static int resume_capture( muse_env *env, resume_point_t *rp, int setjmp_result 
  */
 static void resume_invoke( muse_env *env, resume_point_t *p, muse_cell result )
 {
-	longjmp( p->state, (result >= 0) ? (result+1) : result );
+	longjmp( p->state, (int)((result >= 0) ? (result+1) : result) );
 }
 
 /**

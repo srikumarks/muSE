@@ -31,7 +31,7 @@ static void regexp_init( muse_env *env, void *ptr, muse_cell args )
 {
 	regexp_t *re = (regexp_t*)ptr;
     re->expr = _evalnext(&args);
-    muse_assert(_cellt(v->expr) == MUSE_TEXT_CELL);
+    muse_assert(_cellt(re->expr) == MUSE_TEXT_CELL);
     re->re = new wcregex;
     (*(re->re)) = wcregex::compile(_text_contents(re->expr, NULL));
 }
@@ -115,11 +115,11 @@ static muse_cell fn_regexp_match(muse_env *env, void *context, muse_cell args) {
     muse_cell txt = _evalnext(&args);
     wcmatch what;
     if (regex_match(_text_contents(txt, NULL), what, (*(re->re)))) {
-        muse_cell vec = muse_mk_vector(env, what.size());
+        muse_cell vec = muse_mk_vector(env, (int)what.size());
         int sp = _spos();
         {
             int i, N;
-            for (i = 0, N = what.size(); i < N; ++i) {
+            for (i = 0, N = (int)what.size(); i < N; ++i) {
                 const wcsub_match str = what[i];
                 muse_vector_put(env, vec, i, muse_mk_text(env, str.first, str.second));
                 _unwind(sp);
@@ -139,11 +139,11 @@ static muse_cell fn_regexp_search(muse_env *env, void *context, muse_cell args) 
     muse_cell txt = _evalnext(&args);
     wcmatch what;
     if (regex_search(_text_contents(txt, NULL), what, (*(re->re)))) {
-        muse_cell vec = muse_mk_vector(env, what.size());
+        muse_cell vec = muse_mk_vector(env, (int)what.size());
         int sp = _spos();
         {
             int i, N;
-            for (i = 0, N = what.size(); i < N; ++i) {
+            for (i = 0, N = (int)what.size(); i < N; ++i) {
                 const wcsub_match str = what[i];
                 muse_vector_put(env, vec, i, muse_mk_text(env, str.first, str.second));
                 _unwind(sp);

@@ -126,7 +126,7 @@ static size_t memport_read( void *buffer, size_t nbytes, void *port )
 	return bytes_read;
 }
 
-static size_t memport_write(void *buffer, size_t nbytes, void *port )
+static size_t memport_write(const void *buffer, size_t nbytes, void *port )
 {
 	if ( nbytes > 0 ) 
 	{

@@ -190,7 +190,7 @@ static void vector_forceall( muse_env *env, vector_t *v )
  */
 muse_cell fn_vector( muse_env *env, vector_t *v, muse_cell args )
 {
-	int indexcell = _evalnext(&args);
+	muse_cell indexcell = _evalnext(&args);
 	int index = (int)_intvalue(indexcell);
 	muse_cell *slot = NULL;
 

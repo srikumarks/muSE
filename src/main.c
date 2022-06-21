@@ -220,7 +220,7 @@ static muse_cell args_list_generator( muse_env *env, void *context, int i, muse_
 						/* Trim ending spaces, tabs and newlines. */
 						int len;
 						result[size-1] = '\0';
-						len = strlen(result);
+						len = (int)strlen(result);
 						while ( isspace( result[len-1] ) ) 
 							result[--len] = '\0';
 						

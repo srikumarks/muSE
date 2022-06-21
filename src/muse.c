@@ -145,7 +145,7 @@ static muse_boolean grow_heap( muse_heap *heap, int new_size )
 
 				/* Collect the newly allocated cells into the free list. */				
 				{
-					int i = heap->size_cells;
+					int i = (int)(heap->size_cells);
 					int i_end = new_size - 1;
 					muse_cell_data *c = p + i;
 					for ( ; i < i_end; ++i, ++c )
@@ -155,7 +155,7 @@ static muse_boolean grow_heap( muse_heap *heap, int new_size )
 					}
 					heap->cells[i_end].cons.head = MUSE_NIL;
 					heap->cells[i_end].cons.tail = heap->free_cells;
-					heap->free_cells = _cellati( heap->size_cells );
+					heap->free_cells = (int)_cellati( (int)(heap->size_cells) );
 					heap->free_cell_count += (new_size - heap->size_cells);
 					heap->size_cells = new_size;
 				}
@@ -483,7 +483,7 @@ MUSEAPI muse_cell muse_cons( muse_env *env, muse_cell head, muse_cell tail )
 		if ( env->heap.free_cells == MUSE_NIL )
 		{
 			fprintf( stderr, "\t\t\tNo free cells!\n" );
-			grow_heap( &env->heap, env->heap.size_cells * 2 );
+			grow_heap( &env->heap, (int)(env->heap.size_cells * 2) );
 		}
 	}
 
@@ -1176,7 +1176,7 @@ void free_unused_specials( muse_env *env, muse_cell *specials )
 void collect_free_cells( muse_env *env, muse_heap *heap )
 {
 	muse_cell f = MUSE_NIL;
-	int marks_size = heap->size_cells;
+	int marks_size = (int)(heap->size_cells);
 	unsigned char *marks = heap->marks;
 	int i, j, fcount;
 	
@@ -1377,8 +1377,8 @@ void muse_gc_impl( muse_env *env, int free_cells_needed )
 			{
 				/* We're still too close to the edge here. Allocate 
 				   enough memory. */
-				int new_size = heap->size_cells;
-				int opt_size = 2 * (heap->size_cells - heap->free_cell_count + free_cells_needed);
+				int new_size = (int)(heap->size_cells);
+				int opt_size = (int)(2 * (heap->size_cells - heap->free_cell_count + free_cells_needed));
 				while ( new_size < opt_size )
 					new_size *= 2;
 				
@@ -1643,7 +1643,7 @@ static muse_env *g_env = NULL;
  * evaluation, the process dies and evaluation switches to
  * the next process.
  */
-muse_boolean run_process()
+muse_boolean run_process(void)
 {
 	muse_env *env = g_env;
 	
@@ -1704,7 +1704,6 @@ SWITCH_TO_PROCESS:
 				/* Change the SP for the virgin process. */
 				g_env = env;
 				CHANGE_STACK_POINTER(env->current_process->cstack.top);
-
 				return run_process();
 			}
 			else

@@ -49,7 +49,7 @@ MUSEAPI void muse_repl(muse_env *env)
 		if ( c < 0 )
 		{
 			++ error_count;
-			fprintf( stderr, "Parse error %d\n", c );
+            fprintf( stderr, "Parse error %ld\n", c );
 			port_getc( pstdin );
 
 			if ( error_count > 5 )

@@ -32,7 +32,7 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 		return 0;
 	
 	if ( lhs == MUSE_NIL || rhs == MUSE_NIL )
-		return lhs - rhs;
+		return (int)(lhs - rhs);
 	
 	lhs_t = _cellt(lhs);
 	rhs_t = _cellt(rhs);
@@ -75,7 +75,7 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 			muse_cell rt = _tail(_head(_tail(rhs)));
 			
 			if ( lt == MUSE_NIL && rt == MUSE_NIL )
-				return lhs - rhs;
+				return (int)(lhs - rhs);
 			else
 				return deep_compare( env, lt, rt );
 		}
@@ -83,7 +83,7 @@ static int deep_compare( muse_env *env, muse_cell lhs, muse_cell rhs )
 			return deep_compare( env, _force(lhs), _force(rhs) );
 
 		default					:
-			return lhs - rhs;
+			return (int)(lhs - rhs);
 	}	
 }
 

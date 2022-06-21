@@ -38,7 +38,7 @@ int uc16_to_utf8( int c, unsigned char *utf8, int nbytes );
 /*@{*/
 typedef struct __buffer_t__ buffer_t;
 
-buffer_t*	buffer_alloc();
+buffer_t*	buffer_alloc(void);
 void		buffer_free( buffer_t *b );
 void        buffer_reset( buffer_t *b );
 void		buffer_putc( buffer_t *b, muse_char c );
