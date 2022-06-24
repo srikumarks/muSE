@@ -74,13 +74,75 @@ muse_cell fn_box( muse_env *env, box_t *b, muse_cell args )
 	}
 }
 
+/**
+ * @defgroup Box property access
+ *
+ * A box conforms to the "property access protocol" with id 'prop'.
+ * This means you can use `get` and `put` with boxes as though
+ * they were normal identifiers for their contents. For example -
+ *
+ * (define b (box (vector 1 2 3 4)))
+ * (print (get b 2))                   ; prints 3
+ * (put b 2 42)                        ; changes 3 within the vector to 42
+ * (print (b))                         ; prints (vector 1 2 42 4)
+ *
+ * Furthermore, to make some code clearer, you can use `get` without
+ * additional "key" arguments to retrieve the full contents of the box.
+ * Similarly you can use `put` with a single additional argument 
+ * (without a value) to set the contents of the box. This makes code
+ * clearer to read.
+ */
+/*@{*/
+static muse_cell box_get( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+        box_t *b = (box_t*)self;
+        if ( key ) {
+                return muse_get( env, b->contents, key, argv );
+        } else {
+                return b->contents;
+        }
+}
+
+static muse_cell box_put( muse_env *env, void *self, muse_cell key, muse_cell argv )
+{
+        box_t *b = (box_t*)self;
+        if ( !argv ) {
+                // Only the key argument given. Use it as the value.
+                b->contents = key;
+                return key;
+        }
+
+        if ( key ) {
+                // The arguments could include a sequence of keys with a value at the end.
+                // We handle it as though the box was deferenced for its value and used.
+                return muse_put( env, b->contents, key, argv );
+        }
+
+        return MUSE_NIL;
+}
+
+static muse_prop_view_t g_box_prop_view =
+{
+        box_get,
+        box_put
+};
+/*@}*/
+
+void *box_view( muse_env *env, int id ) 
+{
+        switch (id) {
+                case 'prop': return &g_box_prop_view;
+                default: return NULL;
+        }
+}
+
 static muse_functional_object_type_t g_box_type =
 {
 	'muSE',
 	'boxx',
 	sizeof(box_t),
 	(muse_nativefn_t)fn_box,
-	NULL,
+	box_view,
 	box_init,
 	box_mark,
 	NULL,
