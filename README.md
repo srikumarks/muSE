@@ -35,10 +35,10 @@ The license agreement has been changed (13Nov2008) to "New BSD" with the require
 ## Copyright ##
 Copyright (c) 2006, Jointly owned by Srikumar K. S. and muvee Technologies Pte. Ltd.
 
-[apidoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/index.html
-[jsondoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#gad279620db34a8d1055531730840159ea
-[xmldoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145
-[gfndoc]: https://cdn.rawgit.com/srikumarks/muSE/master/api/group__GenericFns.html
+[apidoc]: https://cdn.statically.io/gh/srikumarks/muSE/e499d59f/api/index.html
+[jsondoc]: https://cdn.statically.io/gh/srikumarks/muSE/e499d59f/api/group__PortIO.html#gad279620db34a8d1055531730840159ea
+[xmldoc]: https://cdn.statically.io/gh/srikumarks/muSE/e499d59f/api/group__PortIO.html#ga1e609c18047e7fcd3bfb12bf012c5145
+[gfndoc]: https://cdn.statically.io/gh/srikumarks/muSE/e499d59f/api/group__GenericFns.html
 [TheAndIt]: https://github.com/srikumarks/muSE/wiki/TheAndIt
 [ExceptionHandling]: https://github.com/srikumarks/muSE/wiki/ExceptionHandling
 [StandAloneExecutables]: https://github.com/srikumarks/muSE/wiki/StandAloneExecutables
